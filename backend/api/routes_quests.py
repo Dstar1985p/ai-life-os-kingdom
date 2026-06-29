@@ -33,9 +33,25 @@ def update_quest(quest_id: int, payload: QuestUpdate, db: Session = Depends(get_
     for key, value in updates.items():
         setattr(quest, key, value)
 
-    if updates.get("status") == "completed":
+    completing = updates.get("status") == "completed"
+    if completing:
         quest.completed_at = datetime.utcnow()
 
     db.commit()
     db.refresh(quest)
+
+    # Award XP to Quest Master on completion
+    if completing:
+        try:
+            from backend.services.agent_progression import award_xp, update_trust, XP_QUEST_COMPLETE, TRUST_QUEST_COMPLETE
+            from backend.models.tables import Agent
+            qm = db.query(Agent).filter(Agent.name == "Quest Master").first()
+            if qm:
+                qm.quests_completed = (qm.quests_completed or 0) + 1
+                db.commit()
+                award_xp("Quest Master", XP_QUEST_COMPLETE, f"Quest completed: {quest.title}", db)
+                update_trust("Quest Master", TRUST_QUEST_COMPLETE, "quest completed", db)
+        except Exception:
+            pass  # Don't fail the route if progression errors
+
     return quest

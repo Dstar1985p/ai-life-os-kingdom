@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -16,6 +16,45 @@ class Agent(Base):
     reputation_score: Mapped[float] = mapped_column(Float, default=50.0)
     autonomy_level: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[str] = mapped_column(String(50), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # RPG Progression
+    xp: Mapped[int] = mapped_column(Integer, default=0)
+    level: Mapped[int] = mapped_column(Integer, default=1)
+    rank: Mapped[str] = mapped_column(String(120), default="Recruit")
+
+    # Skills / traits as JSON
+    skills: Mapped[str] = mapped_column(Text, default="{}")
+    traits: Mapped[str] = mapped_column(Text, default="[]")
+
+    # Lifetime stats
+    quests_completed: Mapped[int] = mapped_column(Integer, default=0)
+    opportunities_found: Mapped[int] = mapped_column(Integer, default=0)
+    lessons_generated: Mapped[int] = mapped_column(Integer, default=0)
+    successful_predictions: Mapped[int] = mapped_column(Integer, default=0)
+    failed_predictions: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Retirement
+    retired: Mapped[bool] = mapped_column(Boolean, default=False)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    hall_of_heroes: Mapped[bool] = mapped_column(Boolean, default=False)
+    legacy_note: Mapped[str] = mapped_column(Text, default="")
+
+    # Specialisation
+    specialisation: Mapped[str] = mapped_column(String(120), default="")
+
+    # Last active
+    last_active_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AgentSkillEvent(Base):
+    __tablename__ = "agent_skill_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    agent_name: Mapped[str] = mapped_column(String(120), index=True)
+    skill: Mapped[str] = mapped_column(String(120))
+    delta: Mapped[int] = mapped_column(Integer, default=0)
+    reason: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

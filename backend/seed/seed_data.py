@@ -1,6 +1,91 @@
+import json
 from backend.database import SessionLocal
 from backend.models.tables import Agent, Opportunity, Quest, Assumption, KnowledgeLink, Lesson, AgentRun
 from backend.services.scoring import score_opportunity
+
+AGENTS_TO_SEED = [
+    {
+        "name": "Overseer",
+        "role": "Kingdom Commander",
+        "guild": "Crown",
+        "trust_score": 80,
+        "reputation_score": 85,
+        "specialisation": "Strategic Direction",
+        "skills": {"strategic_planning": 15, "resource_allocation": 12, "conflict_resolution": 10, "performance_review": 10},
+    },
+    {
+        "name": "Chief of Staff",
+        "role": "Daily Focus & Capacity",
+        "guild": "Crown",
+        "trust_score": 75,
+        "reputation_score": 80,
+        "specialisation": "Founder Protection",
+        "skills": {"prioritisation": 14, "capacity_planning": 12, "focus_protection": 13, "briefing": 11},
+    },
+    {
+        "name": "Quest Master",
+        "role": "Goal Decomposition",
+        "guild": "Crown",
+        "trust_score": 70,
+        "reputation_score": 75,
+        "specialisation": "Quest Planning",
+        "skills": {"goal_decomposition": 12, "timeline_planning": 10, "dependency_mapping": 8, "progress_tracking": 10},
+    },
+    {
+        "name": "Print Forge AI",
+        "role": "Motorsport Art Agent",
+        "guild": "Revenue",
+        "trust_score": 60,
+        "reputation_score": 65,
+        "specialisation": "Print-on-Demand",
+        "skills": {"artwork_generation": 13, "seo": 10, "bundle_creation": 8, "trend_hunting": 11, "listing_optimisation": 9},
+    },
+    {
+        "name": "Vibes AI",
+        "role": "DnB Music Agent",
+        "guild": "Revenue",
+        "trust_score": 60,
+        "reputation_score": 62,
+        "specialisation": "Music Production",
+        "skills": {"prompt_engineering": 12, "music_theory": 9, "release_scheduling": 7, "audience_growth": 8, "content_creation": 10},
+    },
+    {
+        "name": "Lead Forge AI",
+        "role": "BVS Motors Lead Gen",
+        "guild": "Revenue",
+        "trust_score": 55,
+        "reputation_score": 58,
+        "specialisation": "B2B Sales",
+        "skills": {"lead_generation": 11, "copywriting": 10, "market_research": 9, "email_campaigns": 8, "crm": 7},
+    },
+    {
+        "name": "Opportunity Scout",
+        "role": "Market Research",
+        "guild": "Intelligence",
+        "trust_score": 65,
+        "reputation_score": 68,
+        "specialisation": "Niche Discovery",
+        "skills": {"market_analysis": 12, "trend_hunting": 11, "risk_assessment": 9, "competitor_research": 10, "niche_discovery": 13},
+    },
+    {
+        "name": "Knowledge Keeper",
+        "role": "Kingdom Memory",
+        "guild": "Intelligence",
+        "trust_score": 70,
+        "reputation_score": 74,
+        "specialisation": "Pattern Recognition",
+        "skills": {"data_organisation": 14, "pattern_recognition": 12, "lesson_extraction": 11, "contradiction_detection": 9},
+    },
+    {
+        "name": "Reality Checker",
+        "role": "Assumption Challenger",
+        "guild": "Governance",
+        "trust_score": 75,
+        "reputation_score": 78,
+        "specialisation": "Risk Analysis",
+        "skills": {"assumption_testing": 13, "risk_analysis": 12, "critical_thinking": 14, "evidence_evaluation": 11},
+    },
+]
 
 
 def seed_defaults() -> None:
@@ -8,13 +93,10 @@ def seed_defaults() -> None:
 
     try:
         if db.query(Agent).count() == 0:
-            db.add_all([
-                Agent(name="Overseer", role="Final decision maker", guild="Governance", trust_score=85, reputation_score=90),
-                Agent(name="Chief of Staff", role="Daily priorities and focus", guild="Governance", trust_score=80, reputation_score=85),
-                Agent(name="Reality Checker", role="Challenge weak ideas", guild="Governance", trust_score=82, reputation_score=84),
-                Agent(name="Capital Allocator", role="Prioritise ROI", guild="Governance", trust_score=78, reputation_score=82),
-                Agent(name="Knowledge Keeper", role="Maintain lessons and memory", guild="Intelligence", trust_score=84, reputation_score=86),
-            ])
+            for agent_data in AGENTS_TO_SEED:
+                skills = agent_data.pop("skills", {})
+                agent = Agent(**agent_data, skills=json.dumps(skills))
+                db.add(agent)
 
         if db.query(Quest).count() == 0:
             db.add_all([

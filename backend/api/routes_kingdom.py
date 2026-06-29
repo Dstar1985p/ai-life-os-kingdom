@@ -4,9 +4,19 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models.tables import Decision
+from backend.models.tables import Decision, Agent
 from backend.services.kingdom_health import get_kingdom_health, get_founder_capacity
 from backend.services.decision_journal import get_decision_summary
+from backend.services.agent_progression import (
+    award_xp,
+    update_trust,
+    get_hall_of_heroes,
+    get_leaderboard,
+    XP_PREDICTION_SUCCESS,
+    XP_PREDICTION_FAIL,
+    TRUST_PREDICTION_SUCCESS,
+    TRUST_PREDICTION_FAIL,
+)
 
 router = APIRouter(tags=["Kingdom"])
 
@@ -56,4 +66,34 @@ def update_decision_outcome(
 
     db.commit()
     db.refresh(decision)
+
+    # Award XP to Overseer based on prediction outcome (best-effort)
+    try:
+        agent_name = "Overseer"
+        overseer = db.query(Agent).filter(Agent.name == agent_name).first()
+        if payload.outcome_status == "success":
+            if overseer:
+                overseer.successful_predictions = (overseer.successful_predictions or 0) + 1
+                db.commit()
+            award_xp(agent_name, XP_PREDICTION_SUCCESS, f"Prediction correct on decision {decision_id}", db)
+            update_trust(agent_name, TRUST_PREDICTION_SUCCESS, "correct prediction", db)
+        elif payload.outcome_status == "failed":
+            if overseer:
+                overseer.failed_predictions = (overseer.failed_predictions or 0) + 1
+                db.commit()
+            award_xp(agent_name, XP_PREDICTION_FAIL, f"Prediction failed on decision {decision_id} — lesson learned", db)
+            update_trust(agent_name, TRUST_PREDICTION_FAIL, "incorrect prediction", db)
+    except Exception:
+        pass  # Don't fail the route if progression system errors
+
     return decision
+
+
+@router.get("/kingdom/hall-of-heroes")
+def hall_of_heroes(db: Session = Depends(get_db)):
+    return get_hall_of_heroes(db)
+
+
+@router.get("/kingdom/agent-leaderboard")
+def agent_leaderboard(db: Session = Depends(get_db)):
+    return get_leaderboard(db)
