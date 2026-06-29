@@ -1,3 +1,7 @@
+from sqlalchemy.orm import Session
+from backend.models.tables import Opportunity
+
+
 def score_opportunity(data: dict) -> float:
     revenue = data.get("revenue_score", 50)
     automation = data.get("automation_score", 50)
@@ -16,3 +20,30 @@ def score_opportunity(data: dict) -> float:
     )
 
     return round(score, 2)
+
+
+def get_recommendation(kingdom_score: float) -> str:
+    if kingdom_score >= 70:
+        return "pursue_now"
+    elif kingdom_score >= 50:
+        return "validate"
+    elif kingdom_score >= 30:
+        return "monitor"
+    else:
+        return "ignore"
+
+
+def recompute_all_scores(db: Session) -> None:
+    """Recompute kingdom_score for all opportunities."""
+    opps = db.query(Opportunity).all()
+    for opp in opps:
+        data = {
+            "revenue_score": opp.revenue_score,
+            "automation_score": opp.automation_score,
+            "competition_score": opp.competition_score,
+            "risk_score": opp.risk_score,
+            "complexity_score": opp.complexity_score,
+            "strategic_alignment_score": opp.strategic_alignment_score,
+        }
+        opp.kingdom_score = score_opportunity(data)
+    db.commit()
