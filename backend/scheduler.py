@@ -20,6 +20,8 @@ _SCHEDULE = {
     "Lead Forge AI": {"hours": 24},
     "Opportunity Scout": {"hours": 4},
     "Watch Folder": {"seconds": 60},
+    "ROI Reaper": {"hours": 24},
+    "Trend Watcher": {"hours": 4},
 }
 
 _scheduler: BackgroundScheduler | None = None
@@ -31,11 +33,15 @@ def _get_agents() -> dict[str, Any]:
         from backend.agents.vibes_ai import VibesAIAgent
         from backend.agents.lead_forge import LeadForgeAgent
         from backend.agents.opportunity_scout import OpportunityScoutAgent
+        from backend.agents.roi_reaper import ROIReaperAgent
+        from backend.agents.trend_watcher import TrendWatcherAgent
 
         _AGENT_REGISTRY["Print Forge AI"] = PrintForgeAgent()
         _AGENT_REGISTRY["Vibes AI"] = VibesAIAgent()
         _AGENT_REGISTRY["Lead Forge AI"] = LeadForgeAgent()
         _AGENT_REGISTRY["Opportunity Scout"] = OpportunityScoutAgent()
+        _AGENT_REGISTRY["ROI Reaper"] = ROIReaperAgent()
+        _AGENT_REGISTRY["Trend Watcher"] = TrendWatcherAgent()
     return _AGENT_REGISTRY
 
 
