@@ -2,6 +2,9 @@ from sqlalchemy.orm import Session
 from backend.models.tables import Quest, Opportunity, Assumption, Decision, Lesson
 from backend.services.kingdom_health import get_kingdom_health, get_founder_capacity
 from backend.services.decision_journal import calculate_decision_accuracy
+from backend.services.blind_spot import run_blind_spot_scan
+from backend.services.forecasting import get_revenue_forecast
+from backend.services.complexity_budget import get_complexity_report
 
 
 def generate_daily_brief(db: Session) -> dict:
@@ -82,6 +85,11 @@ def generate_daily_brief(db: Session) -> dict:
     )
     similar_past = past_decision.decision[:100] if past_decision else "No reviewed decisions yet."
 
+    # Decision intelligence enrichment
+    blind_scan = run_blind_spot_scan(db)
+    forecast = get_revenue_forecast(db)
+    complexity = get_complexity_report(db)
+
     # Build reasoning
     if top_opp:
         top_opportunity_title = top_opp.title
@@ -122,4 +130,12 @@ def generate_daily_brief(db: Session) -> dict:
         "recommended_action": do_today[0]["title"] if do_today else reasoning,
         "top_priority": do_today[0]["title"] if do_today else "Revenue Recon Alpha",
         "kingdom_health_factors": kh["factors"],
+        # Decision intelligence fields
+        "blind_spot_count": blind_scan["blind_spot_count"],
+        "awareness_score": blind_scan["awareness_score"],
+        "top_blind_spot": blind_scan["blind_spots"][0]["title"] if blind_scan["blind_spots"] else None,
+        "revenue_forecast_low": forecast["total_estimated_monthly_low"],
+        "revenue_forecast_high": forecast["total_estimated_monthly_high"],
+        "complexity_budget_status": complexity["budget_status"],
+        "gold_opportunities": complexity["summary"]["gold_count"],
     }
