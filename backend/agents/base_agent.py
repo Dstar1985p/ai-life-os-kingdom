@@ -1,13 +1,15 @@
 """Base class for all revenue agents."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.models.tables import AgentRun, Lesson
+from backend.models.tables import AgentRun, Lesson, Opportunity
 
 
 @dataclass
@@ -21,7 +23,16 @@ class AgentRunResult:
     lessons: list[str] = field(default_factory=list)
     actions_taken: list[str] = field(default_factory=list)
     opportunities_created: int = 0
+    opportunities_updated: int = 0
     error: str | None = None
+
+
+def _normalise_title(title: str) -> str:
+    """Lowercase, strip punctuation, collapse whitespace."""
+    title = title.lower()
+    title = re.sub(r"[^\w\s]", " ", title)
+    title = re.sub(r"\s+", " ", title).strip()
+    return title
 
 
 class BaseRevenueAgent:
@@ -30,6 +41,58 @@ class BaseRevenueAgent:
 
     def run(self, db: Session) -> AgentRunResult:  # pragma: no cover
         raise NotImplementedError
+
+    def _upsert_opportunity(
+        self,
+        db: Session,
+        title: str,
+        category: str,
+        source: str,
+        scores: dict,
+        extra: dict | None = None,
+    ) -> tuple[Opportunity, bool]:
+        """Find or create an Opportunity, merging scores upward.
+
+        Returns (opportunity, is_new).  extra is stored as evidence / other fields.
+        """
+        # Search by normalised title + source
+        existing = (
+            db.query(Opportunity)
+            .filter(
+                func.lower(Opportunity.title) == func.lower(title),
+                Opportunity.source == source,
+            )
+            .first()
+        )
+
+        score_fields = [
+            "revenue_score", "automation_score", "competition_score",
+            "risk_score", "complexity_score", "strategic_alignment_score",
+            "kingdom_score",
+        ]
+
+        if existing:
+            for field_name in score_fields:
+                new_val = scores.get(field_name)
+                if new_val is not None and new_val > getattr(existing, field_name, 0):
+                    setattr(existing, field_name, new_val)
+            return existing, False
+
+        kwargs = {
+            "title": title,
+            "category": category,
+            "source": source,
+            "status": "discovered",
+        }
+        for field_name in score_fields:
+            if field_name in scores:
+                kwargs[field_name] = scores[field_name]
+        if extra:
+            kwargs.update(extra)
+
+        opp = Opportunity(**kwargs)
+        db.add(opp)
+        return opp, True
 
     def _record_run(self, result: AgentRunResult, db: Session) -> dict[str, Any]:
         """Save AgentRun record and any lessons to DB."""
@@ -70,6 +133,7 @@ class BaseRevenueAgent:
             "revenue_generated_gbp": run.revenue_generated_gbp,
             "roi": run.roi,
             "opportunities_created": result.opportunities_created,
+            "opportunities_updated": result.opportunities_updated,
             "actions_taken": result.actions_taken,
             "run_at": run.run_at.isoformat(),
         }

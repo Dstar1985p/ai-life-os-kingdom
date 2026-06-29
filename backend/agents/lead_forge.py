@@ -4,7 +4,6 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from backend.agents.base_agent import AgentRunResult, BaseRevenueAgent
-from backend.models.tables import Opportunity
 
 
 _LEAD_TYPES = [
@@ -64,49 +63,46 @@ class LeadForgeAgent(BaseRevenueAgent):
     mission = "Generate commercial leads for BVS Motors vehicle workshop"
 
     def run(self, db: Session) -> AgentRunResult:
-        existing = {
-            row.title
-            for row in db.query(Opportunity.title)
-            .filter(Opportunity.source == "lead_forge_ai")
-            .all()
-        }
-
         created = 0
+        updated = 0
         targets = []
         for lead in _LEAD_TYPES:
             title = f"BVS Lead: {lead['business_type']}"
-            if title in existing:
-                continue
-            opp = Opportunity(
-                title=title,
-                category=lead["category"],
-                source="lead_forge_ai",
-                revenue_score=lead["revenue_score"],
-                automation_score=40.0,
-                competition_score=60.0,
-                risk_score=20.0,
-                complexity_score=25.0,
-                strategic_alignment_score=85.0,
-                kingdom_score=65.0,
-                status="discovered",
-                evidence=lead["description"],
+            scores = {
+                "revenue_score": lead["revenue_score"],
+                "automation_score": 40.0,
+                "competition_score": 60.0,
+                "risk_score": 20.0,
+                "complexity_score": 25.0,
+                "strategic_alignment_score": 85.0,
+                "kingdom_score": 65.0,
+            }
+            extra = {"evidence": lead["description"]}
+            opp, is_new = self._upsert_opportunity(
+                db, title, lead["category"], "lead_forge_ai", scores, extra
             )
-            db.add(opp)
-            created += 1
-            targets.append(lead["business_type"])
+            if is_new:
+                created += 1
+                targets.append(lead["business_type"])
+            else:
+                updated += 1
 
         db.commit()
 
         lesson = (
-            f"Lead Forge AI generated {created} lead targets for BVS Motors: "
+            f"Lead Forge AI generated {created} new lead targets for BVS Motors, "
+            f"updated {updated} existing: "
             f"{', '.join(targets) if targets else 'all targets already exist'}."
         )
         result = AgentRunResult(
             status="ok",
             ai_calls=0,
             opportunities_created=created,
+            opportunities_updated=updated,
             lessons=[lesson],
-            actions_taken=[f"Generated {created} BVS Motors commercial lead targets with email drafts"],
+            actions_taken=[
+                f"Generated {created} new + {updated} updated BVS Motors commercial lead targets"
+            ],
         )
         self._record_run(result, db)
         return result

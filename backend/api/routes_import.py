@@ -13,8 +13,8 @@ async def import_orders(
     db: Session = Depends(get_db),
 ):
     content = await file.read()
-    count = import_etsy_orders(content.decode("utf-8"), db)
-    return {"imported": count, "filename": file.filename}
+    result = import_etsy_orders(content.decode("utf-8"), db)
+    return {"filename": file.filename, **result}
 
 
 @router.post("/import/etsy/listings")
@@ -23,8 +23,8 @@ async def import_listings(
     db: Session = Depends(get_db),
 ):
     content = await file.read()
-    count = import_etsy_listings(content.decode("utf-8"), db)
-    return {"imported": count, "filename": file.filename}
+    result = import_etsy_listings(content.decode("utf-8"), db)
+    return {"filename": file.filename, **result}
 
 
 @router.get("/data-sources")

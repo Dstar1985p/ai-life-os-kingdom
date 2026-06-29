@@ -115,3 +115,47 @@ def test_kingdom_map_after_agent_run():
 # Note: test_kingdom_map_after_agent_run relies on scheduler using same DB session
 # The above test creates opps via the scheduler's SessionLocal, not the test override.
 # This is acceptable — the test validates the endpoint structure, not cross-session state.
+
+
+# ── Fix 3: Per-district data tests ───────────────────────────────────────────
+
+def test_district_ids_are_unique():
+    """Each district has a unique id."""
+    r = client.get("/kingdom/map")
+    data = r.json()
+    ids = [d["id"] for d in data["districts"]]
+    assert len(ids) == len(set(ids))
+
+
+def test_resources_block_has_all_four_keys():
+    """Resources block has gold, knowledge, focus, stability."""
+    r = client.get("/kingdom/map")
+    data = r.json()
+    resources = data["resources"]
+    assert "gold" in resources
+    assert "knowledge" in resources
+    assert "focus" in resources
+    assert "stability" in resources
+
+
+def test_pitwall_district_distinct_from_pulsebreak():
+    """Pitwall and PulseBreak districts have distinct ids and independent stats."""
+    r = client.get("/kingdom/map")
+    data = r.json()
+    districts = {d["id"]: d for d in data["districts"]}
+    assert "pitwall_workshop" in districts
+    assert "pulsebreak_arena" in districts
+    # They have independent stats
+    pitwall_stats = districts["pitwall_workshop"]["stats"]
+    pulsebreak_stats = districts["pulsebreak_arena"]["stats"]
+    assert "opportunities" in pitwall_stats
+    assert "opportunities" in pulsebreak_stats
+
+
+def test_knowledge_vault_has_lesson_count():
+    """Knowledge Vault district includes lesson_count."""
+    r = client.get("/kingdom/map")
+    data = r.json()
+    vault = next(d for d in data["districts"] if d["id"] == "knowledge_vault")
+    assert "lesson_count" in vault["stats"]
+    assert isinstance(vault["stats"]["lesson_count"], int)

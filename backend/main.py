@@ -21,6 +21,7 @@ from backend.api.routes_agent_economics import router as agent_economics_router
 from backend.api.routes_kingdom_map import router as kingdom_map_router
 from backend.api.routes_scheduler import router as scheduler_router
 from backend.seed.seed_data import seed_defaults
+from backend.api.routes_vibes import router as vibes_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -73,6 +74,7 @@ app.include_router(import_router)
 app.include_router(agent_economics_router)
 app.include_router(kingdom_map_router)
 app.include_router(scheduler_router)
+app.include_router(vibes_router)
 
 
 @app.get("/", include_in_schema=False)

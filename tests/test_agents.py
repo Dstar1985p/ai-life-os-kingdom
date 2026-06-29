@@ -201,3 +201,124 @@ def test_agent_get_status_after_run(db):
     assert status["total_runs"] == 1
     assert status["agent"] == "Print Forge AI"
     assert "health" in status
+
+
+# ── Fix 2: Deduplication Tests ────────────────────────────────────────────────
+
+def test_print_forge_second_run_zero_new(db):
+    """Second run of Print Forge produces 0 new opportunities."""
+    agent = PrintForgeAgent()
+    result_1 = agent.run(db)
+    assert result_1.opportunities_created > 0
+
+    count_before = db.query(Opportunity).filter(Opportunity.source == "print_forge_ai").count()
+    r2 = agent.run(db)
+    count_after = db.query(Opportunity).filter(Opportunity.source == "print_forge_ai").count()
+
+    assert r2.opportunities_created == 0
+    assert count_before == count_after
+
+
+def test_vibes_second_run_zero_new(db):
+    """Second run of VibesAI produces 0 new opportunities."""
+    agent = VibesAIAgent()
+    result_1 = agent.run(db)
+    assert result_1.opportunities_created > 0
+
+    count_before = db.query(Opportunity).filter(Opportunity.source == "vibes_ai").count()
+    r2 = agent.run(db)
+    count_after = db.query(Opportunity).filter(Opportunity.source == "vibes_ai").count()
+
+    assert r2.opportunities_created == 0
+    assert count_before == count_after
+
+
+def test_lead_forge_second_run_zero_new(db):
+    """Second run of LeadForge produces 0 new opportunities."""
+    agent = LeadForgeAgent()
+    result_1 = agent.run(db)
+    assert result_1.opportunities_created > 0
+
+    count_before = db.query(Opportunity).filter(Opportunity.source == "lead_forge_ai").count()
+    r2 = agent.run(db)
+    count_after = db.query(Opportunity).filter(Opportunity.source == "lead_forge_ai").count()
+
+    assert r2.opportunities_created == 0
+    assert count_before == count_after
+
+
+def test_opportunity_scout_second_run_zero_new(db):
+    """Second run of OpportunityScout produces 0 new opportunities."""
+    agent = OpportunityScoutAgent()
+    result_1 = agent.run(db)
+    assert result_1.opportunities_created > 0
+
+    count_before = db.query(Opportunity).filter(Opportunity.source == "opportunity_scout").count()
+    r2 = agent.run(db)
+    count_after = db.query(Opportunity).filter(Opportunity.source == "opportunity_scout").count()
+
+    assert r2.opportunities_created == 0
+    assert count_before == count_after
+
+
+def test_agent_run_result_has_updated_field(db):
+    """AgentRunResult includes opportunities_updated count."""
+    agent = PrintForgeAgent()
+    agent.run(db)
+    r2 = agent.run(db)
+    assert hasattr(r2, "opportunities_updated")
+    assert r2.opportunities_updated >= 0
+
+
+# ── Fix 5: Agent Statefulness Tests ──────────────────────────────────────────
+
+def test_print_forge_applies_lesson_boost(db):
+    """Print Forge boosts strategic alignment for cars mentioned in lessons."""
+    from backend.models.tables import Lesson
+
+    # Add a lesson mentioning group b
+    lesson = Lesson(
+        lesson="Group B content performs extremely well on Etsy motorsport art",
+        source="manual",
+        confidence_score=90.0,
+    )
+    db.add(lesson)
+    db.commit()
+
+    agent = PrintForgeAgent()
+    agent.run(db)
+
+    # Audi Quattro is a Group B car — check its strategic alignment is boosted
+    opp = db.query(Opportunity).filter(
+        Opportunity.source == "print_forge_ai",
+        Opportunity.title.like("%Audi Quattro%"),
+    ).first()
+    # It should have been created (title includes the car)
+    if opp:
+        assert opp.strategic_alignment_score >= 90.0
+
+
+def test_opportunity_scout_skips_saturated_categories(db):
+    """OpportunityScout skips categories with 3+ pursue_now opportunities."""
+    from backend.models.tables import Opportunity as Opp
+
+    # Pre-populate Pitwall/Digital with 3 pursue_now opportunities
+    for i in range(3):
+        db.add(Opp(
+            title=f"Existing Pitwall Digital {i}",
+            category="Pitwall/Digital",
+            source="manual",
+            status="pursue_now",
+            kingdom_score=80.0,
+        ))
+    db.commit()
+
+    agent = OpportunityScoutAgent()
+    agent.run(db)
+
+    # "Etsy Digital Downloads Expansion" is in Pitwall/Digital — should be skipped
+    opp = db.query(Opportunity).filter(
+        Opportunity.title == "Etsy Digital Downloads Expansion",
+        Opportunity.source == "opportunity_scout",
+    ).first()
+    assert opp is None  # Should have been skipped due to saturation

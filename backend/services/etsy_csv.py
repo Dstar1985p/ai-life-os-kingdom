@@ -18,13 +18,28 @@ def _guess_category(title: str) -> str:
         return "General"
 
 
-def import_etsy_orders(file_content: str, db: Session) -> int:
-    """Parse Etsy orders CSV and create/update EtsyOrder records. Returns count imported."""
+def _sanitise_price(value: float) -> tuple[float, bool]:
+    """Return (corrected_value, was_corrected).
+
+    If value > 500 we assume it was supplied in pence and divide by 100.
+    Values 500 or below are kept as-is.
+    """
+    if value > 500:
+        return value / 100, True
+    return value, False
+
+
+def import_etsy_orders(file_content: str, db: Session) -> dict:
+    """Parse Etsy orders CSV and create EtsyOrder records. Skips duplicate order_ids.
+
+    Returns dict with keys: imported, corrected_pence_errors, skipped_duplicates.
+    """
     reader = csv.DictReader(io.StringIO(file_content))
     count = 0
+    corrected = 0
+    skipped = 0
 
     for row in reader:
-        # Normalize column names (Etsy uses various formats)
         order_id = (
             row.get("Order ID") or row.get("order_id") or row.get("id") or ""
         ).strip()
@@ -40,47 +55,51 @@ def import_etsy_orders(file_content: str, db: Session) -> int:
         except ValueError:
             quantity = 1
 
-        # Strip currency symbols
-        price_str = price_str.replace("£", "").replace("$", "").replace(",", "").strip()
+        price_str = price_str.replace("\xa3", "").replace("£", "").replace("$", "").replace(",", "").strip()
         try:
-            item_price = float(price_str)
+            raw_price = float(price_str)
         except ValueError:
-            item_price = 0.0
+            raw_price = 0.0
 
-        # Detect pence error
-        if item_price > 10000:
-            item_price = item_price / 100
+        item_price, was_corrected = _sanitise_price(raw_price)
+        if was_corrected:
+            corrected += 1
 
         category = _guess_category(title)
         revenue_estimate = item_price * quantity
 
-        # Check if order already exists
         existing = db.query(EtsyOrder).filter(EtsyOrder.order_id == order_id).first()
         if existing:
-            existing.product_title = title
-            existing.quantity = quantity
-            existing.item_price = item_price
-            existing.revenue_estimate = revenue_estimate
-            existing.category = category
-        else:
-            db.add(EtsyOrder(
-                order_id=order_id,
-                product_title=title,
-                category=category,
-                quantity=quantity,
-                item_price=item_price,
-                revenue_estimate=revenue_estimate,
-            ))
-            count += 1
+            skipped += 1
+            continue
+
+        db.add(EtsyOrder(
+            order_id=order_id,
+            product_title=title,
+            category=category,
+            quantity=quantity,
+            item_price=item_price,
+            revenue_estimate=revenue_estimate,
+        ))
+        count += 1
 
     db.commit()
-    return count
+    return {
+        "imported": count,
+        "corrected_pence_errors": corrected,
+        "skipped_duplicates": skipped,
+    }
 
 
-def import_etsy_listings(file_content: str, db: Session) -> int:
-    """Parse Etsy listings CSV and create/update EtsyListing records. Returns count imported."""
+def import_etsy_listings(file_content: str, db: Session) -> dict:
+    """Parse Etsy listings CSV and create EtsyListing records. Skips duplicate listing_ids.
+
+    Returns dict with keys: imported, corrected_pence_errors, skipped_duplicates.
+    """
     reader = csv.DictReader(io.StringIO(file_content))
     count = 0
+    corrected = 0
+    skipped = 0
 
     for row in reader:
         listing_id = (
@@ -93,29 +112,35 @@ def import_etsy_listings(file_content: str, db: Session) -> int:
         price_str = (row.get("Price") or row.get("price") or "0").strip()
         status = (row.get("State") or row.get("status") or "active").strip().lower()
 
-        price_str = price_str.replace("£", "").replace("$", "").replace(",", "").strip()
+        price_str = price_str.replace("\xa3", "").replace("£", "").replace("$", "").replace(",", "").strip()
         try:
-            price = float(price_str)
+            raw_price = float(price_str)
         except ValueError:
-            price = 0.0
+            raw_price = 0.0
+
+        price, was_corrected = _sanitise_price(raw_price)
+        if was_corrected:
+            corrected += 1
 
         category = _guess_category(title)
 
         existing = db.query(EtsyListing).filter(EtsyListing.listing_id == listing_id).first()
         if existing:
-            existing.title = title
-            existing.price = price
-            existing.status = status
-            existing.category = category
-        else:
-            db.add(EtsyListing(
-                listing_id=listing_id,
-                title=title,
-                category=category,
-                price=price,
-                status=status,
-            ))
-            count += 1
+            skipped += 1
+            continue
+
+        db.add(EtsyListing(
+            listing_id=listing_id,
+            title=title,
+            category=category,
+            price=price,
+            status=status,
+        ))
+        count += 1
 
     db.commit()
-    return count
+    return {
+        "imported": count,
+        "corrected_pence_errors": corrected,
+        "skipped_duplicates": skipped,
+    }

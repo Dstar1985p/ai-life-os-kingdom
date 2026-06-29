@@ -103,48 +103,58 @@ class OpportunityScoutAgent(BaseRevenueAgent):
 
     def run(self, db: Session) -> AgentRunResult:
         existing_opps = db.query(Opportunity).filter(Opportunity.status != "archived").all()
-        existing_titles = {o.title for o in existing_opps}
 
-        # Find underserved categories (< 3 opportunities)
+        # Find categories that already have 3+ pursue_now opportunities — skip them
+        pursue_now_cats: Counter = Counter(
+            o.category for o in existing_opps if o.status == "pursue_now"
+        )
+        saturated_cats = {cat for cat, cnt in pursue_now_cats.items() if cnt >= 3}
+
         cat_counts: Counter = Counter(o.category for o in existing_opps)
 
         created = 0
+        updated = 0
         actions: list[str] = []
         for template in _TEMPLATE_OPPORTUNITIES:
-            if template["title"] in existing_titles:
+            if template["category"] in saturated_cats:
+                actions.append(f"Skipped (saturated): {template['title']}")
                 continue
             ks = _score(template)
             if ks < 40:
                 continue
-            opp = Opportunity(
-                title=template["title"],
-                category=template["category"],
-                source="opportunity_scout",
-                revenue_score=template["revenue_score"],
-                automation_score=template["automation_score"],
-                competition_score=template["competition_score"],
-                risk_score=template["risk_score"],
-                complexity_score=template["complexity_score"],
-                strategic_alignment_score=template["strategic_alignment_score"],
-                kingdom_score=ks,
-                status="discovered",
-                evidence=template["evidence"],
+            scores = {
+                "revenue_score": template["revenue_score"],
+                "automation_score": template["automation_score"],
+                "competition_score": template["competition_score"],
+                "risk_score": template["risk_score"],
+                "complexity_score": template["complexity_score"],
+                "strategic_alignment_score": template["strategic_alignment_score"],
+                "kingdom_score": ks,
+            }
+            extra = {"evidence": template["evidence"]}
+            opp, is_new = self._upsert_opportunity(
+                db, template["title"], template["category"],
+                "opportunity_scout", scores, extra
             )
-            db.add(opp)
-            created += 1
-            actions.append(f"Scouted: {template['title']} (score: {ks})")
+            if is_new:
+                created += 1
+                actions.append(f"Scouted: {template['title']} (score: {ks})")
+            else:
+                updated += 1
+                actions.append(f"Updated: {template['title']} (score: {ks})")
 
         db.commit()
 
         underserved = [cat for cat, count in cat_counts.items() if count < 3]
         lesson = (
-            f"Opportunity Scout ran: created {created} new opportunities. "
+            f"Opportunity Scout ran: created {created} new, updated {updated} opportunities. "
             f"Underserved categories: {', '.join(underserved) if underserved else 'none'}."
         )
         result = AgentRunResult(
             status="ok",
             ai_calls=0,
             opportunities_created=created,
+            opportunities_updated=updated,
             lessons=[lesson],
             actions_taken=actions,
         )
