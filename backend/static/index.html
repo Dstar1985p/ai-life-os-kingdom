@@ -6,68 +6,23 @@
 <title>Kingdom — AI Life OS Command Centre</title>
 <style>
 :root {
-  --bg: #070a10;
-  --surface: #0d1117;
-  --surface2: #111827;
-  --border: #1a2332;
-  --green: #00ff88;
-  --cyan: #00d4ff;
-  --amber: #ffaa00;
-  --red: #ff3355;
-  --purple: #b388ff;
-  --text: #c8d4e0;
-  --muted: #4a5568;
+  --bg: #070a10; --surface: #0d1117; --surface2: #111827; --border: #1a2332;
+  --green: #00ff88; --cyan: #00d4ff; --amber: #ffaa00; --red: #ff3355;
+  --purple: #b388ff; --text: #c8d4e0; --muted: #4a5568;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Courier New', monospace;
-  min-height: 100vh;
-}
+body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; min-height: 100vh; }
 
-/* ── HEADER ── */
-header {
-  text-align: center;
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, #0d1117 0%, var(--bg) 100%);
-  position: relative;
-  overflow: hidden;
-}
-header::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(ellipse at center top, rgba(0,212,255,0.06) 0%, transparent 70%);
-  pointer-events: none;
-}
-header h1 {
-  font-size: 2.2rem;
-  color: var(--cyan);
-  text-shadow: 0 0 30px rgba(0,212,255,0.7), 0 0 60px rgba(0,212,255,0.3);
-  letter-spacing: 8px;
-}
+header { text-align: center; padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #0d1117 0%, var(--bg) 100%); position: relative; overflow: hidden; }
+header::before { content: ''; position: absolute; top:0;left:0;right:0;bottom:0;
+  background: radial-gradient(ellipse at center top, rgba(0,212,255,0.06) 0%, transparent 70%); pointer-events: none; }
+header h1 { font-size: 2.2rem; color: var(--cyan); text-shadow: 0 0 30px rgba(0,212,255,0.7), 0 0 60px rgba(0,212,255,0.3); letter-spacing: 8px; }
 header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spacing: 3px; }
 
-/* ── RESOURCES BAR ── */
-.resources-bar {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-.resource-item {
-  flex: 1;
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-right: 1px solid var(--border);
-  position: relative;
-  overflow: hidden;
-  transition: background 0.3s;
-}
+.resources-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); background: var(--surface); }
+.resource-item { flex: 1; padding: 10px 16px; display: flex; align-items: center; gap: 8px;
+  border-right: 1px solid var(--border); transition: background 0.3s; }
 .resource-item:last-child { border-right: none; }
 .resource-item:hover { background: var(--surface2); }
 .resource-emoji { font-size: 1.2rem; }
@@ -77,67 +32,102 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 .resource-item.gold .resource-value { color: var(--amber); }
 .resource-item.knowledge .resource-value { color: var(--purple); }
 .resource-item.focus .resource-value { color: var(--green); }
-.resource-item.stability .resource-value { color: var(--cyan); }
 
-/* ── MAIN LAYOUT ── */
-.main-layout {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  min-height: calc(100vh - 120px);
+/* ===== PIXEL WORLD ===== */
+#pixel-world {
+  width: 100%; background: #060010; border-bottom: 3px solid #1a0050;
+  padding: 24px 16px 12px; position: relative; overflow: hidden;
 }
+#pixel-world::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 8% 20%, #fff 0%, transparent 100%),
+    radial-gradient(1px 1px at 22% 10%, #fff 0%, transparent 100%),
+    radial-gradient(1px 1px at 38% 28%, #adf 0%, transparent 100%),
+    radial-gradient(1px 1px at 53% 8%, #fff 0%, transparent 100%),
+    radial-gradient(1px 1px at 68% 22%, #fff 0%, transparent 100%),
+    radial-gradient(1px 1px at 83% 14%, #adf 0%, transparent 100%),
+    radial-gradient(1px 1px at 14% 48%, #fff 0%, transparent 100%),
+    radial-gradient(1px 1px at 59% 38%, #fff 0%, transparent 100%),
+    radial-gradient(1px 1px at 88% 44%, #adf 0%, transparent 100%),
+    radial-gradient(1px 1px at 31% 53%, #fff 0%, transparent 100%),
+    radial-gradient(1px 1px at 73% 58%, #fff 0%, transparent 100%),
+    radial-gradient(2px 2px at 46% 16%, rgba(0,212,255,0.5) 0%, transparent 100%),
+    radial-gradient(2px 2px at 78% 33%, rgba(180,0,255,0.4) 0%, transparent 100%);
+}
+.pixel-row { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; position: relative; z-index: 1; }
 
-/* ── KINGDOM MAP ── */
-.kingdom-map-section {
-  padding: 20px;
-  border-right: 1px solid var(--border);
-}
-.kingdom-map-section h2 {
-  font-size: 0.7rem;
-  letter-spacing: 4px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
+.pchar { display: flex; flex-direction: column; align-items: center; gap: 5px;
+  cursor: pointer; user-select: none; transition: filter 0.2s; }
+.pchar:hover { filter: brightness(1.25); }
+.pchar:active { transform: scale(0.95); }
+.pchar svg { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
 
-.kingdom-map {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 24px;
-  position: relative;
-  min-height: 420px;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
-  gap: 12px;
-  overflow: hidden;
-}
-.kingdom-map::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(0,212,255,0.04) 0%, transparent 60%),
+@keyframes pixelBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.sprite-wrap { animation: pixelBounce 1.8s ease-in-out infinite; }
+.pchar:nth-child(2) .sprite-wrap { animation-delay: 0.3s; }
+.pchar:nth-child(3) .sprite-wrap { animation-delay: 0.6s; }
+.pchar:nth-child(4) .sprite-wrap { animation-delay: 0.9s; }
+.pchar:nth-child(5) .sprite-wrap { animation-delay: 1.2s; }
+.pchar:nth-child(6) .sprite-wrap { animation-delay: 1.5s; }
+
+@keyframes activeGlow { 0%,100% { filter: drop-shadow(0 0 4px var(--gc,#0f0)); } 50% { filter: drop-shadow(0 0 14px var(--gc,#0f0)); } }
+.pchar.is-active .sprite-wrap { animation: pixelBounce 1.8s ease-in-out infinite, activeGlow 1.2s ease-in-out infinite; }
+
+.pchar-platform { width: 84px; height: 10px; border-radius: 2px; margin-top: -2px; box-shadow: 0 3px 0 rgba(0,0,0,0.5); }
+.pchar-name { font-size: 0.52rem; letter-spacing: 2px; text-transform: uppercase; font-weight: bold;
+  text-align: center; max-width: 90px; line-height: 1.3; }
+.pchar-status { font-size: 0.46rem; letter-spacing: 1px; color: var(--muted); text-align: center; }
+.pchar.is-active .pchar-status { color: var(--green); }
+
+/* ===== MODAL ===== */
+#char-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  z-index: 1000; align-items: flex-end; justify-content: center; }
+#char-modal-bg.open { display: flex; }
+#char-modal { background: #08001a; border: 2px solid var(--mc,#00dcff); border-bottom: none;
+  border-radius: 8px 8px 0 0; width: 100%; max-width: 760px; max-height: 80vh; overflow-y: auto;
+  transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  padding: 20px; box-shadow: 0 -8px 40px rgba(0,0,0,0.9); }
+#char-modal-bg.open #char-modal { transform: translateY(0); }
+.modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--mc,#00dcff); }
+.modal-title { font-size: 1rem; color: var(--mc,#00dcff); letter-spacing: 3px; text-transform: uppercase; flex: 1; }
+.modal-close { background: none; border: 1px solid var(--mc,#00dcff); color: var(--mc,#00dcff);
+  width: 28px; height: 28px; cursor: pointer; font-size: 1rem; font-family: monospace; border-radius: 3px; }
+.modal-close:hover { background: rgba(255,255,255,0.05); }
+#modal-body { font-size: 0.82rem; }
+.modal-section { margin-bottom: 14px; }
+.modal-section-title { font-size: 0.58rem; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+.modal-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+.modal-row:last-child { border-bottom: none; }
+.modal-label { color: var(--muted); }
+.modal-value { color: var(--text); font-weight: bold; }
+.modal-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px; margin-bottom: 7px; }
+.modal-card-title { color: var(--mc,#00dcff); font-size: 0.8rem; margin-bottom: 3px; }
+.modal-card-sub { color: var(--muted); font-size: 0.72rem; }
+.modal-action-btn { background: var(--surface2); border: 1px solid var(--mc,#00dcff); color: var(--mc,#00dcff);
+  padding: 7px 14px; font-family: 'Courier New', monospace; font-size: 0.72rem; letter-spacing: 1px;
+  cursor: pointer; border-radius: 4px; margin-top: 4px; }
+.modal-action-btn:hover { background: rgba(255,255,255,0.04); }
+.modal-loading { color: var(--muted); padding: 20px 0; text-align: center; letter-spacing: 2px; font-size: 0.75rem; }
+.score-bar { height: 4px; background: var(--border); border-radius: 2px; margin: 4px 0; overflow: hidden; }
+.score-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
+
+/* ===== EXISTING LAYOUT ===== */
+.main-layout { display: grid; grid-template-columns: 1fr 280px; min-height: calc(100vh - 120px); }
+.kingdom-map-section { padding: 20px; border-right: 1px solid var(--border); }
+.kingdom-map-section h2 { font-size: 0.7rem; letter-spacing: 4px; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; }
+.kingdom-map { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px; position: relative; min-height: 420px; display: grid;
+  grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 12px; overflow: hidden; }
+.kingdom-map::before { content: ''; position: absolute; inset: 0; border-radius: 12px;
+  background: radial-gradient(circle at 50% 50%, rgba(0,212,255,0.04) 0%, transparent 60%),
     repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(0,212,255,0.015) 40px, rgba(0,212,255,0.015) 41px),
     repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,212,255,0.015) 40px, rgba(0,212,255,0.015) 41px);
-  pointer-events: none;
-  border-radius: 12px;
-}
-
-/* ── DISTRICT CARDS ── */
-.district {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.3s;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+  pointer-events: none; }
+.district { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+  cursor: pointer; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.3s;
+  display: flex; flex-direction: column; gap: 6px; }
 .district:hover { transform: translateY(-2px); }
 .district.command { grid-column: 2; grid-row: 2; }
 .district.pitwall { grid-column: 1; grid-row: 2; }
@@ -145,203 +135,50 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 .district.printify { grid-column: 3; grid-row: 2; }
 .district.venture { grid-column: 3; grid-row: 1; }
 .district.knowledge { grid-column: 2; grid-row: 3; }
-
-/* Glow colours */
-.district.glow-green {
-  border-color: rgba(0,255,136,0.4);
-  box-shadow: 0 0 16px rgba(0,255,136,0.15), inset 0 0 20px rgba(0,255,136,0.04);
-}
-.district.glow-amber {
-  border-color: rgba(255,170,0,0.4);
-  box-shadow: 0 0 16px rgba(255,170,0,0.15), inset 0 0 20px rgba(255,170,0,0.04);
-}
-.district.glow-red {
-  border-color: rgba(255,51,85,0.4);
-  box-shadow: 0 0 16px rgba(255,51,85,0.15), inset 0 0 20px rgba(255,51,85,0.04);
-}
-
-.district-icon {
-  font-size: 1.6rem;
-  line-height: 1;
-  position: relative;
-  z-index: 1;
-}
-.district-name {
-  font-size: 0.65rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  font-weight: bold;
-  color: var(--text);
-}
-.district-desc {
-  font-size: 0.6rem;
-  color: var(--muted);
-  line-height: 1.3;
-}
-.district-action {
-  font-size: 0.6rem;
-  color: var(--cyan);
-  margin-top: auto;
-}
+.district.glow-green { border-color: rgba(0,255,136,0.4); box-shadow: 0 0 16px rgba(0,255,136,0.15), inset 0 0 20px rgba(0,255,136,0.04); }
+.district.glow-amber { border-color: rgba(255,170,0,0.4); box-shadow: 0 0 16px rgba(255,170,0,0.15), inset 0 0 20px rgba(255,170,0,0.04); }
+.district.glow-red { border-color: rgba(255,51,85,0.4); box-shadow: 0 0 16px rgba(255,51,85,0.15), inset 0 0 20px rgba(255,51,85,0.04); }
+.district-icon { font-size: 1.6rem; line-height: 1; position: relative; z-index: 1; }
+.district-name { font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; font-weight: bold; color: var(--text); }
+.district-desc { font-size: 0.6rem; color: var(--muted); line-height: 1.3; }
+.district-action { font-size: 0.6rem; color: var(--cyan); margin-top: auto; }
 .district.glow-amber .district-action { color: var(--amber); }
 .district.glow-red .district-action { color: var(--red); }
-
-/* Pulse animation on active districts */
-.district-pulse {
-  position: absolute;
-  top: 8px; right: 8px;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--green);
-}
+.district-pulse { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
 .district.glow-amber .district-pulse { background: var(--amber); }
 .district.glow-red .district-pulse { background: var(--red); }
-
-@keyframes pulse-glow {
-  0%, 100% { opacity: 1; box-shadow: 0 0 4px currentColor; }
-  50% { opacity: 0.4; box-shadow: 0 0 12px currentColor; }
-}
+@keyframes pulse-glow { 0%,100% { opacity: 1; box-shadow: 0 0 4px currentColor; } 50% { opacity: 0.4; box-shadow: 0 0 12px currentColor; } }
 .district-pulse { animation: pulse-glow 2s ease-in-out infinite; }
-
-/* Worker dots */
-.workers {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-.worker-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: var(--green);
-  opacity: 0.7;
-  animation: worker-move 3s ease-in-out infinite;
-}
+.workers { display: flex; gap: 4px; flex-wrap: wrap; }
+.worker-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); opacity: 0.7; animation: worker-move 3s ease-in-out infinite; }
 .worker-dot:nth-child(2) { animation-delay: 0.5s; background: var(--cyan); }
 .worker-dot:nth-child(3) { animation-delay: 1s; background: var(--purple); }
 .district.glow-amber .worker-dot { background: var(--amber); }
 .district.glow-red .worker-dot { background: var(--red); }
-
-@keyframes worker-move {
-  0%, 100% { transform: translateX(0) translateY(0); opacity: 0.7; }
-  25% { transform: translateX(3px) translateY(-2px); opacity: 1; }
-  75% { transform: translateX(-3px) translateY(2px); opacity: 0.5; }
-}
-
-/* ── DISTRICT DETAIL PANEL ── */
-.district-detail {
-  display: none;
-  margin-top: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-}
+@keyframes worker-move { 0%,100% { transform: translateX(0) translateY(0); opacity: 0.7; } 25% { transform: translateX(3px) translateY(-2px); opacity: 1; } 75% { transform: translateX(-3px) translateY(2px); opacity: 0.5; } }
+.district-detail { display: none; margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
 .district-detail.active { display: block; }
 .district-detail h3 { color: var(--cyan); font-size: 0.9rem; margin-bottom: 12px; }
-.detail-metric {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.8rem;
-}
+.detail-metric { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
 .detail-metric:last-child { border-bottom: none; }
-
-/* ── SIDE PANEL ── */
-.side-panel {
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid var(--border);
-}
-.side-section {
-  padding: 16px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.side-section h3 {
-  font-size: 0.65rem;
-  letter-spacing: 3px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 12px;
-}
-
-/* Agent Activity Feed */
-.activity-feed {
-  flex: 1;
-  overflow-y: auto;
-  max-height: 300px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.activity-item {
-  font-size: 0.72rem;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(26,35,50,0.5);
-  line-height: 1.4;
-  color: var(--text);
-}
+.side-panel { display: flex; flex-direction: column; border-left: 1px solid var(--border); }
+.side-section { padding: 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.side-section h3 { font-size: 0.65rem; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+.activity-feed { flex: 1; overflow-y: auto; max-height: 300px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.activity-item { font-size: 0.72rem; padding: 6px 0; border-bottom: 1px solid rgba(26,35,50,0.5); line-height: 1.4; }
 .activity-item:last-child { border-bottom: none; }
 .activity-time { color: var(--muted); font-size: 0.65rem; }
 .activity-agent { color: var(--cyan); font-weight: bold; }
-
-/* Scrolling ticker */
-@keyframes ticker-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-.ticker-wrap {
-  background: var(--surface2);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  overflow: hidden;
-  padding: 6px 0;
-}
-.ticker-track {
-  display: inline-flex;
-  white-space: nowrap;
-  animation: ticker-scroll 30s linear infinite;
-}
-.ticker-item {
-  padding: 0 24px;
-  font-size: 0.7rem;
-  color: var(--muted);
-  letter-spacing: 1px;
-}
+@keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+.ticker-wrap { background: var(--surface2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); overflow: hidden; padding: 6px 0; }
+.ticker-track { display: inline-flex; white-space: nowrap; animation: ticker-scroll 30s linear infinite; }
+.ticker-item { padding: 0 24px; font-size: 0.7rem; color: var(--muted); letter-spacing: 1px; }
 .ticker-item span { color: var(--green); }
-
-/* ── PANELS GRID (existing) ── */
-.panels-section {
-  padding: 20px;
-  grid-column: 1 / -1;
-}
-.panels-section h2 {
-  font-size: 0.7rem;
-  letter-spacing: 4px;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 16px;
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 16px;
-}
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-}
-.panel::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--cyan), var(--green));
-}
+.panels-section { padding: 20px; grid-column: 1 / -1; }
+.panels-section h2 { font-size: 0.7rem; letter-spacing: 4px; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; position: relative; overflow: hidden; }
+.panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--cyan), var(--green)); }
 .panel.amber::before { background: linear-gradient(90deg, var(--amber), var(--red)); }
 .panel.green::before { background: linear-gradient(90deg, var(--green), var(--cyan)); }
 .panel-title { font-size: 0.65rem; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
@@ -354,37 +191,30 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 .badge.green { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid var(--green); }
 .badge.amber { background: rgba(255,170,0,0.15); color: var(--amber); border: 1px solid var(--amber); }
 .badge.red { background: rgba(255,51,85,0.15); color: var(--red); border: 1px solid var(--red); }
-.score-bar { height: 4px; background: var(--border); border-radius: 2px; margin: 6px 0; overflow: hidden; }
-.score-fill { height: 100%; background: var(--green); transition: width 0.8s ease; border-radius: 2px; }
+.pscore-bar { height: 4px; background: var(--border); border-radius: 2px; margin: 6px 0; overflow: hidden; }
+.pscore-fill { height: 100%; background: var(--green); transition: width 0.8s ease; border-radius: 2px; }
 .list-item { padding: 5px 0; font-size: 0.8rem; border-bottom: 1px solid var(--border); color: var(--text); }
 .list-item:last-child { border-bottom: none; }
 .last-updated { color: var(--muted); font-size: 0.65rem; margin-top: 10px; text-align: right; }
-
-/* Scheduler mini-panel */
-.agent-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.72rem;
-}
+.agent-chip { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.72rem; }
 .agent-chip:last-child { border-bottom: none; }
 .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 .chip-dot.green { background: var(--green); animation: pulse-glow 2s infinite; }
 .chip-dot.amber { background: var(--amber); }
 .chip-name { color: var(--text); flex: 1; }
 .chip-next { color: var(--muted); font-size: 0.65rem; }
-
-/* Loading */
 #map-loading { text-align: center; color: var(--muted); padding: 60px; font-size: 0.8rem; letter-spacing: 2px; grid-column: 1 / -1; }
-
-/* Responsive */
+.quick-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--cyan);
+  padding: 7px 12px; font-family: 'Courier New', monospace; font-size: 0.72rem; letter-spacing: 1px;
+  cursor: pointer; border-radius: 4px; text-align: left; transition: background 0.2s, border-color 0.2s; }
+.quick-btn:hover { background: rgba(0,212,255,0.08); border-color: var(--cyan); }
+.quick-btn:active { opacity: 0.7; }
 @media (max-width: 900px) {
   .main-layout { grid-template-columns: 1fr; }
   .side-panel { border-left: none; border-top: 1px solid var(--border); }
   .resources-bar { flex-wrap: wrap; }
   .resource-item { min-width: 50%; border-bottom: 1px solid var(--border); }
+  .pixel-row { gap: 8px; }
 }
 @media (max-width: 600px) {
   .kingdom-map { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
@@ -395,76 +225,278 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 </head>
 <body>
 
-<!-- Crisis Monitor Bar -->
-<div id="crisis-bar" style="display:none; padding:12px 20px; font-family:monospace; font-size:14px; font-weight:bold; text-align:center; position:sticky; top:0; z-index:1000;">
-  <span id="crisis-icon">⚠️</span>
-  <span id="crisis-message">CRISIS LEVEL: RED — 6 severity points active</span>
-  <button onclick="showCrisisDetail()" style="margin-left:20px; padding:4px 12px;">VIEW ACTION PLAN</button>
-  <button onclick="acknowledgeCrisis()" style="margin-left:8px; padding:4px 12px;">ACKNOWLEDGE</button>
-</div>
-
-<!-- Crisis Detail Modal -->
-<div id="crisis-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:2000; overflow-y:auto;">
-  <div style="max-width:640px; margin:60px auto; background:#0d1117; border:1px solid #cc0000; border-radius:8px; padding:28px;">
-    <h2 style="color:#ff3355; font-family:monospace; margin-bottom:4px;">🚨 CRISIS BRIEF</h2>
-    <div id="crisis-modal-level" style="font-family:monospace; font-size:13px; color:#4a5568; margin-bottom:20px;"></div>
-    <h3 style="color:#ffaa00; font-family:monospace; margin-bottom:10px; font-size:13px;">ACTIVE SIGNALS</h3>
-    <div id="crisis-modal-signals" style="margin-bottom:20px;"></div>
-    <h3 style="color:#00ff88; font-family:monospace; margin-bottom:10px; font-size:13px;">ACTION PLAN</h3>
-    <ol id="crisis-modal-actions" style="margin-left:20px; font-family:monospace; font-size:13px; color:#c8d4e0; line-height:1.8;"></ol>
-    <div style="margin-top:24px; display:flex; gap:12px; flex-wrap:wrap;">
-      <button onclick="runNewCrisisScan()" style="padding:8px 16px; background:#cc0000; color:white; border:none; cursor:pointer; font-family:monospace; font-size:13px;">RUN NEW SCAN</button>
-      <button onclick="document.getElementById('crisis-modal').style.display='none'" style="padding:8px 16px; background:#1a2332; color:#c8d4e0; border:1px solid #1a2332; cursor:pointer; font-family:monospace; font-size:13px;">CLOSE</button>
-    </div>
-  </div>
-</div>
-
-<style>
-@keyframes crisis-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-@keyframes crisis-pulse-fast { 0%,100%{opacity:1} 50%{opacity:0.4} }
-.crisis-amber { background:#ff9800; color:#1a0a00; animation:none; }
-.crisis-red { background:#cc0000; color:#ffffff; animation:crisis-pulse 1.4s ease-in-out infinite; }
-.crisis-critical { background:#ff0000; color:#ffffff; animation:crisis-pulse-fast 0.7s ease-in-out infinite; }
-.severity-badge { display:inline-block; padding:2px 7px; border-radius:3px; font-size:11px; font-weight:bold; margin-right:8px; }
-.sev-1 { background:#ff9800; color:#000; }
-.sev-2 { background:#cc0000; color:#fff; }
-.sev-3 { background:#ff0000; color:#fff; }
-</style>
-
 <header>
-  <h1>⚔ KINGDOM</h1>
-  <p>AI LIFE OS — COMMAND CENTRE v1.3 — VISUAL KINGDOM WORLD</p>
+  <h1>&#x2694; KINGDOM</h1>
+  <p>AI LIFE OS &#x2014; COMMAND CENTRE v2.0 &#x2014; PIXEL KINGDOM WORLD</p>
 </header>
 
-<!-- Resources Bar -->
-<div class="resources-bar" id="resources-bar">
+<div class="resources-bar">
   <div class="resource-item gold">
-    <span class="resource-emoji">💰</span>
-    <div class="resource-info">
-      <span class="resource-label">Gold</span>
-      <span class="resource-value" id="res-gold">—</span>
-    </div>
+    <span class="resource-emoji">&#x1F4B0;</span>
+    <div class="resource-info"><span class="resource-label">Gold</span><span class="resource-value" id="res-gold">&#x2014;</span></div>
   </div>
   <div class="resource-item knowledge">
-    <span class="resource-emoji">📚</span>
-    <div class="resource-info">
-      <span class="resource-label">Knowledge</span>
-      <span class="resource-value" id="res-knowledge">—</span>
-    </div>
+    <span class="resource-emoji">&#x1F4DA;</span>
+    <div class="resource-info"><span class="resource-label">Knowledge</span><span class="resource-value" id="res-knowledge">&#x2014;</span></div>
   </div>
   <div class="resource-item focus">
-    <span class="resource-emoji">⚡</span>
-    <div class="resource-info">
-      <span class="resource-label">Focus</span>
-      <span class="resource-value" id="res-focus">—</span>
-    </div>
+    <span class="resource-emoji">&#x26A1;</span>
+    <div class="resource-info"><span class="resource-label">Focus</span><span class="resource-value" id="res-focus">&#x2014;</span></div>
   </div>
   <div class="resource-item stability">
-    <span class="resource-emoji">🛡</span>
-    <div class="resource-info">
-      <span class="resource-label">Stability</span>
-      <span class="resource-value" id="res-stability">—</span>
+    <span class="resource-emoji">&#x1F6E1;</span>
+    <div class="resource-info"><span class="resource-label">Stability</span><span class="resource-value" id="res-stability">&#x2014;</span></div>
+  </div>
+</div>
+
+<!-- PIXEL KINGDOM WORLD -->
+<div id="pixel-world">
+  <div class="pixel-row">
+
+    <!-- VIBES AI — cyan/purple DJ -->
+    <div class="pchar" id="pchar-vibes" onclick="openModal('vibes')" style="--gc:#00dcff">
+      <div class="sprite-wrap">
+        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
+          <!-- headphone band -->
+          <rect x="3" y="0" width="10" height="1" fill="#555"/>
+          <rect x="2" y="1" width="2" height="3" fill="#333"/>
+          <rect x="12" y="1" width="2" height="3" fill="#333"/>
+          <!-- head -->
+          <rect x="4" y="1" width="8" height="6" fill="#e8b07a"/>
+          <!-- eyes cyan -->
+          <rect x="5" y="3" width="2" height="1" fill="#00dcff"/>
+          <rect x="9" y="3" width="2" height="1" fill="#00dcff"/>
+          <rect x="6" y="5" width="4" height="1" fill="#b07050"/>
+          <!-- torso dark purple -->
+          <rect x="4" y="7" width="8" height="5" fill="#1a0050"/>
+          <rect x="4" y="9" width="8" height="1" fill="#00dcff"/>
+          <!-- arms -->
+          <rect x="1" y="7" width="3" height="3" fill="#1a0050"/>
+          <rect x="12" y="7" width="3" height="3" fill="#1a0050"/>
+          <rect x="1" y="10" width="2" height="2" fill="#e8b07a"/>
+          <rect x="13" y="10" width="2" height="2" fill="#e8b07a"/>
+          <!-- legs -->
+          <rect x="5" y="12" width="3" height="3" fill="#0d0030"/>
+          <rect x="8" y="12" width="3" height="3" fill="#0d0030"/>
+          <!-- shoes -->
+          <rect x="4" y="15" width="4" height="1" fill="#00dcff"/>
+          <rect x="8" y="15" width="4" height="1" fill="#b400ff"/>
+        </svg>
+      </div>
+      <div class="pchar-platform" style="background:#002244"></div>
+      <div class="pchar-name" style="color:#00dcff">Vibes AI</div>
+      <div class="pchar-status" id="pstatus-vibes">IDLE</div>
     </div>
+
+    <!-- PRINT FORGE AI — orange/gold artist -->
+    <div class="pchar" id="pchar-printforge" onclick="openModal('printforge')" style="--gc:#ffd700">
+      <div class="sprite-wrap">
+        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
+          <!-- beret -->
+          <rect x="4" y="0" width="9" height="2" fill="#ff6b00"/>
+          <rect x="3" y="1" width="10" height="2" fill="#cc4400"/>
+          <rect x="11" y="0" width="2" height="1" fill="#ffd700"/>
+          <!-- head -->
+          <rect x="4" y="3" width="8" height="5" fill="#e8b07a"/>
+          <rect x="5" y="5" width="2" height="1" fill="#2a1200"/>
+          <rect x="9" y="5" width="2" height="1" fill="#2a1200"/>
+          <rect x="6" y="7" width="4" height="1" fill="#b07050"/>
+          <!-- smock -->
+          <rect x="4" y="8" width="8" height="5" fill="#4a2800"/>
+          <rect x="5" y="9" width="2" height="1" fill="#ffd700"/>
+          <rect x="9" y="10" width="2" height="1" fill="#ff6b00"/>
+          <!-- brush arm left -->
+          <rect x="1" y="8" width="3" height="2" fill="#4a2800"/>
+          <rect x="0" y="6" width="2" height="3" fill="#e8b07a"/>
+          <rect x="0" y="4" width="1" height="3" fill="#8B4513"/>
+          <rect x="0" y="3" width="2" height="2" fill="#ffd700"/>
+          <!-- right arm -->
+          <rect x="12" y="8" width="3" height="2" fill="#4a2800"/>
+          <!-- legs -->
+          <rect x="5" y="13" width="3" height="2" fill="#2a1500"/>
+          <rect x="8" y="13" width="3" height="2" fill="#2a1500"/>
+          <rect x="4" y="15" width="4" height="1" fill="#ffd700"/>
+          <rect x="8" y="15" width="4" height="1" fill="#ffd700"/>
+        </svg>
+      </div>
+      <div class="pchar-platform" style="background:#3d1a00"></div>
+      <div class="pchar-name" style="color:#ffd700">Print Forge</div>
+      <div class="pchar-status" id="pstatus-printforge">IDLE</div>
+    </div>
+
+    <!-- OVERSEER — gold/royal blue commander -->
+    <div class="pchar" id="pchar-overseer" onclick="openModal('overseer')" style="--gc:#ffd700">
+      <div class="sprite-wrap">
+        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
+          <!-- crown -->
+          <rect x="3" y="0" width="10" height="1" fill="#ffd700"/>
+          <rect x="3" y="1" width="2" height="2" fill="#ffd700"/>
+          <rect x="7" y="1" width="2" height="2" fill="#ffd700"/>
+          <rect x="11" y="1" width="2" height="2" fill="#ffd700"/>
+          <rect x="5" y="2" width="6" height="1" fill="#ffd700"/>
+          <rect x="7" y="1" width="2" height="1" fill="#00dcff"/>
+          <!-- helm -->
+          <rect x="4" y="3" width="8" height="4" fill="#1a0a5c"/>
+          <rect x="4" y="5" width="8" height="2" fill="#0a0030"/>
+          <rect x="5" y="5" width="2" height="2" fill="#ffd700"/>
+          <rect x="9" y="5" width="2" height="2" fill="#ffd700"/>
+          <!-- shoulders + cloak -->
+          <rect x="2" y="7" width="12" height="2" fill="#0047ab"/>
+          <!-- armour body -->
+          <rect x="4" y="9" width="8" height="4" fill="#0d1a6e"/>
+          <rect x="5" y="9" width="6" height="2" fill="#1a2e8c"/>
+          <rect x="5" y="9" width="6" height="1" fill="#ffd700"/>
+          <!-- arms + gauntlets -->
+          <rect x="1" y="7" width="3" height="5" fill="#0047ab"/>
+          <rect x="12" y="7" width="3" height="5" fill="#0047ab"/>
+          <rect x="1" y="12" width="3" height="2" fill="#ffd700"/>
+          <rect x="12" y="12" width="3" height="2" fill="#ffd700"/>
+          <!-- legs + boots -->
+          <rect x="5" y="13" width="3" height="2" fill="#0d1a6e"/>
+          <rect x="8" y="13" width="3" height="2" fill="#0d1a6e"/>
+          <rect x="4" y="15" width="4" height="1" fill="#0047ab"/>
+          <rect x="8" y="15" width="4" height="1" fill="#0047ab"/>
+        </svg>
+      </div>
+      <div class="pchar-platform" style="background:#00154d"></div>
+      <div class="pchar-name" style="color:#ffd700">Overseer</div>
+      <div class="pchar-status" id="pstatus-overseer">IDLE</div>
+    </div>
+
+    <!-- QUEST MASTER — purple wizard -->
+    <div class="pchar" id="pchar-questmaster" onclick="openModal('questmaster')" style="--gc:#9b59b6">
+      <div class="sprite-wrap">
+        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
+          <!-- hat tip -->
+          <rect x="7" y="0" width="2" height="1" fill="#6c3483"/>
+          <rect x="6" y="1" width="4" height="1" fill="#6c3483"/>
+          <rect x="5" y="2" width="6" height="1" fill="#7d3c98"/>
+          <rect x="4" y="3" width="8" height="1" fill="#7d3c98"/>
+          <rect x="7" y="2" width="2" height="1" fill="#ffd700"/>
+          <!-- hat brim -->
+          <rect x="3" y="4" width="10" height="2" fill="#9b59b6"/>
+          <!-- head -->
+          <rect x="4" y="6" width="8" height="4" fill="#e8c0a0"/>
+          <rect x="5" y="8" width="2" height="1" fill="#9b59b6"/>
+          <rect x="9" y="8" width="2" height="1" fill="#9b59b6"/>
+          <rect x="5" y="9" width="6" height="1" fill="#ddd"/>
+          <!-- robe -->
+          <rect x="3" y="10" width="10" height="5" fill="#4a0080"/>
+          <rect x="5" y="11" width="1" height="1" fill="#ffd700"/>
+          <rect x="10" y="12" width="1" height="1" fill="#ffd700"/>
+          <rect x="7" y="13" width="1" height="1" fill="#9b59b6"/>
+          <!-- staff -->
+          <rect x="14" y="1" width="2" height="10" fill="#8B4513"/>
+          <rect x="13" y="0" width="3" height="3" fill="#b400ff"/>
+          <rect x="14" y="0" width="2" height="3" fill="#9b59b6"/>
+          <!-- legs -->
+          <rect x="5" y="15" width="3" height="1" fill="#3a006a"/>
+          <rect x="8" y="15" width="3" height="1" fill="#3a006a"/>
+        </svg>
+      </div>
+      <div class="pchar-platform" style="background:#1a0030"></div>
+      <div class="pchar-name" style="color:#9b59b6">Quest Master</div>
+      <div class="pchar-status" id="pstatus-questmaster">IDLE</div>
+    </div>
+
+    <!-- PRINTIFY STUDIO — teal designer -->
+    <div class="pchar" id="pchar-printify" onclick="openModal('printify')" style="--gc:#00b4a0">
+      <div class="sprite-wrap">
+        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
+          <!-- hair -->
+          <rect x="4" y="0" width="8" height="2" fill="#2a1500"/>
+          <!-- head -->
+          <rect x="4" y="2" width="8" height="5" fill="#d4956a"/>
+          <!-- glasses -->
+          <rect x="4" y="4" width="4" height="2" fill="#00b4a0"/>
+          <rect x="8" y="4" width="4" height="2" fill="#00b4a0"/>
+          <rect x="5" y="5" width="2" height="1" fill="#2a1200"/>
+          <rect x="9" y="5" width="2" height="1" fill="#2a1200"/>
+          <rect x="6" y="6" width="3" height="1" fill="#b07050"/>
+          <!-- shirt -->
+          <rect x="4" y="7" width="8" height="4" fill="#0d2a28"/>
+          <rect x="6" y="7" width="4" height="1" fill="#fff"/>
+          <!-- desk/monitor -->
+          <rect x="0" y="10" width="16" height="5" fill="#0a1a1a"/>
+          <rect x="0" y="10" width="16" height="1" fill="#00b4a0"/>
+          <rect x="2" y="11" width="12" height="4" fill="#0d2020"/>
+          <!-- tshirt on screen -->
+          <rect x="4" y="12" width="2" height="2" fill="#00b4a0"/>
+          <rect x="6" y="11" width="4" height="4" fill="#00b4a0" style="opacity:0.5"/>
+          <rect x="10" y="12" width="2" height="2" fill="#00b4a0"/>
+          <!-- cursor -->
+          <rect x="11" y="14" width="1" height="1" fill="#fff"/>
+          <!-- stylus arm -->
+          <rect x="1" y="8" width="3" height="3" fill="#0d2a28"/>
+          <rect x="1" y="8" width="1" height="4" fill="#00b4a0"/>
+          <!-- legs hidden behind desk, feet only -->
+          <rect x="5" y="15" width="3" height="1" fill="#061a18"/>
+          <rect x="8" y="15" width="3" height="1" fill="#061a18"/>
+        </svg>
+      </div>
+      <div class="pchar-platform" style="background:#001a18"></div>
+      <div class="pchar-name" style="color:#00b4a0">Printify Studio</div>
+      <div class="pchar-status" id="pstatus-printify">IDLE</div>
+    </div>
+
+    <!-- MUSIC LICENSING — green producer -->
+    <div class="pchar" id="pchar-licensing" onclick="openModal('licensing')" style="--gc:#00ff88">
+      <div class="sprite-wrap">
+        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
+          <!-- headphones -->
+          <rect x="3" y="0" width="10" height="1" fill="#333"/>
+          <rect x="2" y="1" width="2" height="3" fill="#222"/>
+          <rect x="12" y="1" width="2" height="3" fill="#222"/>
+          <!-- head -->
+          <rect x="4" y="1" width="8" height="5" fill="#c8956a"/>
+          <rect x="5" y="3" width="2" height="1" fill="#00ff88"/>
+          <rect x="9" y="3" width="2" height="1" fill="#00ff88"/>
+          <rect x="6" y="5" width="4" height="1" fill="#9a7050"/>
+          <!-- jacket -->
+          <rect x="4" y="6" width="8" height="4" fill="#0d1a10"/>
+          <rect x="4" y="6" width="2" height="4" fill="#003320"/>
+          <rect x="10" y="6" width="2" height="4" fill="#003320"/>
+          <!-- arms -->
+          <rect x="1" y="7" width="3" height="3" fill="#0d1a10"/>
+          <rect x="12" y="7" width="3" height="3" fill="#0d1a10"/>
+          <rect x="0" y="9" width="2" height="2" fill="#c8956a"/>
+          <rect x="14" y="9" width="2" height="2" fill="#c8956a"/>
+          <!-- mixing desk -->
+          <rect x="0" y="11" width="16" height="4" fill="#0a1a0d"/>
+          <rect x="0" y="11" width="16" height="1" fill="#00ff88"/>
+          <!-- faders -->
+          <rect x="2" y="12" width="2" height="2" fill="#1a3320"/>
+          <rect x="2" y="12" width="2" height="1" fill="#00ff88"/>
+          <rect x="5" y="12" width="2" height="2" fill="#1a3320"/>
+          <rect x="5" y="13" width="2" height="1" fill="#00ff88"/>
+          <rect x="8" y="12" width="2" height="2" fill="#1a3320"/>
+          <rect x="8" y="12" width="2" height="1" fill="#ffd700"/>
+          <rect x="11" y="12" width="2" height="2" fill="#1a3320"/>
+          <rect x="11" y="14" width="2" height="1" fill="#00ff88"/>
+          <!-- waveform -->
+          <rect x="3" y="15" width="1" height="1" fill="#00ff88"/>
+          <rect x="5" y="15" width="1" height="1" fill="#00ff88"/>
+          <rect x="7" y="15" width="1" height="1" fill="#00ff88"/>
+          <rect x="9" y="15" width="1" height="1" fill="#ffd700"/>
+          <rect x="11" y="15" width="1" height="1" fill="#00ff88"/>
+        </svg>
+      </div>
+      <div class="pchar-platform" style="background:#001a0d"></div>
+      <div class="pchar-name" style="color:#00ff88">Music Licensing</div>
+      <div class="pchar-status" id="pstatus-licensing">IDLE</div>
+    </div>
+
+  </div>
+</div><!-- end pixel-world -->
+
+<!-- MODAL -->
+<div id="char-modal-bg" onclick="closeModalBg(event)">
+  <div id="char-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Agent Details</div>
+      <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <div id="modal-body"><div class="modal-loading">LOADING...</div></div>
   </div>
 </div>
 
@@ -475,806 +507,634 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 
 <!-- Main Layout -->
 <div class="main-layout">
-  <!-- Kingdom Map -->
   <div class="kingdom-map-section">
-    <h2>◈ KINGDOM MAP — LIVE DISTRICT VIEW</h2>
+    <h2>&#x25C8; KINGDOM MAP &#x2014; LIVE DISTRICT VIEW</h2>
     <div class="kingdom-map" id="kingdom-map">
       <div id="map-loading">INITIALISING KINGDOM MAP...</div>
     </div>
-    <!-- District detail panel (expands below map) -->
     <div class="district-detail" id="district-detail">
       <h3 id="detail-title">District Details</h3>
       <div id="detail-content"></div>
     </div>
   </div>
-
-  <!-- Side Panel -->
   <div class="side-panel">
     <div class="side-section">
-      <h3>⚡ Agent Activity Feed</h3>
+      <h3>&#x26A1; Agent Activity Feed</h3>
       <div class="activity-feed" id="activity-feed">
         <div class="activity-item" style="color:var(--muted)">Loading activity...</div>
       </div>
     </div>
-
     <div class="side-section">
-      <h3>🤖 Automation Status</h3>
-      <div id="scheduler-status">
-        <div style="color:var(--muted);font-size:0.75rem">Loading...</div>
-      </div>
+      <h3>&#x1F916; Automation Status</h3>
+      <div id="scheduler-status"><div style="color:var(--muted);font-size:0.75rem">Loading...</div></div>
     </div>
-
     <div class="side-section" style="flex:1">
-      <h3>📡 Quick Actions</h3>
+      <h3>&#x1F4E1; Quick Actions</h3>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <button onclick="triggerAgent('Print Forge AI')" class="quick-btn">▶ Run Print Forge</button>
-        <button onclick="triggerAgent('Vibes AI')" class="quick-btn">▶ Run Vibes AI</button>
-        <button onclick="triggerAgent('Printify Studio')" class="quick-btn">▶ Run Printify</button>
-        <button onclick="triggerAgent('Opportunity Scout')" class="quick-btn">▶ Run Scout</button>
+        <button onclick="triggerAgent('Print Forge AI')" class="quick-btn">&#x25B6; Run Print Forge</button>
+        <button onclick="triggerAgent('Vibes AI')" class="quick-btn">&#x25B6; Run Vibes AI</button>
+        <button onclick="triggerAgent('Printify Studio')" class="quick-btn">&#x25B6; Run Printify</button>
+        <button onclick="triggerAgent('Opportunity Scout')" class="quick-btn">&#x25B6; Run Scout</button>
         <div id="action-result" style="font-size:0.7rem;color:var(--green);margin-top:4px;min-height:20px"></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Existing Panels Section -->
 <div class="panels-section">
-  <h2>◈ COMMAND PANELS</h2>
+  <h2>&#x25C8; COMMAND PANELS</h2>
   <div class="grid" id="panels">
     <div style="color:var(--muted);padding:20px;font-size:0.8rem;letter-spacing:2px">LOADING COMMAND PANELS...</div>
   </div>
 </div>
 
-<style>
-.quick-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--cyan);
-  padding: 7px 12px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.72rem;
-  letter-spacing: 1px;
-  cursor: pointer;
-  border-radius: 4px;
-  text-align: left;
-  transition: background 0.2s, border-color 0.2s;
-}
-.quick-btn:hover { background: rgba(0,212,255,0.08); border-color: var(--cyan); }
-.quick-btn:active { opacity: 0.7; }
-</style>
-
 <script>
 const API = '';
 
-async function fetchJSON(path) {
+/* ── MODAL ── */
+const MC = { vibes:'#00dcff', printforge:'#ffd700', overseer:'#ffd700', questmaster:'#9b59b6', printify:'#00b4a0', licensing:'#00ff88' };
+
+function openModal(key) {
+  const bg = document.getElementById('char-modal-bg');
+  const modal = document.getElementById('char-modal');
+  const c = MC[key] || '#00dcff';
+  modal.style.setProperty('--mc', c);
+  document.getElementById('modal-title').style.color = c;
+  document.getElementById('modal-body').innerHTML = '<div class="modal-loading">LOADING...</div>';
+  bg.classList.add('open');
+  loadModalContent(key, c);
+}
+function closeModal() { document.getElementById('char-modal-bg').classList.remove('open'); }
+function closeModalBg(e) { if (e.target === document.getElementById('char-modal-bg')) closeModal(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+async function loadModalContent(key, c) {
+  const body = document.getElementById('modal-body');
+  const titles = {
+    vibes:'&#x1F3B5; Vibes AI &#x2014; DJ &amp; Music',
+    printforge:'&#x1F3ED; Print Forge AI &#x2014; Etsy Artist',
+    overseer:'&#x2694;&#xFE0F; Overseer &#x2014; Commander',
+    questmaster:'&#x1F4DC; Quest Master &#x2014; Wizard',
+    printify:'&#x1F5A8;&#xFE0F; Printify Studio &#x2014; Designer',
+    licensing:'&#x1F3B5; Music Licensing &#x2014; Producer',
+  };
+  document.getElementById('modal-title').innerHTML = titles[key] || key;
   try {
-    const r = await fetch(API + path);
-    if (!r.ok) throw new Error(r.status);
-    return await r.json();
-  } catch(e) { return null; }
+    if (key === 'vibes') await renderVibesModal(body, c);
+    else if (key === 'printforge') await renderPrintforgeModal(body, c);
+    else if (key === 'overseer') await renderOverseerModal(body, c);
+    else if (key === 'questmaster') await renderQuestmasterModal(body, c);
+    else if (key === 'printify') await renderPrintifyModal(body, c);
+    else if (key === 'licensing') await renderLicensingModal(body, c);
+    else body.innerHTML = '<div style="color:var(--muted)">No data available.</div>';
+  } catch(e) { body.innerHTML = `<div style="color:var(--red)">Error: ${e.message}</div>`; }
 }
 
-function badge(status) {
-  return `<span class="badge ${status}">${status.toUpperCase()}</span>`;
-}
-
-function scoreBar(score) {
-  const color = score >= 70 ? '#00ff88' : score >= 40 ? '#ffaa00' : '#ff3355';
-  return `<div class="score-bar"><div class="score-fill" style="width:${Math.min(100,score)}%;background:${color}"></div></div>`;
-}
-
-function panel(title, colorClass, inner) {
-  return `<div class="panel ${colorClass}">
-    <div class="panel-title">${title}</div>
-    ${inner}
-    <div class="last-updated">Updated: ${new Date().toLocaleTimeString()}</div>
+async function renderVibesModal(body, c) {
+  const [plan, ytStatus, queue] = await Promise.all([fetchJSON('/vibes/weekly-plan'), fetchJSON('/vibes/youtube-status'), fetchJSON('/vibes/upload-queue')]);
+  const ytOk = ytStatus && ytStatus.available;
+  let h = `<div class="modal-section"><div class="modal-section-title">YouTube Status</div>
+    <div class="modal-row"><span class="modal-label">Status</span><span class="modal-value" style="color:${ytOk?'var(--green)':'var(--red)'}">
+      ${ytOk ? '&#x1F7E2; Connected' : '&#x1F534; Not configured'}</span></div>
+    <div class="modal-row"><span class="modal-label">Upload Queue</span><span class="modal-value">${queue ? queue.count : 0} file(s)</span></div>
   </div>`;
-}
-
-// ── KINGDOM MAP ──────────────────────────────────────────────────────────────
-
-let activeDistrict = null;
-
-function buildDistrict(d) {
-  const glow = d.glow_colour || 'amber';
-  const workers = d.active_agents > 0 
-    ? `<div class="workers">${Array(Math.min(d.active_agents, 3)).fill('<div class="worker-dot"></div>').join('')}</div>`
-    : '';
-  return `<div class="district ${d.id.replace('_','-')} glow-${glow}" 
-              onclick="toggleDistrict('${d.id}')" 
-              data-id="${d.id}"
-              title="${d.name}: ${d.description}">
-    <div class="district-pulse"></div>
-    <div class="district-icon">${d.emoji}</div>
-    <div class="district-name">${d.name}</div>
-    <div class="district-desc">${d.description}</div>
-    ${workers}
-    <div class="district-action">${d.top_action}</div>
-  </div>`;
-}
-
-function toggleDistrict(districtId) {
-  const detailEl = document.getElementById('district-detail');
-  if (activeDistrict === districtId) {
-    detailEl.classList.remove('active');
-    activeDistrict = null;
-    return;
+  if (plan) {
+    h += `<div class="modal-section"><div class="modal-section-title">Weekly Plan</div>
+      <div class="modal-row"><span class="modal-label">Total Tracks</span><span class="modal-value" style="color:${c}">${plan.total_tracks||0}</span></div>
+      <div class="modal-row"><span class="modal-label">Week</span><span class="modal-value">${plan.week_label||'&#x2014;'}</span></div></div>`;
+    if (plan.tracks && plan.tracks.length) {
+      h += `<div class="modal-section"><div class="modal-section-title">Tracks (${plan.tracks.length})</div>`;
+      plan.tracks.slice(0,6).forEach(t => {
+        h += `<div class="modal-card"><div class="modal-card-title">${t.title||t.track_title||'(untitled)'}</div>
+          <div class="modal-card-sub">${t.genre||''} ${t.bpm?'&#x2022; '+t.bpm+' BPM':''}</div></div>`;
+      });
+      h += '</div>';
+    }
   }
-  activeDistrict = districtId;
-  detailEl.classList.add('active');
-  
-  const d = window._kingdomDistricts?.find(x => x.id === districtId);
-  if (!d) return;
-  
-  document.getElementById('detail-title').textContent = `${d.emoji} ${d.name} — ${d.description}`;
-  
-  const stats = d.stats || {};
-  const rows = Object.entries(stats).map(([k, v]) => {
-    const label = k.replace(/_/g, ' ');
-    const val = typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : v;
-    return `<div class="detail-metric"><span style="color:var(--muted)">${label}</span><span style="color:var(--text)">${val}</span></div>`;
-  }).join('');
-  
-  document.getElementById('detail-content').innerHTML = rows || '<div style="color:var(--muted);font-size:0.8rem">No stats available</div>';
+  h += `<div class="modal-section"><button class="modal-action-btn" style="border-color:${c};color:${c}"
+    onclick="fetch('/vibes/process-tracks',{method:'POST'}).then(r=>r.json()).then(d=>alert('Processed: '+d.processed+' track(s)'))">
+    &#x25B6; Process Tracks Now</button></div>`;
+  body.innerHTML = h;
 }
 
-// ── ACTIVITY FEED ─────────────────────────────────────────────────────────────
+async function renderPrintforgeModal(body, c) {
+  const [recon, leaderboard] = await Promise.all([fetchJSON('/revenue-recon'), fetchJSON('/leaderboard/opportunities')]);
+  let h = '';
+  if (leaderboard && leaderboard.length) {
+    h += `<div class="modal-section"><div class="modal-section-title">Top Opportunities</div>`;
+    leaderboard.slice(0,6).forEach((o,i) => {
+      const sc = o.kingdom_score||0, bc = sc>=70?'#00ff88':sc>=40?'#ffaa00':'#ff3355';
+      h += `<div class="modal-card"><div class="modal-card-title">${i+1}. ${o.title||'(no title)'}</div>
+        <div class="score-bar"><div class="score-fill" style="width:${Math.min(100,sc)}%;background:${bc}"></div></div>
+        <div class="modal-card-sub">Score: ${sc} &#x2022; ${o.category||''}</div></div>`;
+    });
+    h += '</div>';
+  } else {
+    h += '<div class="modal-card" style="color:var(--muted)">No opportunities found. Run Print Forge AI to generate some.</div>';
+  }
+  if (recon && recon.length) {
+    h += `<div class="modal-section"><div class="modal-section-title">Revenue Recon</div>`;
+    recon.slice(0,4).forEach(r => { h += `<div class="modal-row"><span class="modal-label">${(r.title||'').slice(0,30)}</span><span class="modal-value">${r.kingdom_score||0}</span></div>`; });
+    h += '</div>';
+  }
+  h += `<div class="modal-section"><button class="modal-action-btn" style="border-color:${c};color:${c}"
+    onclick="triggerAgent('Print Forge AI');closeModal()">&#x25B6; Run Print Forge AI</button></div>`;
+  body.innerHTML = h;
+}
 
+async function renderOverseerModal(body, c) {
+  const [actions, brief, health] = await Promise.all([fetchJSON('/actions/pending'), fetchJSON('/brief/morning'), fetchJSON('/kingdom/health')]);
+  const pending = Array.isArray(actions) ? actions : (actions?.items||[]);
+  let h = `<div class="modal-section"><div class="modal-section-title">Pending Decisions (${pending.length})</div>`;
+  if (pending.length) {
+    pending.slice(0,5).forEach(a => { h += `<div class="modal-card"><div class="modal-card-title">${a.title||a.description||'Decision pending'}</div>
+      <div class="modal-card-sub">${a.type||''} ${a.urgency?'&#x2022; '+a.urgency:''}</div></div>`; });
+  } else h += '<div class="modal-card-sub" style="padding:8px 0;color:var(--green)">&#x2713; No pending decisions</div>';
+  h += '</div>';
+  if (health) {
+    const kh = health.kingdom_health||{}, fc = health.founder_capacity||{};
+    h += `<div class="modal-section"><div class="modal-section-title">Kingdom Health</div>
+      <div class="modal-row"><span class="modal-label">Health Score</span><span class="modal-value" style="color:${c}">${kh.score||0}/100</span></div>
+      <div class="score-bar"><div class="score-fill" style="width:${kh.score||0}%;background:${c}"></div></div>
+      <div class="modal-row"><span class="modal-label">Active Quests</span><span class="modal-value">${kh.active_quests||0}</span></div>
+      <div class="modal-row"><span class="modal-label">Founder Capacity</span><span class="modal-value">${fc.score||0}%</span></div></div>`;
+  }
+  if (brief) {
+    h += `<div class="modal-section"><div class="modal-section-title">Daily Brief</div>
+      <div class="modal-row"><span class="modal-label">Kingdom Health</span><span class="modal-value">${brief.kingdom_health||'&#x2014;'}</span></div>
+      <div class="modal-row"><span class="modal-label">Decision Accuracy</span><span class="modal-value">${((brief.decision_accuracy||0)*100).toFixed(0)}%</span></div></div>`;
+    if (brief.do_today && brief.do_today.length) {
+      h += `<div class="modal-section"><div class="modal-section-title">Do Today</div>`;
+      brief.do_today.slice(0,4).forEach(q => { h += `<div class="modal-card"><div class="modal-card-title">&#x25B8; ${q.title}</div></div>`; });
+      h += '</div>';
+    }
+  }
+  body.innerHTML = h;
+}
+
+async function renderQuestmasterModal(body, c) {
+  const quests = await fetchJSON('/quests');
+  const list = Array.isArray(quests) ? quests : (quests?.quests||[]);
+  const active = list.filter(q => q.status==='active'||q.status==='in_progress');
+  const completed = list.filter(q => q.status==='completed');
+  const open = list.filter(q => !q.status||q.status==='open');
+  let h = `<div class="modal-section"><div class="modal-section-title">Quest Overview</div>
+    <div class="modal-row"><span class="modal-label">Total</span><span class="modal-value" style="color:${c}">${list.length}</span></div>
+    <div class="modal-row"><span class="modal-label">Active</span><span class="modal-value" style="color:var(--amber)">${active.length}</span></div>
+    <div class="modal-row"><span class="modal-label">Completed</span><span class="modal-value" style="color:var(--green)">${completed.length}</span></div>
+    <div class="modal-row"><span class="modal-label">Open</span><span class="modal-value">${open.length}</span></div></div>`;
+  if (active.length) {
+    h += `<div class="modal-section"><div class="modal-section-title">Active Quests</div>`;
+    active.slice(0,5).forEach(q => { h += `<div class="modal-card"><div class="modal-card-title">&#x26A1; ${q.title}</div>
+      <div class="modal-card-sub">${q.description?(q.description.slice(0,80)):''}</div></div>`; });
+    h += '</div>';
+  }
+  if (completed.length) {
+    h += `<div class="modal-section"><div class="modal-section-title">Recently Completed</div>`;
+    completed.slice(0,4).forEach(q => { h += `<div class="modal-card"><div class="modal-card-title" style="color:var(--green)">&#x2713; ${q.title}</div></div>`; });
+    h += '</div>';
+  }
+  if (!list.length) h += '<div class="modal-card" style="color:var(--muted)">No quests found.</div>';
+  body.innerHTML = h;
+}
+
+async function renderPrintifyModal(body, c) {
+  const data = await fetchJSON('/leaderboard/opportunities');
+  const opps = Array.isArray(data) ? data : [];
+  const pOpps = opps.filter(o => (o.source||'').toLowerCase().includes('printify')||(o.category||'').toLowerCase().includes('print')||(o.category||'').toLowerCase().includes('pod')||(o.category||'').toLowerCase().includes('apparel'));
+  let h = `<div class="modal-section"><div class="modal-section-title">POD Concepts</div>`;
+  const list = pOpps.length ? pOpps : opps;
+  if (list.length) {
+    list.slice(0,6).forEach(o => {
+      const sc = o.kingdom_score||0, bc = sc>=70?'#00ff88':sc>=40?'#ffaa00':'#ff3355';
+      h += `<div class="modal-card"><div class="modal-card-title">${o.title}</div>
+        <div class="score-bar"><div class="score-fill" style="width:${Math.min(100,sc)}%;background:${bc}"></div></div>
+        <div class="modal-card-sub">Score: ${sc} &#x2022; ${o.category||'POD'}</div></div>`;
+    });
+  } else h += '<div class="modal-card-sub" style="padding:8px 0;color:var(--muted)">No POD concepts found. Run Printify Studio to generate some.</div>';
+  h += '</div>';
+  h += `<div class="modal-section"><button class="modal-action-btn" style="border-color:${c};color:${c}"
+    onclick="triggerAgent('Printify Studio');closeModal()">&#x25B6; Run Printify Studio</button></div>`;
+  body.innerHTML = h;
+}
+
+async function renderLicensingModal(body, c) {
+  const [concepts, revenue] = await Promise.all([fetchJSON('/music-licensing/concepts'), fetchJSON('/music-licensing/revenue-estimate')]);
+  let h = '';
+  if (revenue) {
+    h += `<div class="modal-section"><div class="modal-section-title">Revenue Estimate</div>
+      <div class="modal-row"><span class="modal-label">Monthly Passive</span><span class="modal-value" style="color:${c}">&#xa3;${(revenue.total_monthly_estimate_gbp||0).toFixed(2)}/mo</span></div>
+      <div class="modal-row"><span class="modal-label">Concepts</span><span class="modal-value">${revenue.concept_count||0}</span></div></div>`;
+  }
+  const cList = concepts?.concepts||[];
+  if (cList.length) {
+    h += `<div class="modal-section"><div class="modal-section-title">Licensing Concepts (${cList.length})</div>`;
+    cList.slice(0,6).forEach(c2 => {
+      const ev = c2.evidence||{}, plat = (ev.recommended_platforms||[]).join(', ');
+      const rev = ev.estimated_monthly_revenue_gbp ? '&#xa3;'+ev.estimated_monthly_revenue_gbp.toFixed(2)+'/mo' : '';
+      h += `<div class="modal-card"><div class="modal-card-title">${ev.track_title||c2.title||'(untitled)'}</div>
+        <div class="modal-card-sub">${ev.sub_genre||''} ${plat?'&#x2022; '+plat:''}</div>
+        ${rev?`<div style="color:${c};font-size:0.75rem;margin-top:4px">Est. ${rev}</div>`:''}</div>`;
+    });
+    h += '</div>';
+  } else h += '<div class="modal-card" style="color:var(--muted)">No licensing concepts yet. Click Generate to create some.</div>';
+  h += `<div class="modal-section" style="display:flex;gap:10px;flex-wrap:wrap">
+    <button class="modal-action-btn" style="border-color:${c};color:${c}" onclick="generateLicensingConcepts()">&#x25B6; Generate Concepts</button>
+    <a href="/music-licensing/concepts" target="_blank" style="color:${c};font-size:0.78rem;text-decoration:none;align-self:center">View All &#x2192;</a>
+  </div>`;
+  body.innerHTML = h;
+}
+
+/* ── UTILITY ── */
+async function fetchJSON(path) {
+  try { const r = await fetch(API+path); if (!r.ok) throw new Error(r.status); return await r.json(); }
+  catch(e) { return null; }
+}
+function badge(s) { return `<span class="badge ${s}">${s.toUpperCase()}</span>`; }
+function scoreBar(sc) {
+  const c = sc>=70?'#00ff88':sc>=40?'#ffaa00':'#ff3355';
+  return `<div class="pscore-bar"><div class="pscore-fill" style="width:${Math.min(100,sc)}%;background:${c}"></div></div>`;
+}
+function panel(title, cls, inner) {
+  return `<div class="panel ${cls}"><div class="panel-title">${title}</div>${inner}<div class="last-updated">Updated: ${new Date().toLocaleTimeString()}</div></div>`;
+}
+
+/* ── PIXEL CHAR STATES ── */
+function setPChar(key, active) {
+  const el = document.getElementById('pchar-'+key);
+  const st = document.getElementById('pstatus-'+key);
+  if (!el||!st) return;
+  el.classList.toggle('is-active', active);
+  st.textContent = active ? 'ACTIVE' : 'IDLE';
+}
+
+async function pollCharacterStates() {
+  const [vPlan, actions, quests, lb] = await Promise.all([
+    fetchJSON('/vibes/weekly-plan'), fetchJSON('/actions/pending'),
+    fetchJSON('/quests'), fetchJSON('/leaderboard/opportunities'),
+  ]);
+  setPChar('vibes', vPlan && (vPlan.total_tracks > 0));
+  const pending = Array.isArray(actions) ? actions : (actions?.items||[]);
+  setPChar('overseer', pending.length > 0);
+  const qList = Array.isArray(quests) ? quests : (quests?.quests||[]);
+  setPChar('questmaster', qList.some(q => q.status==='active'||q.status==='in_progress'));
+  const opps = Array.isArray(lb) ? lb : [];
+  setPChar('printforge', opps.length > 0);
+  const pOpps = opps.filter(o => (o.source||'').toLowerCase().includes('printify')||(o.category||'').toLowerCase().includes('pod'));
+  setPChar('printify', pOpps.length > 0);
+  const lic = await fetchJSON('/music-licensing/concepts');
+  setPChar('licensing', !!(lic && lic.concepts && lic.concepts.length > 0));
+}
+
+/* ── KINGDOM MAP ── */
+let activeDistrict = null;
+function buildDistrict(d) {
+  const glow = d.glow_colour||'amber';
+  const workers = d.active_agents > 0 ? `<div class="workers">${Array(Math.min(d.active_agents,3)).fill('<div class="worker-dot"></div>').join('')}</div>` : '';
+  return `<div class="district ${d.id.replace('_','-')} glow-${glow}" onclick="toggleDistrict('${d.id}')" data-id="${d.id}" title="${d.name}: ${d.description}">
+    <div class="district-pulse"></div><div class="district-icon">${d.emoji}</div>
+    <div class="district-name">${d.name}</div><div class="district-desc">${d.description}</div>
+    ${workers}<div class="district-action">${d.top_action}</div></div>`;
+}
+function toggleDistrict(id) {
+  const el = document.getElementById('district-detail');
+  if (activeDistrict===id) { el.classList.remove('active'); activeDistrict=null; return; }
+  activeDistrict=id; el.classList.add('active');
+  const d = window._kingdomDistricts?.find(x=>x.id===id);
+  if (!d) return;
+  document.getElementById('detail-title').textContent = `${d.emoji} ${d.name} — ${d.description}`;
+  const rows = Object.entries(d.stats||{}).map(([k,v]) => {
+    const val = typeof v==='number'?(Number.isInteger(v)?v:v.toFixed(2)):v;
+    return `<div class="detail-metric"><span style="color:var(--muted)">${k.replace(/_/g,' ')}</span><span style="color:var(--text)">${val}</span></div>`;
+  }).join('');
+  document.getElementById('detail-content').innerHTML = rows||'<div style="color:var(--muted);font-size:0.8rem">No stats available</div>';
+}
+
+/* ── ACTIVITY FEED ── */
 function renderActivity(runs, lessons) {
   const items = [];
-  
-  // Recent agent runs
-  (runs || []).slice(0, 6).forEach(r => {
-    const time = new Date(r.run_at).toLocaleTimeString();
-    items.push(`<div class="activity-item">
-      <div class="activity-time">${time}</div>
-      <div><span class="activity-agent">${r.agent}</span> ran — £${(r.revenue_gbp||0).toFixed(2)} rev</div>
-    </div>`);
+  (runs||[]).slice(0,6).forEach(r => {
+    items.push(`<div class="activity-item"><div class="activity-time">${new Date(r.run_at).toLocaleTimeString()}</div>
+      <div><span class="activity-agent">${r.agent}</span> ran &#x2014; &#xa3;${(r.revenue_gbp||0).toFixed(2)} rev</div></div>`);
   });
-  
-  // Recent lessons
-  (lessons || []).slice(0, 4).forEach(l => {
-    const text = l.lesson?.slice(0, 70) || '';
-    items.push(`<div class="activity-item">
-      <div class="activity-time">${l.source || 'system'}</div>
-      <div style="color:var(--muted)">${text}${l.lesson?.length > 70 ? '…' : ''}</div>
-    </div>`);
+  (lessons||[]).slice(0,4).forEach(l => {
+    const text = l.lesson?.slice(0,70)||'';
+    items.push(`<div class="activity-item"><div class="activity-time">${l.source||'system'}</div>
+      <div style="color:var(--muted)">${text}${l.lesson?.length>70?'&#x2026;':''}</div></div>`);
   });
-  
-  const feed = document.getElementById('activity-feed');
-  feed.innerHTML = items.length ? items.join('') : '<div class="activity-item" style="color:var(--muted)">No recent activity</div>';
+  document.getElementById('activity-feed').innerHTML = items.length ? items.join('') : '<div class="activity-item" style="color:var(--muted)">No recent activity</div>';
 }
 
-// ── TICKER ───────────────────────────────────────────────────────────────────
-
+/* ── TICKER ── */
 function buildTicker(data) {
   if (!data) return;
   const items = [
-    `💰 Gold: £${(data.resources?.gold||0).toFixed(2)}`,
-    `📚 Knowledge: ${data.resources?.knowledge||0} lessons`,
-    `⚡ Focus: ${data.resources?.focus||0}%`,
-    `🛡 Stability: ${data.resources?.stability||0}/100`,
-    ...(data.districts||[]).map(d => `${d.emoji} ${d.name}: ${d.top_action}`),
+    `&#x1F4B0; Gold: &#xa3;${(data.resources?.gold||0).toFixed(2)}`,
+    `&#x1F4DA; Knowledge: ${data.resources?.knowledge||0} lessons`,
+    `&#x26A1; Focus: ${data.resources?.focus||0}%`,
+    `&#x1F6E1; Stability: ${data.resources?.stability||0}/100`,
+    ...(data.districts||[]).map(d=>`${d.emoji} ${d.name}: ${d.top_action}`),
   ];
-  const tickerEl = document.getElementById('ticker-track');
-  const html = [...items, ...items].map(i => `<span class="ticker-item">◈ <span>${i}</span></span>`).join('');
-  tickerEl.innerHTML = html;
+  document.getElementById('ticker-track').innerHTML = [...items,...items].map(i=>`<span class="ticker-item">&#x25C8; <span>${i}</span></span>`).join('');
   document.getElementById('ticker-wrap').style.display = 'block';
 }
 
-// ── SCHEDULER STATUS ──────────────────────────────────────────────────────────
-
+/* ── SCHEDULER ── */
 function renderScheduler(status) {
-  const agents = status?.agents || [];
-  if (!agents.length) {
-    document.getElementById('scheduler-status').innerHTML = '<div style="color:var(--muted);font-size:0.75rem">Scheduler not running</div>';
-    return;
-  }
-  const html = agents.map(a => {
-    const isRunning = a.scheduler_running;
-    return `<div class="agent-chip">
-      <div class="chip-dot ${isRunning ? 'green' : ''}"></div>
-      <span class="chip-name">${a.name}</span>
-      <span class="chip-next">${a.interval}</span>
-    </div>`;
-  }).join('');
-  document.getElementById('scheduler-status').innerHTML = html;
+  const agents = status?.agents||[];
+  if (!agents.length) { document.getElementById('scheduler-status').innerHTML='<div style="color:var(--muted);font-size:0.75rem">Scheduler not running</div>'; return; }
+  document.getElementById('scheduler-status').innerHTML = agents.map(a=>`<div class="agent-chip">
+    <div class="chip-dot ${a.scheduler_running?'green':''}"></div>
+    <span class="chip-name">${a.name}</span><span class="chip-next">${a.interval}</span></div>`).join('');
 }
 
-// ── TRIGGER AGENT ─────────────────────────────────────────────────────────────
-
+/* ── TRIGGER AGENT ── */
 async function triggerAgent(name) {
   const el = document.getElementById('action-result');
-  el.style.color = 'var(--amber)';
-  el.textContent = `▶ Running ${name}...`;
+  el.style.color='var(--amber)'; el.textContent=`Running ${name}...`;
   try {
-    const r = await fetch(`/scheduler/run/${encodeURIComponent(name)}`, { method: 'POST' });
-    const data = await r.json();
-    if (data.status === 'ok') {
-      el.style.color = 'var(--green)';
-      el.textContent = `✓ ${name}: ${data.opportunities_created || 0} opps created`;
-      // Refresh map
-      setTimeout(loadKingdomMap, 500);
-    } else {
-      el.style.color = 'var(--red)';
-      el.textContent = `✗ ${data.error || 'Error'}`;
-    }
-  } catch(e) {
-    el.style.color = 'var(--red)';
-    el.textContent = '✗ Request failed';
-  }
+    const r = await fetch(`/scheduler/run/${encodeURIComponent(name)}`,{method:'POST'});
+    const d = await r.json();
+    if (d.status==='ok') { el.style.color='var(--green)'; el.textContent=`&#x2713; ${name}: ${d.opportunities_created||0} opps created`; setTimeout(loadKingdomMap,500); }
+    else { el.style.color='var(--red)'; el.textContent=`&#x2717; ${d.error||'Error'}`; }
+  } catch(e) { el.style.color='var(--red)'; el.textContent='&#x2717; Request failed'; }
 }
 
-// ── LOAD KINGDOM MAP ──────────────────────────────────────────────────────────
-
+/* ── LOAD KINGDOM MAP ── */
 async function loadKingdomMap() {
   const data = await fetchJSON('/kingdom/map');
-  if (!data) {
-    document.getElementById('kingdom-map').innerHTML = '<div id="map-loading">MAP DATA UNAVAILABLE</div>';
-    return;
-  }
-  
+  if (!data) { document.getElementById('kingdom-map').innerHTML='<div id="map-loading">MAP DATA UNAVAILABLE</div>'; return; }
   window._kingdomDistricts = data.districts;
-  
-  // Resources bar
-  const res = data.resources || {};
-  document.getElementById('res-gold').textContent = `£${(res.gold||0).toFixed(2)}`;
-  document.getElementById('res-knowledge').textContent = res.knowledge || 0;
-  document.getElementById('res-focus').textContent = `${res.focus||0}%`;
-  document.getElementById('res-stability').textContent = `${res.stability||0}/100`;
-  
-  // Map districts
-  const districtOrder = ['pulsebreak_arena','command_tower','venture_lab','pitwall_workshop','printify_studio','knowledge_vault'];
-  const ordered = districtOrder.map(id => data.districts.find(d => d.id === id)).filter(Boolean);
-  
-  const mapEl = document.getElementById('kingdom-map');
-  mapEl.innerHTML = ordered.map(buildDistrict).join('');
-  
-  // Ticker
+  const res = data.resources||{};
+  document.getElementById('res-gold').textContent=`&#xa3;${(res.gold||0).toFixed(2)}`;
+  document.getElementById('res-knowledge').textContent=res.knowledge||0;
+  document.getElementById('res-focus').textContent=`${res.focus||0}%`;
+  document.getElementById('res-stability').textContent=`${res.stability||0}/100`;
+  const order=['pulsebreak_arena','command_tower','venture_lab','pitwall_workshop','printify_studio','knowledge_vault'];
+  document.getElementById('kingdom-map').innerHTML=order.map(id=>data.districts.find(d=>d.id===id)).filter(Boolean).map(buildDistrict).join('');
   buildTicker(data);
-  
   return data;
 }
 
-// ── EXISTING DASHBOARD PANELS ─────────────────────────────────────────────────
-
+/* ── LOAD DASHBOARD ── */
 async function loadDashboard() {
-  loadCrisisStatus();
-  const [brief, health, leaderboard, lessons, recon, agentEcon, kingdomData, schedulerStatus] = await Promise.all([
-    fetchJSON('/brief/morning'),
-    fetchJSON('/kingdom/health'),
-    fetchJSON('/leaderboard/opportunities'),
-    fetchJSON('/lessons'),
-    fetchJSON('/revenue-recon'),
-    fetchJSON('/agent-economics/dashboard'),
-    loadKingdomMap(),
-    fetchJSON('/scheduler/status'),
+  const [brief,health,leaderboard,lessons,recon,agentEcon,kingdomData,schedulerStatus] = await Promise.all([
+    fetchJSON('/brief/morning'),fetchJSON('/kingdom/health'),fetchJSON('/leaderboard/opportunities'),
+    fetchJSON('/lessons'),fetchJSON('/revenue-recon'),fetchJSON('/agent-economics/dashboard'),
+    loadKingdomMap(),fetchJSON('/scheduler/status'),
   ]);
-
-  // Activity feed
-  renderActivity(kingdomData?.agent_activity || [], lessons || []);
-  
-  // Scheduler status
+  renderActivity(kingdomData?.agent_activity||[],lessons||[]);
   renderScheduler(schedulerStatus);
+  const panels=[];
 
-  const panels = [];
-
-  // Executive Dashboard
   if (brief) {
-    const ks = brief.kingdom_health_status || 'amber';
-    const todayItems = (brief.do_today || []).map(q => `<div class="list-item">▸ ${q.title}</div>`).join('') || '<div class="list-item">No quests today</div>';
-    panels.push(panel('EXECUTIVE DASHBOARD', ks, `
-      <h2>Daily Brief</h2>
-      <div class="metric"><span class="metric-label">Kingdom Health</span><span>${badge(ks)} ${brief.kingdom_health || '—'}</span></div>
-      <div class="metric"><span class="metric-label">Founder Capacity</span><span>${brief.founder_capacity || '—'}%</span></div>
+    const ks=brief.kingdom_health_status||'amber';
+    const todayItems=(brief.do_today||[]).map(q=>`<div class="list-item">&#x25B8; ${q.title}</div>`).join('')||'<div class="list-item">No quests today</div>';
+    panels.push(panel('EXECUTIVE DASHBOARD',ks,`<h2>Daily Brief</h2>
+      <div class="metric"><span class="metric-label">Kingdom Health</span><span>${badge(ks)} ${brief.kingdom_health||'&#x2014;'}</span></div>
+      <div class="metric"><span class="metric-label">Founder Capacity</span><span>${brief.founder_capacity||'&#x2014;'}%</span></div>
       <div class="metric"><span class="metric-label">Decision Accuracy</span><span>${((brief.decision_accuracy||0)*100).toFixed(0)}%</span></div>
       <div class="metric"><span class="metric-label">Top Assumption Risk</span><span style="color:var(--amber);font-size:0.78rem">${(brief.assumption_risk||'').slice(0,40)}</span></div>
-      <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">DO TODAY:</div>
-      ${todayItems}
-    `));
+      <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">DO TODAY:</div>${todayItems}`));
   }
 
-  // Revenue Intelligence
-  const revenueData = await fetchJSON('/revenue/insights');
+  const revenueData=await fetchJSON('/revenue/insights');
   if (revenueData) {
-    panels.push(panel('REVENUE INTELLIGENCE', 'green', `
-      <h2>Revenue Insights</h2>
-      <div class="metric"><span class="metric-label">Top Theme</span><span class="metric-value">${revenueData.top_theme||'—'}</span></div>
-      <div class="metric"><span class="metric-label">Top Category</span><span class="metric-value">${revenueData.top_category||'—'}</span></div>
-      <div class="metric"><span class="metric-label">Total Revenue Est.</span><span class="metric-value">£${(revenueData.total_estimated_revenue||0).toFixed(2)}</span></div>
+    panels.push(panel('REVENUE INTELLIGENCE','green',`<h2>Revenue Insights</h2>
+      <div class="metric"><span class="metric-label">Top Theme</span><span class="metric-value">${revenueData.top_theme||'&#x2014;'}</span></div>
+      <div class="metric"><span class="metric-label">Top Category</span><span class="metric-value">${revenueData.top_category||'&#x2014;'}</span></div>
+      <div class="metric"><span class="metric-label">Total Revenue Est.</span><span class="metric-value">&#xa3;${(revenueData.total_estimated_revenue||0).toFixed(2)}</span></div>
       <div class="metric"><span class="metric-label">Concentration</span><span class="metric-value">${revenueData.concentration_pct||0}%</span></div>
       <div class="metric"><span class="metric-label">Confidence</span><span class="metric-value">${revenueData.confidence||0}%</span></div>
-      <div style="margin-top:10px;font-size:0.78rem;color:var(--cyan)">▸ ${revenueData.recommended_next_product||'Validate demand first'}</div>
-    `));
+      <div style="margin-top:10px;font-size:0.78rem;color:var(--cyan)">&#x25B8; ${revenueData.recommended_next_product||'Validate demand first'}</div>`));
   }
 
-  // Recommendations (recon)
-  if (recon && recon.length > 0) {
-    const items = recon.slice(0, 4).map(r => `
-      <div class="metric">
-        <span class="metric-label">${r.title.slice(0,28)}</span>
-        <span>${badge(r.traffic_light_status)} ${r.kingdom_score}</span>
-      </div>`).join('');
-    panels.push(panel('RECOMMENDATIONS', '', `<h2>Revenue Recon</h2>${items}`));
+  if (recon && recon.length>0) {
+    panels.push(panel('RECOMMENDATIONS','',`<h2>Revenue Recon</h2>${recon.slice(0,4).map(r=>`
+      <div class="metric"><span class="metric-label">${r.title.slice(0,28)}</span><span>${badge(r.traffic_light_status)} ${r.kingdom_score}</span></div>`).join('')}`));
   }
 
-  // Opportunity Leaderboard
-  if (leaderboard && leaderboard.length > 0) {
-    const items = leaderboard.slice(0, 5).map((o, i) => `
-      <div class="metric">
-        <span class="metric-label">${i+1}. ${o.title.slice(0,25)}</span>
-        <span>${scoreBar(o.kingdom_score)} ${o.kingdom_score}</span>
-      </div>`).join('');
-    panels.push(panel('OPPORTUNITY LEADERBOARD', 'green', `<h2>Top Opportunities</h2>${items}`));
+  if (leaderboard && leaderboard.length>0) {
+    panels.push(panel('OPPORTUNITY LEADERBOARD','green',`<h2>Top Opportunities</h2>${leaderboard.slice(0,5).map((o,i)=>`
+      <div class="metric"><span class="metric-label">${i+1}. ${o.title.slice(0,25)}</span><span>${scoreBar(o.kingdom_score)} ${o.kingdom_score}</span></div>`).join('')}`));
   }
 
-  // Business Memory (Lessons)
-  if (lessons && lessons.length > 0) {
-    const items = lessons.slice(0, 4).map(l => `<div class="list-item">${l.lesson.slice(0,80)}${l.lesson.length>80?'...':''}</div>`).join('');
-    panels.push(panel('BUSINESS MEMORY', '', `<h2>Lessons Learned</h2>${items}`));
+  if (lessons && lessons.length>0) {
+    panels.push(panel('BUSINESS MEMORY','',`<h2>Lessons Learned</h2>${lessons.slice(0,4).map(l=>`<div class="list-item">${l.lesson.slice(0,80)}${l.lesson.length>80?'...':''}</div>`).join('')}`));
   } else {
-    panels.push(panel('BUSINESS MEMORY', '', `<h2>Lessons Learned</h2><div class="list-item" style="color:var(--muted)">No lessons recorded yet</div>`));
+    panels.push(panel('BUSINESS MEMORY','','<h2>Lessons Learned</h2><div class="list-item" style="color:var(--muted)">No lessons recorded yet</div>'));
   }
 
-  // Diagnostics (Kingdom Health)
   if (health) {
-    const kh = health.kingdom_health || {};
-    const fc = health.founder_capacity || {};
-    panels.push(panel('DIAGNOSTICS', kh.status||'', `
-      <h2>Kingdom Health</h2>
+    const kh=health.kingdom_health||{},fc=health.founder_capacity||{};
+    panels.push(panel('DIAGNOSTICS',kh.status||'',`<h2>Kingdom Health</h2>
       <div class="metric"><span class="metric-label">Health Score</span><span>${badge(kh.status||'amber')} ${kh.score||0}/100</span></div>
       ${scoreBar(kh.score||0)}
       <div class="metric"><span class="metric-label">Active Quests</span><span class="metric-value">${kh.active_quests||0}</span></div>
       <div class="metric"><span class="metric-label">Unverified Assumptions</span><span class="metric-value">${kh.unverified_assumptions||0}</span></div>
-      <div class="metric"><span class="metric-label">Founder Capacity</span><span>${badge(fc.status||'amber')} ${fc.score||0}%</span></div>
-    `));
+      <div class="metric"><span class="metric-label">Founder Capacity</span><span>${badge(fc.status||'amber')} ${fc.score||0}%</span></div>`));
   }
 
-  // Agent Economics (v1.2)
   if (agentEcon) {
-    const agents = (agentEcon.agents || []).slice(0, 4);
-    const agentRows = agents.map(a => `
-      <div class="metric">
-        <span class="metric-label">${a.agent_name}</span>
-        <span>${badge(a.cost_status)} ROI: ${a.roi}x</span>
-      </div>`).join('') || '<div class="list-item" style="color:var(--muted)">No agent runs yet</div>';
-    panels.push(panel('AGENT ECONOMICS', agentEcon.overall_cost_status||'amber', `
-      <h2>AI Cost & ROI</h2>
-      <div class="metric"><span class="metric-label">Total Cost</span><span class="metric-value">£${(agentEcon.total_cost_gbp||0).toFixed(4)}</span></div>
-      <div class="metric"><span class="metric-label">Total Revenue</span><span class="metric-value">£${(agentEcon.total_revenue_gbp||0).toFixed(2)}</span></div>
+    const ags=(agentEcon.agents||[]).slice(0,4);
+    panels.push(panel('AGENT ECONOMICS',agentEcon.overall_cost_status||'amber',`<h2>AI Cost &amp; ROI</h2>
+      <div class="metric"><span class="metric-label">Total Cost</span><span class="metric-value">&#xa3;${(agentEcon.total_cost_gbp||0).toFixed(4)}</span></div>
+      <div class="metric"><span class="metric-label">Total Revenue</span><span class="metric-value">&#xa3;${(agentEcon.total_revenue_gbp||0).toFixed(2)}</span></div>
       <div class="metric"><span class="metric-label">Overall ROI</span><span class="metric-value">${agentEcon.overall_roi||0}x</span></div>
-      ${agentRows}
-    `));
+      ${ags.map(a=>`<div class="metric"><span class="metric-label">${a.agent_name}</span><span>${badge(a.cost_status)} ROI: ${a.roi}x</span></div>`).join('')||'<div class="list-item" style="color:var(--muted)">No agent runs yet</div>'}`));
   }
 
-  // Revenue Agents panel
-  panels.push(panel('REVENUE AGENTS', 'green', `
-    <h2>Automated Agents</h2>
-    <div class="metric"><span class="metric-label">🏭 Print Forge AI</span><span style="color:var(--green)">ACTIVE</span></div>
-    <div class="metric"><span class="metric-label">🎵 Vibes AI</span><span style="color:var(--green)">ACTIVE</span></div>
-    <div class="metric"><span class="metric-label">🖨️ Printify Studio</span><span style="color:var(--green)">ACTIVE</span></div>
-    <div class="metric"><span class="metric-label">🚀 Opportunity Scout</span><span style="color:var(--green)">ACTIVE</span></div>
-    <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">All agents run deterministically — no external API calls</div>
-  `));
+  panels.push(panel('REVENUE AGENTS','green',`<h2>Automated Agents</h2>
+    <div class="metric"><span class="metric-label">&#x1F3ED; Print Forge AI</span><span style="color:var(--green)">ACTIVE</span></div>
+    <div class="metric"><span class="metric-label">&#x1F3B5; Vibes AI</span><span style="color:var(--green)">ACTIVE</span></div>
+    <div class="metric"><span class="metric-label">&#x1F5A8;&#xFE0F; Printify Studio</span><span style="color:var(--green)">ACTIVE</span></div>
+    <div class="metric"><span class="metric-label">&#x1F680; Opportunity Scout</span><span style="color:var(--green)">ACTIVE</span></div>
+    <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">All agents run deterministically &#x2014; no external API calls</div>`));
 
-  // Printify Studio panel
-  const printifyConcepts = await fetchJSON('/printify/concepts').catch(() => null);
-  const pcList = printifyConcepts && printifyConcepts.concepts
-    ? printifyConcepts.concepts.slice(0, 4).map(c => {
-        const ev = c.evidence || {};
-        return `<div class="list-item">
-          <span style="color:var(--cyan)">${ev.title || c.title}</span>
-          <span style="color:var(--muted);font-size:0.68rem">${ev.product_type || ''} · £${ev.suggested_price_gbp || ''} · ${ev.estimated_margin_pct || ''}% margin · Score: ${Math.round(c.kingdom_score || 0)}</span>
-        </div>`;
-      }).join('')
-    : '<div style="color:var(--muted);font-size:0.72rem">No concepts yet — click Generate to run agent</div>';
-  panels.push(panel('PRINTIFY STUDIO', 'green', `
-    <h2>&#x1F5A8;&#xFE0F; Printify Studio</h2>
-    <div style="font-size:0.7rem;color:var(--muted);margin-bottom:10px">Print-on-demand concepts for Pitwall Classics</div>
-    <div id="printify-concepts-list">${pcList}</div>
-    <div style="margin-top:10px;display:flex;gap:8px">
-      <button onclick="generatePrintifyConcepts()" class="quick-btn">Generate New Concepts</button>
-      <a href="/printify/concepts" target="_blank" style="color:var(--cyan);font-size:0.75rem;align-self:center">View All →</a>
-    </div>
-  `));
-
-  // PulseBreak Studio panel
-  const [ytStatus, uploadQueue] = await Promise.all([
-    fetchJSON('/vibes/youtube-status'),
-    fetchJSON('/vibes/upload-queue'),
-  ]);
-  const ytAvailable = ytStatus && ytStatus.available;
-  const ytBadge = ytAvailable
-    ? '<span style="color:var(--green)">&#x1F7E2; Ready to upload</span>'
-    : '<span style="color:var(--red)">&#x1F534; Not configured</span>';
-  const queueCount = uploadQueue ? uploadQueue.count : 0;
-  panels.push(panel('PULSEBREAK STUDIO', ytAvailable ? 'green' : 'amber', `
-    <h2>&#x1F3B5; PulseBreak Studio</h2>
+  const [ytStatus,uploadQueue]=await Promise.all([fetchJSON('/vibes/youtube-status'),fetchJSON('/vibes/upload-queue')]);
+  const ytOk=ytStatus&&ytStatus.available;
+  const ytBadge=ytOk?'<span style="color:var(--green)">&#x1F7E2; Ready to upload</span>':'<span style="color:var(--red)">&#x1F534; Not configured</span>';
+  panels.push(panel('PULSEBREAK STUDIO',ytOk?'green':'amber',`<h2>&#x1F3B5; PulseBreak Studio</h2>
     <div class="metric"><span class="metric-label">YouTube Status</span><span>${ytBadge}</span></div>
-    <div class="metric"><span class="metric-label">Upload Queue</span><span class="metric-value">${queueCount} file(s) waiting</span></div>
+    <div class="metric"><span class="metric-label">Upload Queue</span><span class="metric-value">${uploadQueue?uploadQueue.count:0} file(s) waiting</span></div>
     <div style="margin-top:8px;font-size:0.72rem;color:var(--muted)">&#x1F4C1; Drop MP3 into pulsebreak_tracks/ folder</div>
     <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
       <button onclick="fetch('/vibes/process-tracks',{method:'POST'}).then(r=>r.json()).then(d=>alert('Processed: '+d.processed+' track(s)'))" class="quick-btn">&#x25B6; Process Tracks Now</button>
-      ${!ytAvailable ? '<a href="/docs#/Vibes%20AI/youtube_status_vibes_youtube_status_get" style="color:var(--cyan);font-size:0.78rem;text-decoration:none">&#x2699;&#xFE0F; Setup YouTube</a>' : ''}
-    </div>
-  `));
+      ${!ytOk?'<a href="/docs#/Vibes%20AI/youtube_status_vibes_youtube_status_get" style="color:var(--cyan);font-size:0.78rem;text-decoration:none">&#x2699;&#xFE0F; Setup YouTube</a>':''}
+    </div>`));
 
-  // PulseBreak Licensing panel
-  panels.push(panel('PULSEBREAK LICENSING', 'cyan', `
-    <h2>&#x1F3B5; PulseBreak Licensing</h2>
+  panels.push(panel('PULSEBREAK LICENSING','cyan',`<h2>&#x1F3B5; PulseBreak Licensing</h2>
     <p style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">Sync licensing concepts for Pond5, AudioJungle &amp; more</p>
     <div id="licensing-revenue-estimate" style="font-size:1.3em;color:#0dcaf0;margin-bottom:8px">Loading...</div>
     <div id="licensing-concepts-list">Loading...</div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
       <button onclick="generateLicensingConcepts()" class="quick-btn">&#x25B6; Generate Concepts</button>
       <a href="/music-licensing/concepts" target="_blank" style="color:var(--cyan);font-size:0.78rem;text-decoration:none;align-self:center">View All &#x2192;</a>
-    </div>
-  `));
-  loadLicensingConcepts();
-  loadLicensingRevenue();
+    </div>`));
+  loadLicensingConcepts(); loadLicensingRevenue();
 
-  // Backups panel
-  panels.push(panel('BACKUPS', '', `
-    <h2>System Backups</h2>
+  panels.push(panel('BACKUPS','',`<h2>System Backups</h2>
     <div class="metric"><span class="metric-label">Status</span><span>${badge('green')} OK</span></div>
     <div class="metric"><span class="metric-label">Last Backup</span><span class="metric-value">Manual</span></div>
-    <div style="margin-top:10px">
-      <a href="/backup/list" style="color:var(--cyan);font-size:0.78rem;text-decoration:none">View Backups →</a>
-    </div>
-  `));
+    <div style="margin-top:10px"><a href="/backup/list" style="color:var(--cyan);font-size:0.78rem;text-decoration:none">View Backups &#x2192;</a></div>`));
 
-  // Kingdom Treasury panel
-  const treasury = await fetchJSON('/treasury?days=30');
+  const treasury=await fetchJSON('/treasury?days=30');
   if (treasury) {
-    const trendColor = treasury.cashflow_trend === 'growing' ? 'var(--green)' : treasury.cashflow_trend === 'declining' ? 'var(--red)' : 'var(--amber)';
-    const trendIcon = treasury.cashflow_trend === 'growing' ? '&#x25B2;' : treasury.cashflow_trend === 'declining' ? '&#x25BC;' : '&#x25CF;';
-    const netColor = treasury.kingdom_net_profit >= 0 ? 'var(--green)' : 'var(--red)';
-    const ventureCards = (treasury.ventures || []).map(v => {
-      const nc = v.net_profit >= 0 ? 'var(--green)' : 'var(--red)';
+    const tc=treasury.cashflow_trend==='growing'?'var(--green)':treasury.cashflow_trend==='declining'?'var(--red)':'var(--amber)';
+    const ti=treasury.cashflow_trend==='growing'?'&#x25B2;':treasury.cashflow_trend==='declining'?'&#x25BC;':'&#x25CF;';
+    const nc2=treasury.kingdom_net_profit>=0?'var(--green)':'var(--red)';
+    const vcards=(treasury.ventures||[]).map(v=>{
+      const vnc=v.net_profit>=0?'var(--green)':'var(--red)';
       return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:8px">
         <div style="font-size:0.7rem;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:6px">${v.venture}</div>
         <div class="metric"><span class="metric-label">Income</span><span style="color:var(--green)">&#xa3;${v.total_income.toFixed(2)}</span></div>
         <div class="metric"><span class="metric-label">Expenses</span><span style="color:var(--red)">&#xa3;${v.total_expenses.toFixed(2)}</span></div>
-        <div class="metric"><span class="metric-label">Net Profit</span><span style="color:${nc};font-weight:bold">&#xa3;${v.net_profit.toFixed(2)}</span></div>
+        <div class="metric"><span class="metric-label">Net Profit</span><span style="color:${vnc};font-weight:bold">&#xa3;${v.net_profit.toFixed(2)}</span></div>
       </div>`;
     }).join('');
-    const addEntryForm = `
-      <div style="margin-top:12px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px">
-        <div style="font-size:0.7rem;letter-spacing:2px;color:var(--muted);margin-bottom:8px">ADD ENTRY</div>
-        <select id="t-venture" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
-          <option>Pitwall Classics</option><option>PulseBreak</option><option>Printify Studio</option>
-        </select>
-        <select id="t-type" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
-          <option value="income">Income</option><option value="expense">Expense</option>
-        </select>
-        <input id="t-amount" type="number" step="0.01" placeholder="Amount (£)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
-        <input id="t-desc" type="text" placeholder="Description" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
-        <input id="t-cat" type="text" placeholder="Category (e.g. Sale)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:6px;font-family:monospace;font-size:0.78rem">
-        <button onclick="(async()=>{const b={venture:document.getElementById('t-venture').value,entry_type:document.getElementById('t-type').value,amount:parseFloat(document.getElementById('t-amount').value)||0,description:document.getElementById('t-desc').value,category:document.getElementById('t-cat').value||'General'};const r=await fetch('/treasury/entry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();alert('Entry added: £'+d.amount+' ('+d.entry_type+')');loadDashboard();})()" class="quick-btn" style="width:100%">+ Add Entry</button>
-      </div>`;
-    panels.push(panel('KINGDOM TREASURY', treasury.kingdom_net_profit >= 0 ? 'green' : 'red', `
-      <h2>&#x1F4B0; Kingdom Treasury</h2>
-      <div class="metric"><span class="metric-label">Net Profit (30d)</span><span style="color:${netColor};font-size:1.1rem;font-weight:bold">&#xa3;${treasury.kingdom_net_profit.toFixed(2)}</span></div>
+    panels.push(panel('KINGDOM TREASURY',treasury.kingdom_net_profit>=0?'green':'red',`<h2>&#x1F4B0; Kingdom Treasury</h2>
+      <div class="metric"><span class="metric-label">Net Profit (30d)</span><span style="color:${nc2};font-size:1.1rem;font-weight:bold">&#xa3;${treasury.kingdom_net_profit.toFixed(2)}</span></div>
       <div class="metric"><span class="metric-label">Total Income</span><span style="color:var(--green)">&#xa3;${treasury.kingdom_total_income.toFixed(2)}</span></div>
       <div class="metric"><span class="metric-label">Total Expenses</span><span style="color:var(--red)">&#xa3;${treasury.kingdom_total_expenses.toFixed(2)}</span></div>
-      <div class="metric"><span class="metric-label">Cashflow Trend</span><span style="color:${trendColor}">${trendIcon} ${treasury.cashflow_trend.toUpperCase()}</span></div>
+      <div class="metric"><span class="metric-label">Cashflow Trend</span><span style="color:${tc}">${ti} ${treasury.cashflow_trend.toUpperCase()}</span></div>
       <div class="metric"><span class="metric-label">Top Venture</span><span style="color:var(--cyan)">${treasury.top_venture}</span></div>
-      ${ventureCards}
-      ${addEntryForm}
-    `));
+      ${vcards}
+      <div style="margin-top:12px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px">
+        <div style="font-size:0.7rem;letter-spacing:2px;color:var(--muted);margin-bottom:8px">ADD ENTRY</div>
+        <select id="t-venture" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem"><option>Pitwall Classics</option><option>PulseBreak</option><option>Printify Studio</option></select>
+        <select id="t-type" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem"><option value="income">Income</option><option value="expense">Expense</option></select>
+        <input id="t-amount" type="number" step="0.01" placeholder="Amount (&#xa3;)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
+        <input id="t-desc" type="text" placeholder="Description" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
+        <input id="t-cat" type="text" placeholder="Category (e.g. Sale)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:6px;font-family:monospace;font-size:0.78rem">
+        <button onclick="(async()=>{const b={venture:document.getElementById('t-venture').value,entry_type:document.getElementById('t-type').value,amount:parseFloat(document.getElementById('t-amount').value)||0,description:document.getElementById('t-desc').value,category:document.getElementById('t-cat').value||'General'};const r=await fetch('/treasury/entry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();alert('Entry added: &#xa3;'+d.amount+' ('+d.entry_type+')');loadDashboard();})()" class="quick-btn" style="width:100%">+ Add Entry</button>
+      </div>`));
   }
 
-  // Decision Council panel
-  panels.push(panel('DECISION COUNCIL', 'cyan', `
-    <h2>&#x2696;&#xFE0F; Decision Council</h2>
-    <p style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">Convene 5 virtual advisors to analyse any proposal — no AI API calls, fully deterministic.</p>
+  panels.push(panel('DECISION COUNCIL','cyan',`<h2>&#x2696;&#xFE0F; Decision Council</h2>
+    <p style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">Convene 5 virtual advisors to analyse any proposal &#x2014; no AI API calls, fully deterministic.</p>
     <div style="display:flex;flex-direction:column;gap:6px">
       <textarea id="council-proposal" placeholder="Enter your proposal..." rows="2" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);border-radius:4px;padding:6px 8px;font-family:inherit;font-size:0.8rem;resize:vertical;"></textarea>
       <textarea id="council-context" placeholder="Optional context..." rows="1" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);border-radius:4px;padding:6px 8px;font-family:inherit;font-size:0.8rem;resize:vertical;"></textarea>
       <button onclick="conveneCouncil()" class="quick-btn" style="align-self:flex-start">&#x2696; Convene Council</button>
-    </div>
-    <div id="council-result" style="margin-top:12px"></div>
-  `));
+    </div><div id="council-result" style="margin-top:12px"></div>`));
 
-  // Sprint Planner panel
   try {
-    const sprintPlan = await fetchJSON('/sprint/plan');
-    const focusItems = sprintPlan && sprintPlan.focus_items ? sprintPlan.focus_items : [];
-    const sprintTheme = sprintPlan ? sprintPlan.sprint_theme : 'Kingdom Foundations';
-    const totalHours = sprintPlan ? sprintPlan.total_estimated_hours : 0;
-    const focusCards = focusItems.length
-      ? focusItems.map(item => `
-          <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:600;font-size:0.82rem">${item.title}</span>
-              <span style="font-size:0.7rem;color:var(--cyan);background:var(--surface);padding:2px 6px;border-radius:3px">${item.item_type}</span>
-            </div>
-            <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">${item.reason}</div>
-            <div style="display:flex;gap:10px;margin-top:4px;font-size:0.7rem">
-              <span>&#x23F1; ${item.estimated_hours}h</span>
-              <span style="color:var(--amber)">${item.venture || ''}</span>
-            </div>
-          </div>`).join('')
-      : '<div style="color:var(--muted);font-size:0.8rem">No open quests or opportunities to plan — add some to get started.</div>';
-    panels.push(panel('SPRINT PLANNER', 'cyan', `
-      <h2>&#x1F3AF; This Week's Focus</h2>
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <span style="font-size:0.75rem;color:var(--cyan)">${sprintTheme}</span>
-        <span style="font-size:0.75rem;color:var(--muted)">&#x23F1; ${totalHours}h total</span>
-      </div>
-      ${focusCards}
-    `));
-  } catch(e) {
-    panels.push(panel('SPRINT PLANNER', 'amber', '<h2>&#x1F3AF; Sprint Planner</h2><div style="color:var(--muted)">Could not load sprint plan.</div>'));
-  }
-
-  // Captain's Log panel
-  try {
-    const logEntry = await fetchJSON('/log/entry');
-    const moodColour = logEntry && logEntry.mood === 'triumphant' ? 'var(--green)' : logEntry && logEntry.mood === 'steady' ? 'var(--cyan)' : 'var(--muted)';
-    const moodIcon = logEntry && logEntry.mood === 'triumphant' ? '&#x1F3C6;' : logEntry && logEntry.mood === 'steady' ? '&#x2694;' : '&#x1F319;';
-    const highlights = logEntry && logEntry.highlights && logEntry.highlights.length
-      ? logEntry.highlights.map(h => `<div style="font-size:0.72rem;color:var(--muted);padding:2px 0">&#x2022; ${h}</div>`).join('')
-      : '<div style="font-size:0.72rem;color:var(--muted)">No highlights this week.</div>';
-    const narrative = logEntry ? logEntry.narrative : 'Log unavailable.';
-    const mood = logEntry ? logEntry.mood : 'quiet';
-    panels.push(panel("CAPTAIN'S LOG", 'green', `
-      <h2>&#x1F4DC; Captain's Log</h2>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-        <span style="background:${moodColour}22;border:1px solid ${moodColour};color:${moodColour};font-size:0.7rem;padding:2px 8px;border-radius:12px;font-weight:600">${moodIcon} ${mood.toUpperCase()}</span>
-      </div>
-      <p style="font-size:0.8rem;line-height:1.55;color:var(--fg);margin-bottom:10px">${narrative}</p>
-      <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
-        ${highlights}
-      </div>
-    `));
-  } catch(e) {
-    panels.push(panel("CAPTAIN'S LOG", 'amber', "<h2>&#x1F4DC; Captain's Log</h2><div style=\"color:var(--muted)\">Could not load log entry.</div>"));
-  }
-
-  // Achievements panel
-  try {
-    const achievements = await fetchJSON('/achievements');
-    const achievementCards = achievements && achievements.length
-      ? achievements.map(a => {
-          const glow = a.unlocked ? 'border-color:var(--amber);box-shadow:0 0 6px var(--amber)33' : 'opacity:0.45';
-          const icon = a.unlocked ? '&#x1F3C6;' : '&#x1F512;';
-          const dateStr = a.unlocked && a.unlocked_at ? ` <span style="font-size:0.65rem;color:var(--muted)">${a.unlocked_at.slice(0,10)}</span>` : '';
-          return `<div style="border:1px solid var(--border);border-radius:5px;padding:6px 8px;${glow}">
-            <div style="font-size:0.75rem;font-weight:600">${icon} ${a.title}${dateStr}</div>
-            <div style="font-size:0.67rem;color:var(--muted);margin-top:2px">${a.description}</div>
-          </div>`;
-        }).join('')
-      : '<div style="color:var(--muted)">No achievements yet.</div>';
-    const unlockedCount = achievements ? achievements.filter(a => a.unlocked).length : 0;
-    panels.push(panel('ACHIEVEMENTS', 'amber', `
-      <h2>&#x1F3C6; Trophy Hall</h2>
-      <div style="margin-bottom:8px;font-size:0.78rem;color:var(--amber)">${unlockedCount} / ${achievements ? achievements.length : 0} unlocked</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-        ${achievementCards}
-      </div>
-      <div style="margin-top:10px">
-        <button onclick="fetch('/achievements/check',{method:'POST'}).then(r=>r.json()).then(d=>{if(d.count>0){alert('Unlocked: '+d.newly_unlocked.map(a=>a.title).join(', '));}else{alert('No new achievements this time.');}loadDashboard();}).catch(e=>alert('Error: '+e))" class="quick-btn">&#x1F50D; Check Achievements</button>
-      </div>
-    `));
-  } catch(e) {
-    panels.push(panel('ACHIEVEMENTS', 'amber', '<h2>&#x1F3C6; Trophy Hall</h2><div style="color:var(--muted)">Could not load achievements.</div>'));
-  }
-
-  document.getElementById('panels').innerHTML = panels.join('');
-}
-
-function conveneCouncil() {
-  const proposal = document.getElementById('council-proposal').value.trim();
-  const context = document.getElementById('council-context').value.trim();
-  if (!proposal) { alert('Please enter a proposal.'); return; }
-  const resultEl = document.getElementById('council-result');
-  resultEl.innerHTML = '<span style="color:var(--muted)">&#x23F3; Convening council...</span>';
-  fetch('/council/convene', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({proposal, context})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.error) { resultEl.innerHTML = `<span style="color:var(--red)">Error: ${data.error}</span>`; return; }
-    const verdictColour = data.verdict === 'PROCEED' ? 'var(--green)' : data.verdict === 'REJECT' ? 'var(--red)' : 'var(--amber)';
-    const verdictIcon = data.verdict === 'PROCEED' ? '&#x2705;' : data.verdict === 'REJECT' ? '&#x274C;' : '&#x26A0;';
-    const voteColour = v => v === 'for' ? 'var(--green)' : v === 'against' ? 'var(--red)' : 'var(--amber)';
-    const voteLabel = v => v === 'for' ? 'FOR' : v === 'against' ? 'AGAINST' : 'NEUTRAL';
-    const votesHtml = data.votes.map(v => `
-      <div style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-top:6px">
+    const sprintPlan=await fetchJSON('/sprint/plan');
+    const fi=sprintPlan&&sprintPlan.focus_items?sprintPlan.focus_items:[];
+    const th=sprintPlan?sprintPlan.sprint_theme:'Kingdom Foundations';
+    const totalH=sprintPlan?sprintPlan.total_estimated_hours:0;
+    const fcards=fi.length?fi.map(item=>`
+      <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-weight:600;font-size:0.8rem">${v.agent_name}</span>
-          <span style="color:${voteColour(v.vote)};font-size:0.75rem;font-weight:700">${voteLabel(v.vote)}</span>
+          <span style="font-weight:600;font-size:0.82rem">${item.title}</span>
+          <span style="font-size:0.7rem;color:var(--cyan);background:var(--surface);padding:2px 6px;border-radius:3px">${item.item_type}</span>
         </div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:3px">${v.key_concern}</div>
-      </div>`).join('');
-    const minority = data.minority_report.length
-      ? `<div style="margin-top:8px;font-size:0.72rem;color:var(--amber)">&#x1F4CB; Minority: ${data.minority_report.map(m=>m.agent_name).join(', ')}</div>`
-      : '';
-    resultEl.innerHTML = `
-      <div style="background:${verdictColour}22;border:1px solid ${verdictColour};border-radius:6px;padding:8px 12px;text-align:center;font-weight:700;font-size:1rem;color:${verdictColour};margin-bottom:8px">
-        ${verdictIcon} ${data.verdict} &nbsp;&#xB7;&nbsp; <span style="font-size:0.8rem;font-weight:400">Confidence ${data.confidence}%</span>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">${item.reason}</div>
+        <div style="display:flex;gap:10px;margin-top:4px;font-size:0.7rem"><span>&#x23F1; ${item.estimated_hours}h</span><span style="color:var(--amber)">${item.venture||''}</span></div>
+      </div>`).join(''):'<div style="color:var(--muted);font-size:0.8rem">No open quests or opportunities to plan &#x2014; add some to get started.</div>';
+    panels.push(panel('SPRINT PLANNER','cyan',`<h2>&#x1F3AF; This Week\'s Focus</h2>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:0.75rem;color:var(--cyan)">${th}</span>
+        <span style="font-size:0.75rem;color:var(--muted)">&#x23F1; ${totalH}h total</span>
+      </div>${fcards}`));
+  } catch(e) { panels.push(panel('SPRINT PLANNER','amber','<h2>&#x1F3AF; Sprint Planner</h2><div style="color:var(--muted)">Could not load sprint plan.</div>')); }
+
+  try {
+    const logEntry=await fetchJSON('/log/entry');
+    const mc2=logEntry&&logEntry.mood==='triumphant'?'var(--green)':logEntry&&logEntry.mood==='steady'?'var(--cyan)':'var(--muted)';
+    const mi=logEntry&&logEntry.mood==='triumphant'?'&#x1F3C6;':logEntry&&logEntry.mood==='steady'?'&#x2694;':'&#x1F319;';
+    const highlights=logEntry&&logEntry.highlights&&logEntry.highlights.length?logEntry.highlights.map(h=>`<div style="font-size:0.72rem;color:var(--muted);padding:2px 0">&#x2022; ${h}</div>`).join(''):'<div style="font-size:0.72rem;color:var(--muted)">No highlights this week.</div>';
+    panels.push(panel("CAPTAIN'S LOG",'green',`<h2>&#x1F4DC; Captain\'s Log</h2>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <span style="background:${mc2}22;border:1px solid ${mc2};color:${mc2};font-size:0.7rem;padding:2px 8px;border-radius:12px;font-weight:600">${mi} ${(logEntry?logEntry.mood:'quiet').toUpperCase()}</span>
       </div>
-      <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-bottom:6px">
-        &#x1F7E2; ${data.for_count} for &nbsp;&#xB7;&nbsp; &#x1F534; ${data.against_count} against &nbsp;&#xB7;&nbsp; &#x1F7E1; ${data.neutral_count} neutral
-      </div>
-      ${votesHtml}
-      ${minority}
-    `;
-  })
-  .catch(err => { resultEl.innerHTML = `<span style="color:var(--red)">Network error: ${err}</span>`; });
+      <p style="font-size:0.8rem;line-height:1.55;margin-bottom:10px">${logEntry?logEntry.narrative:'Log unavailable.'}</p>
+      <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">${highlights}</div>`));
+  } catch(e) { panels.push(panel("CAPTAIN'S LOG",'amber',"<h2>&#x1F4DC; Captain's Log</h2><div style=\"color:var(--muted)\">Could not load log entry.</div>")); }
+
+  try {
+    const achievements=await fetchJSON('/achievements');
+    const aCards=achievements&&achievements.length?achievements.map(a=>{
+      const glow=a.unlocked?'border-color:var(--amber);box-shadow:0 0 6px var(--amber)33':'opacity:0.45';
+      const icon=a.unlocked?'&#x1F3C6;':'&#x1F512;';
+      const ds=a.unlocked&&a.unlocked_at?` <span style="font-size:0.65rem;color:var(--muted)">${a.unlocked_at.slice(0,10)}</span>`:'';
+      return `<div style="border:1px solid var(--border);border-radius:5px;padding:6px 8px;${glow}"><div style="font-size:0.75rem;font-weight:600">${icon} ${a.title}${ds}</div><div style="font-size:0.67rem;color:var(--muted);margin-top:2px">${a.description}</div></div>`;
+    }).join(''):'<div style="color:var(--muted)">No achievements yet.</div>';
+    const uc=achievements?achievements.filter(a=>a.unlocked).length:0;
+    panels.push(panel('ACHIEVEMENTS','amber',`<h2>&#x1F3C6; Trophy Hall</h2>
+      <div style="margin-bottom:8px;font-size:0.78rem;color:var(--amber)">${uc} / ${achievements?achievements.length:0} unlocked</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">${aCards}</div>
+      <div style="margin-top:10px"><button onclick="fetch('/achievements/check',{method:'POST'}).then(r=>r.json()).then(d=>{if(d.count>0){alert('Unlocked: '+d.newly_unlocked.map(a=>a.title).join(', '));}else{alert('No new achievements this time.');}loadDashboard();}).catch(e=>alert('Error: '+e))" class="quick-btn">&#x1F50D; Check Achievements</button></div>`));
+  } catch(e) { panels.push(panel('ACHIEVEMENTS','amber','<h2>&#x1F3C6; Trophy Hall</h2><div style="color:var(--muted)">Could not load achievements.</div>')); }
+
+  document.getElementById('panels').innerHTML=panels.join('');
 }
 
-// PulseBreak Licensing functions
+/* ── COUNCIL ── */
+function conveneCouncil() {
+  const proposal=document.getElementById('council-proposal').value.trim();
+  const context=document.getElementById('council-context').value.trim();
+  if (!proposal){alert('Please enter a proposal.');return;}
+  const resultEl=document.getElementById('council-result');
+  resultEl.innerHTML='<span style="color:var(--muted)">&#x23F3; Convening council...</span>';
+  fetch('/council/convene',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({proposal,context})})
+  .then(r=>r.json()).then(data=>{
+    if(data.error){resultEl.innerHTML=`<span style="color:var(--red)">Error: ${data.error}</span>`;return;}
+    const vc=data.verdict==='PROCEED'?'var(--green)':data.verdict==='REJECT'?'var(--red)':'var(--amber)';
+    const vi=data.verdict==='PROCEED'?'&#x2705;':data.verdict==='REJECT'?'&#x274C;':'&#x26A0;';
+    const voteC=v=>v==='for'?'var(--green)':v==='against'?'var(--red)':'var(--amber)';
+    const voteL=v=>v==='for'?'FOR':v==='against'?'AGAINST':'NEUTRAL';
+    resultEl.innerHTML=`<div style="background:${vc}22;border:1px solid ${vc};border-radius:6px;padding:8px 12px;text-align:center;font-weight:700;font-size:1rem;color:${vc};margin-bottom:8px">
+      ${vi} ${data.verdict} &nbsp;&#xB7;&nbsp; <span style="font-size:0.8rem;font-weight:400">Confidence ${data.confidence}%</span></div>
+      <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-bottom:6px">&#x1F7E2; ${data.for_count} for &nbsp;&#xB7;&nbsp; &#x1F534; ${data.against_count} against &nbsp;&#xB7;&nbsp; &#x1F7E1; ${data.neutral_count} neutral</div>
+      ${data.votes.map(v=>`<div style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-top:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:0.8rem">${v.agent_name}</span>
+        <span style="color:${voteC(v.vote)};font-size:0.75rem;font-weight:700">${voteL(v.vote)}</span></div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:3px">${v.key_concern}</div></div>`).join('')}
+      ${data.minority_report.length?`<div style="margin-top:8px;font-size:0.72rem;color:var(--amber)">&#x1F4CB; Minority: ${data.minority_report.map(m=>m.agent_name).join(', ')}</div>`:''}`;
+  }).catch(err=>{resultEl.innerHTML=`<span style="color:var(--red)">Network error: ${err}</span>`;});
+}
+
+/* ── LICENSING HELPERS ── */
 async function loadLicensingConcepts() {
-  const el = document.getElementById('licensing-concepts-list');
-  if (!el) return;
+  const el=document.getElementById('licensing-concepts-list');if(!el)return;
   try {
-    const data = await fetchJSON('/music-licensing/concepts');
-    if (!data || !data.concepts || data.concepts.length === 0) {
-      el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem">No concepts yet — click Generate Concepts</div>';
-      return;
-    }
-    el.innerHTML = data.concepts.slice(0, 5).map(c => {
-      const ev = c.evidence || {};
-      const platforms = (ev.recommended_platforms || []).join(', ');
-      const rev = ev.estimated_monthly_revenue_gbp ? '£' + ev.estimated_monthly_revenue_gbp.toFixed(2) + '/mo' : '';
+    const data=await fetchJSON('/music-licensing/concepts');
+    if(!data||!data.concepts||data.concepts.length===0){el.innerHTML='<div style="color:var(--muted);font-size:0.8rem">No concepts yet &#x2014; click Generate Concepts</div>';return;}
+    el.innerHTML=data.concepts.slice(0,5).map(c=>{
+      const ev=c.evidence||{},plat=(ev.recommended_platforms||[]).join(', '),rev=ev.estimated_monthly_revenue_gbp?'&#xa3;'+ev.estimated_monthly_revenue_gbp.toFixed(2)+'/mo':'';
       return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:7px 10px;margin-bottom:5px;font-size:0.78rem">'
-        + '<div style="color:var(--cyan);margin-bottom:2px">' + (ev.track_title || c.title) + '</div>'
-        + '<div style="color:var(--muted)">' + (ev.sub_genre || '') + (platforms ? ' • ' + platforms : '') + '</div>'
-        + (rev ? '<div style="color:var(--green);font-size:0.75rem">Est. ' + rev + '</div>' : '')
-        + '</div>';
+        +'<div style="color:var(--cyan);margin-bottom:2px">'+(ev.track_title||c.title)+'</div>'
+        +'<div style="color:var(--muted)">'+(ev.sub_genre||'')+(plat?' &#x2022; '+plat:'')+'</div>'
+        +(rev?'<div style="color:var(--green);font-size:0.75rem">Est. '+rev+'</div>':'')+'</div>';
     }).join('');
-  } catch(e) {
-    if (el) el.innerHTML = '<div style="color:var(--muted)">Could not load concepts</div>';
-  }
+  } catch(e){if(el)el.innerHTML='<div style="color:var(--muted)">Could not load concepts</div>';}
 }
-
 async function loadLicensingRevenue() {
-  const el = document.getElementById('licensing-revenue-estimate');
-  if (!el) return;
+  const el=document.getElementById('licensing-revenue-estimate');if(!el)return;
   try {
-    const data = await fetchJSON('/music-licensing/revenue-estimate');
-    if (data && data.total_monthly_estimate_gbp !== undefined) {
-      el.innerHTML = 'Est. <strong>£' + data.total_monthly_estimate_gbp.toFixed(2) + '/month</strong> passive (' + (data.concept_count || 0) + ' concepts)';
-    } else {
-      el.innerHTML = 'Est. £0.00/month passive';
-    }
-  } catch(e) {
-    if (el) el.innerHTML = 'Revenue estimate unavailable';
-  }
+    const data=await fetchJSON('/music-licensing/revenue-estimate');
+    el.innerHTML=data&&data.total_monthly_estimate_gbp!==undefined?'Est. <strong>&#xa3;'+data.total_monthly_estimate_gbp.toFixed(2)+'/month</strong> passive ('+(data.concept_count||0)+' concepts)':'Est. &#xa3;0.00/month passive';
+  }catch(e){if(el)el.innerHTML='Revenue estimate unavailable';}
 }
-
 async function generateLicensingConcepts() {
   try {
-    const res = await fetch('/music-licensing/generate', {method: 'POST'});
-    const data = await res.json();
-    alert('Generated: ' + (data.opportunities_created || 0) + ' new concept(s), updated: ' + (data.opportunities_updated || 0));
-    loadLicensingConcepts();
-    loadLicensingRevenue();
-  } catch(e) {
-    alert('Failed to generate concepts');
-  }
+    const res=await fetch('/music-licensing/generate',{method:'POST'});
+    const data=await res.json();
+    alert('Generated: '+(data.opportunities_created||0)+' new concept(s), updated: '+(data.opportunities_updated||0));
+    loadLicensingConcepts();loadLicensingRevenue();
+  }catch(e){alert('Failed to generate concepts');}
 }
 
-async function generatePrintifyConcepts() {
-  try {
-    const res = await fetch('/printify/generate', {method: 'POST'});
-    const data = await res.json();
-    alert('Printify: Generated ' + (data.opportunities_created || 0) + ' new POD concept(s)');
-    loadDashboard();
-  } catch(e) {
-    alert('Failed to generate Printify concepts');
-  }
-}
-
-// ── CRISIS MONITOR ──
-let _lastCrisisData = null;
-
-async function loadCrisisStatus() {
-  try {
-    const data = await fetchJSON('/crisis/status');
-    _lastCrisisData = data;
-    updateCrisisBar(data);
-  } catch(e) {
-    // Graceful degradation — hide bar on error
-  }
-}
-
-function updateCrisisBar(data) {
-  const bar = document.getElementById('crisis-bar');
-  const msg = document.getElementById('crisis-message');
-  const icon = document.getElementById('crisis-icon');
-  if (!bar || !data) return;
-
-  const level = data.crisis_level || 'GREEN';
-  bar.className = '';
-  bar.classList.remove('crisis-amber','crisis-red','crisis-critical');
-
-  if (level === 'GREEN') {
-    bar.style.display = 'none';
-    return;
-  }
-
-  bar.style.display = 'block';
-  if (level === 'AMBER') {
-    bar.classList.add('crisis-amber');
-    icon.textContent = '⚠️';
-  } else if (level === 'RED') {
-    bar.classList.add('crisis-red');
-    icon.textContent = '🚨';
-  } else if (level === 'CRITICAL') {
-    bar.classList.add('crisis-critical');
-    icon.textContent = '🔴';
-  }
-
-  msg.textContent = `CRISIS LEVEL: ${level} — ${data.total_severity} severity points active`;
-}
-
-function showCrisisDetail() {
-  const data = _lastCrisisData;
-  if (!data) return;
-
-  // Level line
-  document.getElementById('crisis-modal-level').textContent =
-    `Scanned: ${data.scanned_at || 'unknown'} | Total severity: ${data.total_severity}`;
-
-  // Signals
-  const signalsEl = document.getElementById('crisis-modal-signals');
-  if (data.signals && data.signals.length > 0) {
-    signalsEl.innerHTML = data.signals.map(s =>
-      `<div style="margin-bottom:8px; font-family:monospace; font-size:13px;">` +
-      `<span class="severity-badge sev-${s.severity}">SEV ${s.severity}</span>` +
-      `<strong style="color:#c8d4e0;">${s.signal.replace(/_/g,' ').toUpperCase()}</strong>` +
-      ` — <span style="color:#4a5568;">${s.detail}</span></div>`
-    ).join('');
-  } else {
-    signalsEl.innerHTML = '<p style="color:#4a5568; font-family:monospace; font-size:13px;">No active signals.</p>';
-  }
-
-  // Actions
-  const actionsEl = document.getElementById('crisis-modal-actions');
-  if (data.action_plan && data.action_plan.length > 0) {
-    actionsEl.innerHTML = data.action_plan.map(a =>
-      `<li style="margin-bottom:8px;">${a}</li>`
-    ).join('');
-  } else {
-    actionsEl.innerHTML = '<li>No actions required — system is healthy.</li>';
-  }
-
-  document.getElementById('crisis-modal').style.display = 'block';
-}
-
-async function acknowledgeCrisis() {
-  try {
-    await fetch('/crisis/acknowledge', {method:'POST'});
-    document.getElementById('crisis-bar').style.display = 'none';
-  } catch(e) {}
-}
-
-async function runNewCrisisScan() {
-  try {
-    const data = await fetchJSON('/crisis/scan');
-    _lastCrisisData = data;
-    updateCrisisBar(data);
-    // Refresh modal content
-    showCrisisDetail();
-  } catch(e) {
-    alert('Crisis scan failed');
-  }
-}
-
-// Auto-refresh every 60 seconds
+/* ── BOOT ── */
 loadDashboard();
-setInterval(() => {
+pollCharacterStates();
+setInterval(()=>{
   loadKingdomMap();
-  fetchJSON('/lessons').then(l => {
-    fetchJSON('/kingdom/map').then(m => renderActivity(m?.agent_activity||[], l||[]));
-  });
+  fetchJSON('/lessons').then(l=>{fetchJSON('/kingdom/map').then(m=>renderActivity(m?.agent_activity||[],l||[]));});
   fetchJSON('/scheduler/status').then(renderScheduler);
-}, 60000);
+},60000);
+setInterval(pollCharacterStates,30000);
 </script>
 </body>
 </html>
