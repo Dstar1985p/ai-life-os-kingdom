@@ -820,6 +820,27 @@ async function loadDashboard() {
     <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">All agents run deterministically — no external API calls</div>
   `));
 
+  // PulseBreak Studio panel
+  const [ytStatus, uploadQueue] = await Promise.all([
+    fetchJSON('/vibes/youtube-status'),
+    fetchJSON('/vibes/upload-queue'),
+  ]);
+  const ytAvailable = ytStatus && ytStatus.available;
+  const ytBadge = ytAvailable
+    ? '<span style="color:var(--green)">&#x1F7E2; Ready to upload</span>'
+    : '<span style="color:var(--red)">&#x1F534; Not configured</span>';
+  const queueCount = uploadQueue ? uploadQueue.count : 0;
+  panels.push(panel('PULSEBREAK STUDIO', ytAvailable ? 'green' : 'amber', `
+    <h2>&#x1F3B5; PulseBreak Studio</h2>
+    <div class="metric"><span class="metric-label">YouTube Status</span><span>${ytBadge}</span></div>
+    <div class="metric"><span class="metric-label">Upload Queue</span><span class="metric-value">${queueCount} file(s) waiting</span></div>
+    <div style="margin-top:8px;font-size:0.72rem;color:var(--muted)">&#x1F4C1; Drop MP3 into pulsebreak_tracks/ folder</div>
+    <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="fetch('/vibes/process-tracks',{method:'POST'}).then(r=>r.json()).then(d=>alert('Processed: '+d.processed+' track(s)'))" class="quick-btn">&#x25B6; Process Tracks Now</button>
+      ${!ytAvailable ? '<a href="/docs#/Vibes%20AI/youtube_status_vibes_youtube_status_get" style="color:var(--cyan);font-size:0.78rem;text-decoration:none">&#x2699;&#xFE0F; Setup YouTube</a>' : ''}
+    </div>
+  `));
+
   // Backups panel
   panels.push(panel('BACKUPS', '', `
     <h2>System Backups</h2>

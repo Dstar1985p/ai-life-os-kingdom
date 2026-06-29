@@ -65,3 +65,17 @@ def auto_generate_lesson(source_type: str, source_id: int, db: Session) -> dict 
     db.refresh(lesson)
 
     return _lesson_to_dict(lesson)
+
+
+def create_lesson(db: Session, lesson: str, source: str, confidence_score: float = 70.0) -> dict:
+    """Create a new lesson directly."""
+    from backend.models.tables import Lesson as LessonModel
+    obj = LessonModel(
+        lesson=lesson,
+        source=source,
+        confidence_score=confidence_score,
+    )
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return _lesson_to_dict(obj)

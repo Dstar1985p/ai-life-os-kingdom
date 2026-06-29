@@ -20,6 +20,7 @@ _SCHEDULE = {
     "Lead Forge AI": {"hours": 24},
     "Opportunity Scout": {"hours": 4},
     "Watch Folder": {"seconds": 60},
+    "PulseBreak Track Processor": {"minutes": 5},
     "ROI Reaper": {"hours": 24},
     "Trend Watcher": {"hours": 4},
 }
@@ -73,6 +74,17 @@ def _run_watch_folder() -> None:
         db.close()
 
 
+def _run_pulsebreak_scan() -> None:
+    from backend.services.pulsebreak_watch import scan_and_process
+    db = SessionLocal()
+    try:
+        scan_and_process(db)
+    except Exception:
+        logger.exception("PulseBreak scan failed")
+    finally:
+        db.close()
+
+
 def start_scheduler() -> BackgroundScheduler:
     global _scheduler
     _scheduler = BackgroundScheduler(daemon=True)
@@ -83,6 +95,13 @@ def start_scheduler() -> BackgroundScheduler:
                 _run_watch_folder,
                 trigger=IntervalTrigger(**interval),
                 id="watch_folder",
+                replace_existing=True,
+            )
+        elif agent_name == "PulseBreak Track Processor":
+            _scheduler.add_job(
+                _run_pulsebreak_scan,
+                trigger=IntervalTrigger(**interval),
+                id="pulsebreak_watch",
                 replace_existing=True,
             )
         else:
@@ -119,6 +138,9 @@ def get_scheduler_status() -> list[dict]:
     for agent_name, interval in _SCHEDULE.items():
         if agent_name == "Watch Folder":
             job_id = "watch_folder"
+            agent_obj = None
+        elif agent_name == "PulseBreak Track Processor":
+            job_id = "pulsebreak_watch"
             agent_obj = None
         else:
             job_id = f"agent_{agent_name.lower().replace(' ', '_')}"
