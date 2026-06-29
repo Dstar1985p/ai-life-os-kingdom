@@ -26,6 +26,7 @@ from backend.api.routes_action_queue import router as action_queue_router
 from backend.api.routes_digest import router as digest_router
 from backend.api.routes_intelligence import router as intelligence_router
 from backend.api.routes_etsy import router as etsy_router
+from backend.api.routes_treasury import router as treasury_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -83,6 +84,7 @@ app.include_router(action_queue_router)
 app.include_router(digest_router)
 app.include_router(intelligence_router)
 app.include_router(etsy_router)
+app.include_router(treasury_router)
 
 
 @app.get("/", include_in_schema=False)

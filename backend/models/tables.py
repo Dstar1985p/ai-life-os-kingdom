@@ -193,3 +193,28 @@ class AgentRun(Base):
     revenue_generated_gbp: Mapped[float] = mapped_column(Float, default=0.0)
     roi: Mapped[float] = mapped_column(Float, default=0.0)
     run_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Achievement(Base):
+    __tablename__ = "achievements"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    key: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text)
+    unlocked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    unlocked: Mapped[bool] = mapped_column(Boolean, default=False)
+    category: Mapped[str] = mapped_column(String(50), default="Kingdom")
+
+
+class RevenueEntry(Base):
+    __tablename__ = "revenue_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    venture: Mapped[str] = mapped_column(String(120), index=True)  # "Pitwall Classics", "PulseBreak", "BVS Motors"
+    entry_type: Mapped[str] = mapped_column(String(50))  # "income" or "expense"
+    amount: Mapped[float] = mapped_column(Float)  # always positive; entry_type determines sign
+    description: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str] = mapped_column(String(120), default="General")  # "Sale", "Subscription", "Tool", "Ads", etc.
+    source: Mapped[str] = mapped_column(String(120), default="manual")  # "manual", "etsy_import", "auto"
+    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

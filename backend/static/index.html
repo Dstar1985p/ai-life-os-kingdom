@@ -851,7 +851,103 @@ async function loadDashboard() {
     </div>
   `));
 
+  // Kingdom Treasury panel
+  const treasury = await fetchJSON('/treasury?days=30');
+  if (treasury) {
+    const trendColor = treasury.cashflow_trend === 'growing' ? 'var(--green)' : treasury.cashflow_trend === 'declining' ? 'var(--red)' : 'var(--amber)';
+    const trendIcon = treasury.cashflow_trend === 'growing' ? '&#x25B2;' : treasury.cashflow_trend === 'declining' ? '&#x25BC;' : '&#x25CF;';
+    const netColor = treasury.kingdom_net_profit >= 0 ? 'var(--green)' : 'var(--red)';
+    const ventureCards = (treasury.ventures || []).map(v => {
+      const nc = v.net_profit >= 0 ? 'var(--green)' : 'var(--red)';
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:8px">
+        <div style="font-size:0.7rem;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:6px">${v.venture}</div>
+        <div class="metric"><span class="metric-label">Income</span><span style="color:var(--green)">&#xa3;${v.total_income.toFixed(2)}</span></div>
+        <div class="metric"><span class="metric-label">Expenses</span><span style="color:var(--red)">&#xa3;${v.total_expenses.toFixed(2)}</span></div>
+        <div class="metric"><span class="metric-label">Net Profit</span><span style="color:${nc};font-weight:bold">&#xa3;${v.net_profit.toFixed(2)}</span></div>
+      </div>`;
+    }).join('');
+    const addEntryForm = `
+      <div style="margin-top:12px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px">
+        <div style="font-size:0.7rem;letter-spacing:2px;color:var(--muted);margin-bottom:8px">ADD ENTRY</div>
+        <select id="t-venture" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
+          <option>Pitwall Classics</option><option>PulseBreak</option><option>BVS Motors</option>
+        </select>
+        <select id="t-type" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
+          <option value="income">Income</option><option value="expense">Expense</option>
+        </select>
+        <input id="t-amount" type="number" step="0.01" placeholder="Amount (£)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
+        <input id="t-desc" type="text" placeholder="Description" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
+        <input id="t-cat" type="text" placeholder="Category (e.g. Sale)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:6px;font-family:monospace;font-size:0.78rem">
+        <button onclick="(async()=>{const b={venture:document.getElementById('t-venture').value,entry_type:document.getElementById('t-type').value,amount:parseFloat(document.getElementById('t-amount').value)||0,description:document.getElementById('t-desc').value,category:document.getElementById('t-cat').value||'General'};const r=await fetch('/treasury/entry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();alert('Entry added: £'+d.amount+' ('+d.entry_type+')');loadDashboard();})()" class="quick-btn" style="width:100%">+ Add Entry</button>
+      </div>`;
+    panels.push(panel('KINGDOM TREASURY', treasury.kingdom_net_profit >= 0 ? 'green' : 'red', `
+      <h2>&#x1F4B0; Kingdom Treasury</h2>
+      <div class="metric"><span class="metric-label">Net Profit (30d)</span><span style="color:${netColor};font-size:1.1rem;font-weight:bold">&#xa3;${treasury.kingdom_net_profit.toFixed(2)}</span></div>
+      <div class="metric"><span class="metric-label">Total Income</span><span style="color:var(--green)">&#xa3;${treasury.kingdom_total_income.toFixed(2)}</span></div>
+      <div class="metric"><span class="metric-label">Total Expenses</span><span style="color:var(--red)">&#xa3;${treasury.kingdom_total_expenses.toFixed(2)}</span></div>
+      <div class="metric"><span class="metric-label">Cashflow Trend</span><span style="color:${trendColor}">${trendIcon} ${treasury.cashflow_trend.toUpperCase()}</span></div>
+      <div class="metric"><span class="metric-label">Top Venture</span><span style="color:var(--cyan)">${treasury.top_venture}</span></div>
+      ${ventureCards}
+      ${addEntryForm}
+    `));
+  }
+
+  // Decision Council panel
+  panels.push(panel('DECISION COUNCIL', 'cyan', `
+    <h2>&#x2696;&#xFE0F; Decision Council</h2>
+    <p style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">Convene 5 virtual advisors to analyse any proposal — no AI API calls, fully deterministic.</p>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <textarea id="council-proposal" placeholder="Enter your proposal..." rows="2" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);border-radius:4px;padding:6px 8px;font-family:inherit;font-size:0.8rem;resize:vertical;"></textarea>
+      <textarea id="council-context" placeholder="Optional context..." rows="1" style="background:var(--surface);border:1px solid var(--border);color:var(--fg);border-radius:4px;padding:6px 8px;font-family:inherit;font-size:0.8rem;resize:vertical;"></textarea>
+      <button onclick="conveneCouncil()" class="quick-btn" style="align-self:flex-start">&#x2696; Convene Council</button>
+    </div>
+    <div id="council-result" style="margin-top:12px"></div>
+  `));
+
   document.getElementById('panels').innerHTML = panels.join('');
+}
+
+function conveneCouncil() {
+  const proposal = document.getElementById('council-proposal').value.trim();
+  const context = document.getElementById('council-context').value.trim();
+  if (!proposal) { alert('Please enter a proposal.'); return; }
+  const resultEl = document.getElementById('council-result');
+  resultEl.innerHTML = '<span style="color:var(--muted)">&#x23F3; Convening council...</span>';
+  fetch('/council/convene', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({proposal, context})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { resultEl.innerHTML = `<span style="color:var(--red)">Error: ${data.error}</span>`; return; }
+    const verdictColour = data.verdict === 'PROCEED' ? 'var(--green)' : data.verdict === 'REJECT' ? 'var(--red)' : 'var(--amber)';
+    const verdictIcon = data.verdict === 'PROCEED' ? '&#x2705;' : data.verdict === 'REJECT' ? '&#x274C;' : '&#x26A0;';
+    const voteColour = v => v === 'for' ? 'var(--green)' : v === 'against' ? 'var(--red)' : 'var(--amber)';
+    const voteLabel = v => v === 'for' ? 'FOR' : v === 'against' ? 'AGAINST' : 'NEUTRAL';
+    const votesHtml = data.votes.map(v => `
+      <div style="border:1px solid var(--border);border-radius:4px;padding:6px 8px;margin-top:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:600;font-size:0.8rem">${v.agent_name}</span>
+          <span style="color:${voteColour(v.vote)};font-size:0.75rem;font-weight:700">${voteLabel(v.vote)}</span>
+        </div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:3px">${v.key_concern}</div>
+      </div>`).join('');
+    const minority = data.minority_report.length
+      ? `<div style="margin-top:8px;font-size:0.72rem;color:var(--amber)">&#x1F4CB; Minority: ${data.minority_report.map(m=>m.agent_name).join(', ')}</div>`
+      : '';
+    resultEl.innerHTML = `
+      <div style="background:${verdictColour}22;border:1px solid ${verdictColour};border-radius:6px;padding:8px 12px;text-align:center;font-weight:700;font-size:1rem;color:${verdictColour};margin-bottom:8px">
+        ${verdictIcon} ${data.verdict} &nbsp;&#xB7;&nbsp; <span style="font-size:0.8rem;font-weight:400">Confidence ${data.confidence}%</span>
+      </div>
+      <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-bottom:6px">
+        &#x1F7E2; ${data.for_count} for &nbsp;&#xB7;&nbsp; &#x1F534; ${data.against_count} against &nbsp;&#xB7;&nbsp; &#x1F7E1; ${data.neutral_count} neutral
+      </div>
+      ${votesHtml}
+      ${minority}
+    `;
+  })
+  .catch(err => { resultEl.innerHTML = `<span style="color:var(--red)">Network error: ${err}</span>`; });
 }
 
 // Auto-refresh every 60 seconds
