@@ -2,34 +2,26 @@ from sqlalchemy.orm import Session
 from backend.models.tables import Lesson, Quest, Decision, Assumption
 
 
+def _lesson_to_dict(lesson: Lesson) -> dict:
+    return {
+        "id": lesson.id,
+        "lesson": lesson.lesson,
+        "source": lesson.source,
+        "confidence_score": lesson.confidence_score,
+        "created_at": lesson.created_at.isoformat() if lesson.created_at else None,
+    }
+
+
 def get_lessons(db: Session) -> list:
     lessons = db.query(Lesson).order_by(Lesson.created_at.desc()).all()
-    return [
-        {
-            "id": l.id,
-            "lesson": l.lesson,
-            "source": l.source,
-            "confidence_score": l.confidence_score,
-            "created_at": l.created_at.isoformat() if l.created_at else None,
-        }
-        for l in lessons
-    ]
+    return [_lesson_to_dict(lesson) for lesson in lessons]
 
 
 def search_lessons(q: str, db: Session) -> list:
     lessons = db.query(Lesson).filter(
         Lesson.lesson.contains(q)
     ).order_by(Lesson.created_at.desc()).all()
-    return [
-        {
-            "id": l.id,
-            "lesson": l.lesson,
-            "source": l.source,
-            "confidence_score": l.confidence_score,
-            "created_at": l.created_at.isoformat() if l.created_at else None,
-        }
-        for l in lessons
-    ]
+    return [_lesson_to_dict(lesson) for lesson in lessons]
 
 
 def auto_generate_lesson(source_type: str, source_id: int, db: Session) -> dict | None:
@@ -72,9 +64,4 @@ def auto_generate_lesson(source_type: str, source_id: int, db: Session) -> dict 
     db.commit()
     db.refresh(lesson)
 
-    return {
-        "id": lesson.id,
-        "lesson": lesson.lesson,
-        "source": lesson.source,
-        "confidence_score": lesson.confidence_score,
-    }
+    return _lesson_to_dict(lesson)

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdom — AI Life OS Command Centre</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111318;
+    --border: #1e2530;
+    --green: #00ff88;
+    --cyan: #00d4ff;
+    --amber: #ffaa00;
+    --red: #ff3355;
+    --text: #c8d4e0;
+    --muted: #4a5568;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  header {
+    text-align: center;
+    padding: 20px 0 30px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  header h1 {
+    font-size: 2rem;
+    color: var(--cyan);
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    letter-spacing: 4px;
+  }
+  header p {
+    color: var(--muted);
+    margin-top: 6px;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+  }
+  .panel.amber::before { background: linear-gradient(90deg, var(--amber), var(--red)); }
+  .panel.green::before { background: linear-gradient(90deg, var(--green), var(--cyan)); }
+  .panel-title {
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .panel h2 {
+    font-size: 1.1rem;
+    color: var(--cyan);
+    margin-bottom: 16px;
+  }
+  .metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  .metric:last-child { border-bottom: none; }
+  .metric-label { color: var(--muted); }
+  .metric-value { color: var(--text); font-weight: bold; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .badge.green { background: rgba(0, 255, 136, 0.15); color: var(--green); border: 1px solid var(--green); }
+  .badge.amber { background: rgba(255, 170, 0, 0.15); color: var(--amber); border: 1px solid var(--amber); }
+  .badge.red { background: rgba(255, 51, 85, 0.15); color: var(--red); border: 1px solid var(--red); }
+  .score-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 8px 0;
+    overflow: hidden;
+  }
+  .score-fill { height: 100%; background: var(--green); transition: width 0.8s ease; border-radius: 2px; }
+  .modules-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .module-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+  .module-card h3 { color: var(--green); font-size: 0.9rem; margin-bottom: 8px; letter-spacing: 1px; }
+  .module-card p { color: var(--muted); font-size: 0.75rem; }
+  #loading { text-align: center; color: var(--muted); padding: 40px; font-size: 0.9rem; letter-spacing: 2px; }
+  .list-item {
+    padding: 6px 0;
+    font-size: 0.82rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .list-item:last-child { border-bottom: none; }
+  .error-msg { color: var(--red); font-size: 0.8rem; }
+  .last-updated { color: var(--muted); font-size: 0.7rem; margin-top: 12px; text-align: right; }
+</style>
+</head>
+<body>
+<header>
+  <h1>KINGDOM</h1>
+  <p>AI LIFE OS — COMMAND CENTRE v1.1</p>
+</header>
+
+<div class="modules-grid">
+  <div class="module-card">
+    <h3>PITWALL CLASSICS</h3>
+    <p>Motorsport print products</p>
+  </div>
+  <div class="module-card">
+    <h3>PULSEBREAK</h3>
+    <p>Focus & recovery tools</p>
+  </div>
+  <div class="module-card">
+    <h3>BVS MOTORS</h3>
+    <p>Automotive content</p>
+  </div>
+  <div class="module-card">
+    <h3>FUTURE VENTURES</h3>
+    <p>Pipeline opportunities</p>
+  </div>
+</div>
+
+<div class="grid" id="panels">
+  <div id="loading">LOADING COMMAND CENTRE...</div>
+</div>
+
+<script>
+const API = '';
+
+async function fetchJSON(path) {
+  try {
+    const r = await fetch(API + path);
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  } catch(e) {
+    return null;
+  }
+}
+
+function badge(status) {
+  return `<span class="badge ${status}">${status.toUpperCase()}</span>`;
+}
+
+function scoreBar(score) {
+  const color = score >= 70 ? '#00ff88' : score >= 40 ? '#ffaa00' : '#ff3355';
+  return `<div class="score-bar"><div class="score-fill" style="width:${score}%;background:${color}"></div></div>`;
+}
+
+function panel(title, colorClass, inner) {
+  return `<div class="panel ${colorClass}">
+    <div class="panel-title">${title}</div>
+    ${inner}
+    <div class="last-updated">Updated: ${new Date().toLocaleTimeString()}</div>
+  </div>`;
+}
+
+async function loadDashboard() {
+  const [brief, health, leaderboard, lessons, recon, agentEcon] = await Promise.all([
+    fetchJSON('/brief/morning'),
+    fetchJSON('/kingdom/health'),
+    fetchJSON('/leaderboard/opportunities'),
+    fetchJSON('/lessons'),
+    fetchJSON('/revenue-recon'),
+    fetchJSON('/agent-economics/dashboard'),
+  ]);
+
+  const panels = [];
+
+  // Executive Dashboard
+  if (brief) {
+    const ks = brief.kingdom_health_status || 'amber';
+    const todayItems = (brief.do_today || []).map(q => `<div class="list-item">▸ ${q.title}</div>`).join('') || '<div class="list-item">No quests today</div>';
+    panels.push(panel('EXECUTIVE DASHBOARD', ks, `
+      <h2>Daily Brief</h2>
+      <div class="metric"><span class="metric-label">Kingdom Health</span><span>${badge(ks)} ${brief.kingdom_health || '—'}</span></div>
+      <div class="metric"><span class="metric-label">Founder Capacity</span><span>${brief.founder_capacity || '—'}%</span></div>
+      <div class="metric"><span class="metric-label">Decision Accuracy</span><span>${((brief.decision_accuracy||0)*100).toFixed(0)}%</span></div>
+      <div class="metric"><span class="metric-label">Top Assumption Risk</span><span style="color:var(--amber);font-size:0.8rem">${(brief.assumption_risk||'').slice(0,40)}</span></div>
+      <div style="margin-top:12px;font-size:0.75rem;color:var(--muted)">DO TODAY:</div>
+      ${todayItems}
+    `));
+  }
+
+  // Revenue Intelligence
+  const revenueData = await fetchJSON('/revenue/insights');
+  if (revenueData) {
+    panels.push(panel('REVENUE INTELLIGENCE', 'green', `
+      <h2>Revenue Insights</h2>
+      <div class="metric"><span class="metric-label">Top Theme</span><span class="metric-value">${revenueData.top_theme||'—'}</span></div>
+      <div class="metric"><span class="metric-label">Top Category</span><span class="metric-value">${revenueData.top_category||'—'}</span></div>
+      <div class="metric"><span class="metric-label">Total Revenue Est.</span><span class="metric-value">£${(revenueData.total_estimated_revenue||0).toFixed(2)}</span></div>
+      <div class="metric"><span class="metric-label">Concentration</span><span class="metric-value">${revenueData.concentration_pct||0}%</span></div>
+      <div class="metric"><span class="metric-label">Confidence</span><span class="metric-value">${revenueData.confidence||0}%</span></div>
+      <div style="margin-top:12px;font-size:0.8rem;color:var(--cyan)">▸ ${revenueData.recommended_next_product||'Validate demand first'}</div>
+    `));
+  }
+
+  // Recommendations (recon)
+  if (recon && recon.length > 0) {
+    const items = recon.slice(0, 4).map(r => `
+      <div class="metric">
+        <span class="metric-label">${r.title.slice(0,28)}</span>
+        <span>${badge(r.traffic_light_status)} ${r.kingdom_score}</span>
+      </div>`).join('');
+    panels.push(panel('RECOMMENDATIONS', '', `<h2>Revenue Recon</h2>${items}`));
+  }
+
+  // Opportunity Leaderboard
+  if (leaderboard && leaderboard.length > 0) {
+    const items = leaderboard.slice(0, 5).map((o, i) => `
+      <div class="metric">
+        <span class="metric-label">${i+1}. ${o.title.slice(0,25)}</span>
+        <span>${scoreBar(o.kingdom_score)} ${o.kingdom_score}</span>
+      </div>`).join('');
+    panels.push(panel('OPPORTUNITY LEADERBOARD', 'green', `<h2>Top Opportunities</h2>${items}`));
+  }
+
+  // Business Memory (Lessons)
+  if (lessons && lessons.length > 0) {
+    const items = lessons.slice(0, 4).map(l => `<div class="list-item">${l.lesson.slice(0,80)}${l.lesson.length>80?'...':''}</div>`).join('');
+    panels.push(panel('BUSINESS MEMORY', '', `<h2>Lessons Learned</h2>${items}`));
+  } else {
+    panels.push(panel('BUSINESS MEMORY', '', `<h2>Lessons Learned</h2><div class="list-item" style="color:var(--muted)">No lessons recorded yet</div>`));
+  }
+
+  // Diagnostics (Kingdom Health)
+  if (health) {
+    const kh = health.kingdom_health || {};
+    const fc = health.founder_capacity || {};
+    panels.push(panel('DIAGNOSTICS', kh.status||'', `
+      <h2>Kingdom Health</h2>
+      <div class="metric"><span class="metric-label">Health Score</span><span>${badge(kh.status||'amber')} ${kh.score||0}/100</span></div>
+      ${scoreBar(kh.score||0)}
+      <div class="metric"><span class="metric-label">Active Quests</span><span class="metric-value">${kh.active_quests||0}</span></div>
+      <div class="metric"><span class="metric-label">Unverified Assumptions</span><span class="metric-value">${kh.unverified_assumptions||0}</span></div>
+      <div class="metric"><span class="metric-label">Founder Capacity</span><span>${badge(fc.status||'amber')} ${fc.score||0}%</span></div>
+    `));
+  }
+
+  // Agent Economics (v1.2)
+  if (agentEcon) {
+    const agents = (agentEcon.agents || []).slice(0, 4);
+    const agentRows = agents.map(a => `
+      <div class="metric">
+        <span class="metric-label">${a.agent_name}</span>
+        <span>${badge(a.cost_status)} ROI: ${a.roi}x</span>
+      </div>`).join('') || '<div class="list-item" style="color:var(--muted)">No agent runs yet</div>';
+    panels.push(panel('AGENT ECONOMICS', agentEcon.overall_cost_status||'amber', `
+      <h2>AI Cost & ROI</h2>
+      <div class="metric"><span class="metric-label">Total Cost</span><span class="metric-value">£${(agentEcon.total_cost_gbp||0).toFixed(4)}</span></div>
+      <div class="metric"><span class="metric-label">Total Revenue</span><span class="metric-value">£${(agentEcon.total_revenue_gbp||0).toFixed(2)}</span></div>
+      <div class="metric"><span class="metric-label">Overall ROI</span><span class="metric-value">${agentEcon.overall_roi||0}x</span></div>
+      ${agentRows}
+    `));
+  }
+
+  // Backups panel
+  panels.push(panel('BACKUPS', '', `
+    <h2>System Backups</h2>
+    <div class="metric"><span class="metric-label">Status</span><span>${badge('green')} OK</span></div>
+    <div class="metric"><span class="metric-label">Last Backup</span><span class="metric-value">Manual</span></div>
+    <div style="margin-top:12px">
+      <a href="/backup/list" style="color:var(--cyan);font-size:0.8rem;text-decoration:none">View Backups →</a>
+    </div>
+  `));
+
+  document.getElementById('panels').innerHTML = panels.join('');
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

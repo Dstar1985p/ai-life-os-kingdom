@@ -1,6 +1,5 @@
 import csv
 import io
-from datetime import datetime
 from sqlalchemy.orm import Session
 from backend.models.tables import EtsyOrder, EtsyListing
 

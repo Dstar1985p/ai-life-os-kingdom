@@ -33,7 +33,7 @@ def get_revenue_insights(db: Session) -> dict:
     # Recommended next product
     listings = db.query(EtsyListing).all()
     if listings:
-        avg_price = sum(l.price for l in listings) / len(listings)
+        avg_price = sum(listing.price for listing in listings) / len(listings)
         recommended = f"Create a new listing in {top_category} at ~£{avg_price:.0f}"
     else:
         recommended = f"Validate demand in {top_category} with a test listing"
