@@ -45,9 +45,8 @@ TRUST_QUEST_COMPLETE = 1.0
 TRUST_QUEST_FAIL = -3.0
 
 AGENT_SKILLS: dict[str, list[str]] = {
-    "Print Forge AI": ["artwork_generation", "seo", "bundle_creation", "trend_hunting", "listing_optimisation"],
+    "Print Forge AI": ["artwork_generation", "seo", "pod_concepts", "printify_integration", "listing_optimisation"],
     "Vibes AI": ["prompt_engineering", "music_theory", "release_scheduling", "audience_growth", "content_creation"],
-    "Lead Forge AI": ["lead_generation", "copywriting", "market_research", "email_campaigns", "crm"],
     "Opportunity Scout": ["market_analysis", "trend_hunting", "risk_assessment", "competitor_research", "niche_discovery"],
     "Knowledge Keeper": ["data_organisation", "pattern_recognition", "lesson_extraction", "contradiction_detection"],
     "Chief of Staff": ["prioritisation", "capacity_planning", "focus_protection", "briefing"],

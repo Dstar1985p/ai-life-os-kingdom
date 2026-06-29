@@ -50,8 +50,8 @@ def _infer_venture(category: str, guild: str = "") -> str:
         return "PulseBreak"
     if "etsy" in combined or "print" in combined or "craft" in combined:
         return "Etsy"
-    if "bvs" in combined or "motors" in combined or "garage" in combined:
-        return "BVS Motors"
+    if "printify" in combined or "pod" in combined or "print-on-demand" in combined:
+        return "Printify Studio"
     if "kingdom" in combined or "ai" in combined or "agent" in combined:
         return "Kingdom OS"
     return category or guild or "Kingdom"

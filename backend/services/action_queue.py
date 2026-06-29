@@ -107,8 +107,8 @@ def _infer_action_type(source: str, category: str) -> str:
         return "publish_listing"
     if "vibes" in source or "music" in category or "dnb" in category:
         return "produce_track"
-    if "lead_forge" in source or "bvs" in category:
-        return "send_email"
+    if "printify_pod" in source or "print-on-demand" in category:
+        return "publish_listing"
     if "trend" in source:
         return "explore"
     return "review"

@@ -73,7 +73,7 @@ def test_add_income_entry():
 
 def test_add_expense_entry():
     db = get_session()
-    entry = add_entry("BVS Motors", "expense", 80.00, "Tools purchase", "Tool", "manual", db)
+    entry = add_entry("Printify Studio", "expense", 80.00, "Tools purchase", "Tool", "manual", db)
     assert entry.entry_type == "expense"
     assert entry.amount == 80.00
     assert entry.category == "Tool"
@@ -101,7 +101,7 @@ def test_venture_summary_net_profit():
 
 def test_venture_summary_keys():
     db = get_session()
-    summary = get_venture_summary("BVS Motors", db)
+    summary = get_venture_summary("Printify Studio", db)
     for key in ("venture", "period_days", "total_income", "total_expenses", "net_profit", "entries_count", "by_category"):
         assert key in summary
     db.close()
@@ -131,7 +131,7 @@ def test_kingdom_treasury_shows_all_ventures():
     venture_names = [v["venture"] for v in result["ventures"]]
     assert "Pitwall Classics" in venture_names
     assert "PulseBreak" in venture_names
-    assert "BVS Motors" in venture_names
+    assert "Printify Studio" in venture_names
     db.close()
 
 
@@ -139,7 +139,7 @@ def test_kingdom_treasury_totals():
     db = get_session()
     add_entry("Pitwall Classics", "income", 100.0, "", "Sale", "manual", db)
     add_entry("PulseBreak", "income", 200.0, "", "Sale", "manual", db)
-    add_entry("BVS Motors", "expense", 50.0, "", "Tool", "manual", db)
+    add_entry("Printify Studio", "expense", 50.0, "", "Tool", "manual", db)
     result = get_kingdom_treasury(db)
     assert result["kingdom_total_income"] == 300.0
     assert result["kingdom_total_expenses"] == 50.0
@@ -185,7 +185,7 @@ def test_get_recent_entries_all():
 def test_get_recent_entries_filtered_by_venture():
     db = get_session()
     add_entry("Pitwall Classics", "income", 10.0, "", "Sale", "manual", db)
-    add_entry("BVS Motors", "expense", 5.0, "", "Tool", "manual", db)
+    add_entry("Printify Studio", "expense", 5.0, "", "Tool", "manual", db)
     entries = get_recent_entries(db, venture="Pitwall Classics")
     assert all(e.venture == "Pitwall Classics" for e in entries)
     db.close()
@@ -227,7 +227,7 @@ def test_api_get_venture_summary_keys():
 
 def test_api_post_entry_200():
     payload = {
-        "venture": "BVS Motors",
+        "venture": "Printify Studio",
         "entry_type": "income",
         "amount": 150.0,
         "description": "MOT service",
@@ -237,7 +237,7 @@ def test_api_post_entry_200():
     assert r.status_code == 200
     data = r.json()
     assert data["amount"] == 150.0
-    assert data["venture"] == "BVS Motors"
+    assert data["venture"] == "Printify Studio"
 
 
 def test_api_get_entries_200():

@@ -45,7 +45,7 @@ def kingdom_map(db: Session = Depends(get_db)):
     # Per-district data
     pitwall = _district_health_from_opps(opps, "Pitwall")
     music = _district_health_from_opps(opps, "Music")
-    bvs = _district_health_from_opps(opps, "BVS Motors")
+    printify = _district_health_from_opps(opps, "Print-on-Demand")
     venture = _district_health_from_opps(opps, "Venture")
 
     # Agent run stats
@@ -110,18 +110,18 @@ def kingdom_map(db: Session = Depends(get_db)):
             },
         },
         {
-            "id": "bvs_garage",
-            "name": "BVS Garage",
-            "emoji": "🔧",
-            "description": "Lead Forge AI — BVS Motors",
-            "health_score": bvs["score"],
-            "glow_colour": bvs["glow"],
+            "id": "printify_studio",
+            "name": "Printify Studio",
+            "emoji": "🖨️",
+            "description": "PrintifyAgent — POD concepts for Pitwall Classics",
+            "health_score": printify["score"],
+            "glow_colour": printify["glow"],
             "active_agents": 1,
             "revenue": 0.0,
-            "top_action": f"{bvs['count']} lead targets",
+            "top_action": f"{printify['count']} POD concepts",
             "stats": {
-                "opportunities": bvs["count"],
-                "avg_kingdom_score": bvs["score"],
+                "opportunities": printify["count"],
+                "avg_kingdom_score": printify["score"],
             },
         },
         {

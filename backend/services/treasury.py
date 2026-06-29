@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from backend.models.tables import RevenueEntry
 
-VENTURES = ["Pitwall Classics", "PulseBreak", "BVS Motors"]
+VENTURES = ["Pitwall Classics", "PulseBreak", "Printify Studio"]
 
 
 def add_entry(

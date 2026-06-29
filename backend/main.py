@@ -26,6 +26,7 @@ from backend.api.routes_action_queue import router as action_queue_router
 from backend.api.routes_digest import router as digest_router
 from backend.api.routes_intelligence import router as intelligence_router
 from backend.api.routes_etsy import router as etsy_router
+from backend.api.routes_printify import router as printify_router
 from backend.api.routes_treasury import router as treasury_router
 from backend.api.routes_sprint import router as sprint_router
 from backend.api.routes_log import router as log_router
@@ -89,6 +90,7 @@ app.include_router(action_queue_router)
 app.include_router(digest_router)
 app.include_router(intelligence_router)
 app.include_router(etsy_router)
+app.include_router(printify_router)
 app.include_router(treasury_router)
 app.include_router(sprint_router)
 app.include_router(log_router)

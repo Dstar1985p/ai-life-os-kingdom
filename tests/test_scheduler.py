@@ -40,7 +40,7 @@ def test_scheduler_status_lists_all_agents():
     names = {a["name"] for a in data["agents"]}
     assert "Print Forge AI" in names
     assert "Vibes AI" in names
-    assert "Lead Forge AI" in names
+    assert "Printify Studio" in names
     assert "Opportunity Scout" in names
     assert "Watch Folder" in names
 
@@ -60,8 +60,8 @@ def test_scheduler_run_vibes_ai():
     assert data["status"] == "ok"
 
 
-def test_scheduler_run_lead_forge():
-    r = client.post("/scheduler/run/Lead Forge AI")
+def test_scheduler_run_printify_studio():
+    r = client.post("/scheduler/run/Printify Studio")
     assert r.status_code == 200
     data = r.json()
     assert data["status"] == "ok"

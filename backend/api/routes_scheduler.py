@@ -5,9 +5,9 @@ from fastapi import APIRouter, HTTPException
 
 router = APIRouter(tags=["Scheduler"])
 
-_VALID_AGENTS = {"Print Forge AI", "Vibes AI", "Lead Forge AI", "Opportunity Scout", "Watch Folder"}
+_VALID_AGENTS = {"Print Forge AI", "Vibes AI", "Printify Studio", "Opportunity Scout", "Watch Folder"}
 
-_REVENUE_AGENTS = {"Print Forge AI", "Vibes AI", "Lead Forge AI", "Opportunity Scout"}
+_REVENUE_AGENTS = {"Print Forge AI", "Vibes AI", "Printify Studio", "Opportunity Scout"}
 
 
 @router.get("/scheduler/status")
@@ -46,14 +46,14 @@ def agent_status(agent_name: str):
 
     from backend.agents.print_forge import PrintForgeAgent
     from backend.agents.vibes_ai import VibesAIAgent
-    from backend.agents.lead_forge import LeadForgeAgent
+    from backend.agents.lead_forge import PrintifyAgent
     from backend.agents.opportunity_scout import OpportunityScoutAgent
     from backend.database import SessionLocal
 
     registry = {
         "Print Forge AI": PrintForgeAgent(),
         "Vibes AI": VibesAIAgent(),
-        "Lead Forge AI": LeadForgeAgent(),
+        "Printify Studio": PrintifyAgent(),
         "Opportunity Scout": OpportunityScoutAgent(),
     }
     agent = registry[agent_name]

@@ -26,7 +26,7 @@ _EXPECTED_DISTRICTS = {
     "command_tower",
     "pitwall_workshop",
     "pulsebreak_arena",
-    "bvs_garage",
+    "printify_studio",
     "venture_lab",
     "knowledge_vault",
 }

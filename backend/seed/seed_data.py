@@ -50,15 +50,6 @@ AGENTS_TO_SEED = [
         "skills": {"prompt_engineering": 12, "music_theory": 9, "release_scheduling": 7, "audience_growth": 8, "content_creation": 10},
     },
     {
-        "name": "Lead Forge AI",
-        "role": "BVS Motors Lead Gen",
-        "guild": "Revenue",
-        "trust_score": 55,
-        "reputation_score": 58,
-        "specialisation": "B2B Sales",
-        "skills": {"lead_generation": 11, "copywriting": 10, "market_research": 9, "email_campaigns": 8, "crm": 7},
-    },
-    {
         "name": "Opportunity Scout",
         "role": "Market Research",
         "guild": "Intelligence",

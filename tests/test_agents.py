@@ -7,7 +7,7 @@ from backend.database import Base
 from backend.models.tables import Opportunity, Lesson, AgentRun
 from backend.agents.print_forge import PrintForgeAgent
 from backend.agents.vibes_ai import VibesAIAgent
-from backend.agents.lead_forge import LeadForgeAgent
+from backend.agents.lead_forge import PrintifyAgent
 from backend.agents.opportunity_scout import OpportunityScoutAgent
 
 TEST_DB = "sqlite:///:memory:"
@@ -106,43 +106,47 @@ def test_vibes_ai_idempotent(db):
     assert count_1 == count_2
 
 
-# ── Lead Forge ───────────────────────────────────────────────────────────────
+# ── Printify Agent ───────────────────────────────────────────────────────────
 
-def test_lead_forge_creates_opportunities(db):
-    agent = LeadForgeAgent()
+def test_printify_creates_opportunities(db):
+    agent = PrintifyAgent()
     result = agent.run(db)
     assert result.status == "ok"
-    opps = db.query(Opportunity).filter(Opportunity.source == "lead_forge_ai").all()
+    opps = db.query(Opportunity).filter(Opportunity.source == "printify_pod").all()
     assert len(opps) > 0
 
 
-def test_lead_forge_creates_lesson(db):
-    agent = LeadForgeAgent()
+def test_printify_creates_lesson(db):
+    agent = PrintifyAgent()
     agent.run(db)
-    lessons = db.query(Lesson).filter(Lesson.source.like("agent:Lead Forge AI")).all()
+    lessons = db.query(Lesson).filter(Lesson.source.like("agent:Print Forge AI")).all()
     assert len(lessons) > 0
 
 
-def test_lead_forge_records_run(db):
-    agent = LeadForgeAgent()
+def test_printify_records_run(db):
+    agent = PrintifyAgent()
     agent.run(db)
-    runs = db.query(AgentRun).filter(AgentRun.agent_name == "Lead Forge AI").all()
+    runs = db.query(AgentRun).filter(AgentRun.agent_name == "Print Forge AI").all()
     assert len(runs) == 1
 
 
-def test_lead_forge_bvs_category(db):
-    agent = LeadForgeAgent()
+def test_printify_pod_category(db):
+    agent = PrintifyAgent()
     agent.run(db)
-    opps = db.query(Opportunity).filter(Opportunity.source == "lead_forge_ai").all()
-    assert all("BVS" in o.category for o in opps)
+    opps = db.query(Opportunity).filter(Opportunity.source == "printify_pod").all()
+    assert all(o.category == "Print-on-Demand" for o in opps)
 
 
-def test_lead_forge_has_email_drafts(db):
-    agent = LeadForgeAgent()
+def test_printify_concepts_have_evidence(db):
+    agent = PrintifyAgent()
     agent.run(db)
-    opps = db.query(Opportunity).filter(Opportunity.source == "lead_forge_ai").all()
+    opps = db.query(Opportunity).filter(Opportunity.source == "printify_pod").all()
+    import json
     for opp in opps:
-        assert "Email" in opp.evidence or "Subject:" in opp.evidence
+        ev = json.loads(opp.evidence)
+        assert "title" in ev
+        assert "product_type" in ev
+        assert "printify_blueprint" in ev
 
 
 # ── Opportunity Scout ─────────────────────────────────────────────────────────
@@ -233,15 +237,18 @@ def test_vibes_second_run_zero_new(db):
     assert count_before == count_after
 
 
-def test_lead_forge_second_run_zero_new(db):
-    """Second run of LeadForge produces 0 new opportunities."""
-    agent = LeadForgeAgent()
+def test_printify_second_run_zero_new(db):
+    """Second run of PrintifyAgent with same concepts produces 0 new opportunities."""
+    import backend.agents.lead_forge as lf_mod
+    lf_mod._concept_index = 0  # reset to ensure same 4 concepts
+    agent = PrintifyAgent()
     result_1 = agent.run(db)
     assert result_1.opportunities_created > 0
 
-    count_before = db.query(Opportunity).filter(Opportunity.source == "lead_forge_ai").count()
+    lf_mod._concept_index = 0  # reset again for same batch
+    count_before = db.query(Opportunity).filter(Opportunity.source == "printify_pod").count()
     r2 = agent.run(db)
-    count_after = db.query(Opportunity).filter(Opportunity.source == "lead_forge_ai").count()
+    count_after = db.query(Opportunity).filter(Opportunity.source == "printify_pod").count()
 
     assert r2.opportunities_created == 0
     assert count_before == count_after
