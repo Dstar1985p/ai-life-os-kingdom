@@ -5,163 +5,507 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kingdom — AI Life OS Command Centre</title>
 <style>
-  :root {
-    --bg: #0a0a0a;
-    --surface: #111318;
-    --border: #1e2530;
-    --green: #00ff88;
-    --cyan: #00d4ff;
-    --amber: #ffaa00;
-    --red: #ff3355;
-    --text: #c8d4e0;
-    --muted: #4a5568;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Courier New', monospace;
-    min-height: 100vh;
-    padding: 20px;
-  }
-  header {
-    text-align: center;
-    padding: 20px 0 30px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 24px;
-  }
-  header h1 {
-    font-size: 2rem;
-    color: var(--cyan);
-    text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
-    letter-spacing: 4px;
-  }
-  header p {
-    color: var(--muted);
-    margin-top: 6px;
-    font-size: 0.85rem;
-    letter-spacing: 2px;
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-  }
-  .panel::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--cyan), var(--green));
-  }
-  .panel.amber::before { background: linear-gradient(90deg, var(--amber), var(--red)); }
-  .panel.green::before { background: linear-gradient(90deg, var(--green), var(--cyan)); }
-  .panel-title {
-    font-size: 0.7rem;
-    letter-spacing: 3px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-  .panel h2 {
-    font-size: 1.1rem;
-    color: var(--cyan);
-    margin-bottom: 16px;
-  }
-  .metric {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.85rem;
-  }
-  .metric:last-child { border-bottom: none; }
-  .metric-label { color: var(--muted); }
-  .metric-value { color: var(--text); font-weight: bold; }
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-  .badge.green { background: rgba(0, 255, 136, 0.15); color: var(--green); border: 1px solid var(--green); }
-  .badge.amber { background: rgba(255, 170, 0, 0.15); color: var(--amber); border: 1px solid var(--amber); }
-  .badge.red { background: rgba(255, 51, 85, 0.15); color: var(--red); border: 1px solid var(--red); }
-  .score-bar {
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    margin: 8px 0;
-    overflow: hidden;
-  }
-  .score-fill { height: 100%; background: var(--green); transition: width 0.8s ease; border-radius: 2px; }
-  .modules-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 24px;
-  }
-  .module-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    text-align: center;
-  }
-  .module-card h3 { color: var(--green); font-size: 0.9rem; margin-bottom: 8px; letter-spacing: 1px; }
-  .module-card p { color: var(--muted); font-size: 0.75rem; }
-  #loading { text-align: center; color: var(--muted); padding: 40px; font-size: 0.9rem; letter-spacing: 2px; }
-  .list-item {
-    padding: 6px 0;
-    font-size: 0.82rem;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-  }
-  .list-item:last-child { border-bottom: none; }
-  .error-msg { color: var(--red); font-size: 0.8rem; }
-  .last-updated { color: var(--muted); font-size: 0.7rem; margin-top: 12px; text-align: right; }
+:root {
+  --bg: #070a10;
+  --surface: #0d1117;
+  --surface2: #111827;
+  --border: #1a2332;
+  --green: #00ff88;
+  --cyan: #00d4ff;
+  --amber: #ffaa00;
+  --red: #ff3355;
+  --purple: #b388ff;
+  --text: #c8d4e0;
+  --muted: #4a5568;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', monospace;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  text-align: center;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #0d1117 0%, var(--bg) 100%);
+  position: relative;
+  overflow: hidden;
+}
+header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center top, rgba(0,212,255,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+header h1 {
+  font-size: 2.2rem;
+  color: var(--cyan);
+  text-shadow: 0 0 30px rgba(0,212,255,0.7), 0 0 60px rgba(0,212,255,0.3);
+  letter-spacing: 8px;
+}
+header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spacing: 3px; }
+
+/* ── RESOURCES BAR ── */
+.resources-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.resource-item {
+  flex: 1;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-right: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s;
+}
+.resource-item:last-child { border-right: none; }
+.resource-item:hover { background: var(--surface2); }
+.resource-emoji { font-size: 1.2rem; }
+.resource-info { display: flex; flex-direction: column; }
+.resource-label { font-size: 0.6rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+.resource-value { font-size: 1rem; font-weight: bold; color: var(--cyan); }
+.resource-item.gold .resource-value { color: var(--amber); }
+.resource-item.knowledge .resource-value { color: var(--purple); }
+.resource-item.focus .resource-value { color: var(--green); }
+.resource-item.stability .resource-value { color: var(--cyan); }
+
+/* ── MAIN LAYOUT ── */
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  min-height: calc(100vh - 120px);
+}
+
+/* ── KINGDOM MAP ── */
+.kingdom-map-section {
+  padding: 20px;
+  border-right: 1px solid var(--border);
+}
+.kingdom-map-section h2 {
+  font-size: 0.7rem;
+  letter-spacing: 4px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.kingdom-map {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  position: relative;
+  min-height: 420px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: 12px;
+  overflow: hidden;
+}
+.kingdom-map::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0,212,255,0.04) 0%, transparent 60%),
+    repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(0,212,255,0.015) 40px, rgba(0,212,255,0.015) 41px),
+    repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,212,255,0.015) 40px, rgba(0,212,255,0.015) 41px);
+  pointer-events: none;
+  border-radius: 12px;
+}
+
+/* ── DISTRICT CARDS ── */
+.district {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.3s;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.district:hover { transform: translateY(-2px); }
+.district.command { grid-column: 2; grid-row: 2; }
+.district.pitwall { grid-column: 1; grid-row: 2; }
+.district.pulsebreak { grid-column: 1; grid-row: 1; }
+.district.bvs { grid-column: 3; grid-row: 2; }
+.district.venture { grid-column: 3; grid-row: 1; }
+.district.knowledge { grid-column: 2; grid-row: 3; }
+
+/* Glow colours */
+.district.glow-green {
+  border-color: rgba(0,255,136,0.4);
+  box-shadow: 0 0 16px rgba(0,255,136,0.15), inset 0 0 20px rgba(0,255,136,0.04);
+}
+.district.glow-amber {
+  border-color: rgba(255,170,0,0.4);
+  box-shadow: 0 0 16px rgba(255,170,0,0.15), inset 0 0 20px rgba(255,170,0,0.04);
+}
+.district.glow-red {
+  border-color: rgba(255,51,85,0.4);
+  box-shadow: 0 0 16px rgba(255,51,85,0.15), inset 0 0 20px rgba(255,51,85,0.04);
+}
+
+.district-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+.district-name {
+  font-size: 0.65rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: bold;
+  color: var(--text);
+}
+.district-desc {
+  font-size: 0.6rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.district-action {
+  font-size: 0.6rem;
+  color: var(--cyan);
+  margin-top: auto;
+}
+.district.glow-amber .district-action { color: var(--amber); }
+.district.glow-red .district-action { color: var(--red); }
+
+/* Pulse animation on active districts */
+.district-pulse {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.district.glow-amber .district-pulse { background: var(--amber); }
+.district.glow-red .district-pulse { background: var(--red); }
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px currentColor; }
+  50% { opacity: 0.4; box-shadow: 0 0 12px currentColor; }
+}
+.district-pulse { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* Worker dots */
+.workers {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.worker-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+  opacity: 0.7;
+  animation: worker-move 3s ease-in-out infinite;
+}
+.worker-dot:nth-child(2) { animation-delay: 0.5s; background: var(--cyan); }
+.worker-dot:nth-child(3) { animation-delay: 1s; background: var(--purple); }
+.district.glow-amber .worker-dot { background: var(--amber); }
+.district.glow-red .worker-dot { background: var(--red); }
+
+@keyframes worker-move {
+  0%, 100% { transform: translateX(0) translateY(0); opacity: 0.7; }
+  25% { transform: translateX(3px) translateY(-2px); opacity: 1; }
+  75% { transform: translateX(-3px) translateY(2px); opacity: 0.5; }
+}
+
+/* ── DISTRICT DETAIL PANEL ── */
+.district-detail {
+  display: none;
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.district-detail.active { display: block; }
+.district-detail h3 { color: var(--cyan); font-size: 0.9rem; margin-bottom: 12px; }
+.detail-metric {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+.detail-metric:last-child { border-bottom: none; }
+
+/* ── SIDE PANEL ── */
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+}
+.side-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.side-section h3 {
+  font-size: 0.65rem;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* Agent Activity Feed */
+.activity-feed {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 300px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.activity-item {
+  font-size: 0.72rem;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(26,35,50,0.5);
+  line-height: 1.4;
+  color: var(--text);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-time { color: var(--muted); font-size: 0.65rem; }
+.activity-agent { color: var(--cyan); font-weight: bold; }
+
+/* Scrolling ticker */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-wrap {
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  padding: 6px 0;
+}
+.ticker-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: ticker-scroll 30s linear infinite;
+}
+.ticker-item {
+  padding: 0 24px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.ticker-item span { color: var(--green); }
+
+/* ── PANELS GRID (existing) ── */
+.panels-section {
+  padding: 20px;
+  grid-column: 1 / -1;
+}
+.panels-section h2 {
+  font-size: 0.7rem;
+  letter-spacing: 4px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--green));
+}
+.panel.amber::before { background: linear-gradient(90deg, var(--amber), var(--red)); }
+.panel.green::before { background: linear-gradient(90deg, var(--green), var(--cyan)); }
+.panel-title { font-size: 0.65rem; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+.panel h2 { font-size: 1rem; color: var(--cyan); margin-bottom: 14px; }
+.metric { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
+.metric:last-child { border-bottom: none; }
+.metric-label { color: var(--muted); }
+.metric-value { color: var(--text); font-weight: bold; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; }
+.badge.green { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid var(--green); }
+.badge.amber { background: rgba(255,170,0,0.15); color: var(--amber); border: 1px solid var(--amber); }
+.badge.red { background: rgba(255,51,85,0.15); color: var(--red); border: 1px solid var(--red); }
+.score-bar { height: 4px; background: var(--border); border-radius: 2px; margin: 6px 0; overflow: hidden; }
+.score-fill { height: 100%; background: var(--green); transition: width 0.8s ease; border-radius: 2px; }
+.list-item { padding: 5px 0; font-size: 0.8rem; border-bottom: 1px solid var(--border); color: var(--text); }
+.list-item:last-child { border-bottom: none; }
+.last-updated { color: var(--muted); font-size: 0.65rem; margin-top: 10px; text-align: right; }
+
+/* Scheduler mini-panel */
+.agent-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+}
+.agent-chip:last-child { border-bottom: none; }
+.chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.chip-dot.green { background: var(--green); animation: pulse-glow 2s infinite; }
+.chip-dot.amber { background: var(--amber); }
+.chip-name { color: var(--text); flex: 1; }
+.chip-next { color: var(--muted); font-size: 0.65rem; }
+
+/* Loading */
+#map-loading { text-align: center; color: var(--muted); padding: 60px; font-size: 0.8rem; letter-spacing: 2px; grid-column: 1 / -1; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .main-layout { grid-template-columns: 1fr; }
+  .side-panel { border-left: none; border-top: 1px solid var(--border); }
+  .resources-bar { flex-wrap: wrap; }
+  .resource-item { min-width: 50%; border-bottom: 1px solid var(--border); }
+}
+@media (max-width: 600px) {
+  .kingdom-map { grid-template-columns: 1fr 1fr; grid-template-rows: auto; }
+  .district.command { grid-column: 1 / -1; }
+  .district.knowledge { grid-column: 1 / -1; }
+}
 </style>
 </head>
 <body>
+
 <header>
-  <h1>KINGDOM</h1>
-  <p>AI LIFE OS — COMMAND CENTRE v1.1</p>
+  <h1>⚔ KINGDOM</h1>
+  <p>AI LIFE OS — COMMAND CENTRE v1.3 — VISUAL KINGDOM WORLD</p>
 </header>
 
-<div class="modules-grid">
-  <div class="module-card">
-    <h3>PITWALL CLASSICS</h3>
-    <p>Motorsport print products</p>
+<!-- Resources Bar -->
+<div class="resources-bar" id="resources-bar">
+  <div class="resource-item gold">
+    <span class="resource-emoji">💰</span>
+    <div class="resource-info">
+      <span class="resource-label">Gold</span>
+      <span class="resource-value" id="res-gold">—</span>
+    </div>
   </div>
-  <div class="module-card">
-    <h3>PULSEBREAK</h3>
-    <p>Focus & recovery tools</p>
+  <div class="resource-item knowledge">
+    <span class="resource-emoji">📚</span>
+    <div class="resource-info">
+      <span class="resource-label">Knowledge</span>
+      <span class="resource-value" id="res-knowledge">—</span>
+    </div>
   </div>
-  <div class="module-card">
-    <h3>BVS MOTORS</h3>
-    <p>Automotive content</p>
+  <div class="resource-item focus">
+    <span class="resource-emoji">⚡</span>
+    <div class="resource-info">
+      <span class="resource-label">Focus</span>
+      <span class="resource-value" id="res-focus">—</span>
+    </div>
   </div>
-  <div class="module-card">
-    <h3>FUTURE VENTURES</h3>
-    <p>Pipeline opportunities</p>
+  <div class="resource-item stability">
+    <span class="resource-emoji">🛡</span>
+    <div class="resource-info">
+      <span class="resource-label">Stability</span>
+      <span class="resource-value" id="res-stability">—</span>
+    </div>
   </div>
 </div>
 
-<div class="grid" id="panels">
-  <div id="loading">LOADING COMMAND CENTRE...</div>
+<!-- Ticker -->
+<div class="ticker-wrap" id="ticker-wrap" style="display:none">
+  <div class="ticker-track" id="ticker-track"></div>
 </div>
+
+<!-- Main Layout -->
+<div class="main-layout">
+  <!-- Kingdom Map -->
+  <div class="kingdom-map-section">
+    <h2>◈ KINGDOM MAP — LIVE DISTRICT VIEW</h2>
+    <div class="kingdom-map" id="kingdom-map">
+      <div id="map-loading">INITIALISING KINGDOM MAP...</div>
+    </div>
+    <!-- District detail panel (expands below map) -->
+    <div class="district-detail" id="district-detail">
+      <h3 id="detail-title">District Details</h3>
+      <div id="detail-content"></div>
+    </div>
+  </div>
+
+  <!-- Side Panel -->
+  <div class="side-panel">
+    <div class="side-section">
+      <h3>⚡ Agent Activity Feed</h3>
+      <div class="activity-feed" id="activity-feed">
+        <div class="activity-item" style="color:var(--muted)">Loading activity...</div>
+      </div>
+    </div>
+
+    <div class="side-section">
+      <h3>🤖 Automation Status</h3>
+      <div id="scheduler-status">
+        <div style="color:var(--muted);font-size:0.75rem">Loading...</div>
+      </div>
+    </div>
+
+    <div class="side-section" style="flex:1">
+      <h3>📡 Quick Actions</h3>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="triggerAgent('Print Forge AI')" class="quick-btn">▶ Run Print Forge</button>
+        <button onclick="triggerAgent('Vibes AI')" class="quick-btn">▶ Run Vibes AI</button>
+        <button onclick="triggerAgent('Lead Forge AI')" class="quick-btn">▶ Run Lead Forge</button>
+        <button onclick="triggerAgent('Opportunity Scout')" class="quick-btn">▶ Run Scout</button>
+        <div id="action-result" style="font-size:0.7rem;color:var(--green);margin-top:4px;min-height:20px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Existing Panels Section -->
+<div class="panels-section">
+  <h2>◈ COMMAND PANELS</h2>
+  <div class="grid" id="panels">
+    <div style="color:var(--muted);padding:20px;font-size:0.8rem;letter-spacing:2px">LOADING COMMAND PANELS...</div>
+  </div>
+</div>
+
+<style>
+.quick-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--cyan);
+  padding: 7px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  border-radius: 4px;
+  text-align: left;
+  transition: background 0.2s, border-color 0.2s;
+}
+.quick-btn:hover { background: rgba(0,212,255,0.08); border-color: var(--cyan); }
+.quick-btn:active { opacity: 0.7; }
+</style>
 
 <script>
 const API = '';
@@ -171,9 +515,7 @@ async function fetchJSON(path) {
     const r = await fetch(API + path);
     if (!r.ok) throw new Error(r.status);
     return await r.json();
-  } catch(e) {
-    return null;
-  }
+  } catch(e) { return null; }
 }
 
 function badge(status) {
@@ -182,7 +524,7 @@ function badge(status) {
 
 function scoreBar(score) {
   const color = score >= 70 ? '#00ff88' : score >= 40 ? '#ffaa00' : '#ff3355';
-  return `<div class="score-bar"><div class="score-fill" style="width:${score}%;background:${color}"></div></div>`;
+  return `<div class="score-bar"><div class="score-fill" style="width:${Math.min(100,score)}%;background:${color}"></div></div>`;
 }
 
 function panel(title, colorClass, inner) {
@@ -193,15 +535,190 @@ function panel(title, colorClass, inner) {
   </div>`;
 }
 
+// ── KINGDOM MAP ──────────────────────────────────────────────────────────────
+
+let activeDistrict = null;
+
+function buildDistrict(d) {
+  const glow = d.glow_colour || 'amber';
+  const workers = d.active_agents > 0 
+    ? `<div class="workers">${Array(Math.min(d.active_agents, 3)).fill('<div class="worker-dot"></div>').join('')}</div>`
+    : '';
+  return `<div class="district ${d.id.replace('_','-')} glow-${glow}" 
+              onclick="toggleDistrict('${d.id}')" 
+              data-id="${d.id}"
+              title="${d.name}: ${d.description}">
+    <div class="district-pulse"></div>
+    <div class="district-icon">${d.emoji}</div>
+    <div class="district-name">${d.name}</div>
+    <div class="district-desc">${d.description}</div>
+    ${workers}
+    <div class="district-action">${d.top_action}</div>
+  </div>`;
+}
+
+function toggleDistrict(districtId) {
+  const detailEl = document.getElementById('district-detail');
+  if (activeDistrict === districtId) {
+    detailEl.classList.remove('active');
+    activeDistrict = null;
+    return;
+  }
+  activeDistrict = districtId;
+  detailEl.classList.add('active');
+  
+  const d = window._kingdomDistricts?.find(x => x.id === districtId);
+  if (!d) return;
+  
+  document.getElementById('detail-title').textContent = `${d.emoji} ${d.name} — ${d.description}`;
+  
+  const stats = d.stats || {};
+  const rows = Object.entries(stats).map(([k, v]) => {
+    const label = k.replace(/_/g, ' ');
+    const val = typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : v;
+    return `<div class="detail-metric"><span style="color:var(--muted)">${label}</span><span style="color:var(--text)">${val}</span></div>`;
+  }).join('');
+  
+  document.getElementById('detail-content').innerHTML = rows || '<div style="color:var(--muted);font-size:0.8rem">No stats available</div>';
+}
+
+// ── ACTIVITY FEED ─────────────────────────────────────────────────────────────
+
+function renderActivity(runs, lessons) {
+  const items = [];
+  
+  // Recent agent runs
+  (runs || []).slice(0, 6).forEach(r => {
+    const time = new Date(r.run_at).toLocaleTimeString();
+    items.push(`<div class="activity-item">
+      <div class="activity-time">${time}</div>
+      <div><span class="activity-agent">${r.agent}</span> ran — £${(r.revenue_gbp||0).toFixed(2)} rev</div>
+    </div>`);
+  });
+  
+  // Recent lessons
+  (lessons || []).slice(0, 4).forEach(l => {
+    const text = l.lesson?.slice(0, 70) || '';
+    items.push(`<div class="activity-item">
+      <div class="activity-time">${l.source || 'system'}</div>
+      <div style="color:var(--muted)">${text}${l.lesson?.length > 70 ? '…' : ''}</div>
+    </div>`);
+  });
+  
+  const feed = document.getElementById('activity-feed');
+  feed.innerHTML = items.length ? items.join('') : '<div class="activity-item" style="color:var(--muted)">No recent activity</div>';
+}
+
+// ── TICKER ───────────────────────────────────────────────────────────────────
+
+function buildTicker(data) {
+  if (!data) return;
+  const items = [
+    `💰 Gold: £${(data.resources?.gold||0).toFixed(2)}`,
+    `📚 Knowledge: ${data.resources?.knowledge||0} lessons`,
+    `⚡ Focus: ${data.resources?.focus||0}%`,
+    `🛡 Stability: ${data.resources?.stability||0}/100`,
+    ...(data.districts||[]).map(d => `${d.emoji} ${d.name}: ${d.top_action}`),
+  ];
+  const tickerEl = document.getElementById('ticker-track');
+  const html = [...items, ...items].map(i => `<span class="ticker-item">◈ <span>${i}</span></span>`).join('');
+  tickerEl.innerHTML = html;
+  document.getElementById('ticker-wrap').style.display = 'block';
+}
+
+// ── SCHEDULER STATUS ──────────────────────────────────────────────────────────
+
+function renderScheduler(status) {
+  const agents = status?.agents || [];
+  if (!agents.length) {
+    document.getElementById('scheduler-status').innerHTML = '<div style="color:var(--muted);font-size:0.75rem">Scheduler not running</div>';
+    return;
+  }
+  const html = agents.map(a => {
+    const isRunning = a.scheduler_running;
+    return `<div class="agent-chip">
+      <div class="chip-dot ${isRunning ? 'green' : ''}"></div>
+      <span class="chip-name">${a.name}</span>
+      <span class="chip-next">${a.interval}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('scheduler-status').innerHTML = html;
+}
+
+// ── TRIGGER AGENT ─────────────────────────────────────────────────────────────
+
+async function triggerAgent(name) {
+  const el = document.getElementById('action-result');
+  el.style.color = 'var(--amber)';
+  el.textContent = `▶ Running ${name}...`;
+  try {
+    const r = await fetch(`/scheduler/run/${encodeURIComponent(name)}`, { method: 'POST' });
+    const data = await r.json();
+    if (data.status === 'ok') {
+      el.style.color = 'var(--green)';
+      el.textContent = `✓ ${name}: ${data.opportunities_created || 0} opps created`;
+      // Refresh map
+      setTimeout(loadKingdomMap, 500);
+    } else {
+      el.style.color = 'var(--red)';
+      el.textContent = `✗ ${data.error || 'Error'}`;
+    }
+  } catch(e) {
+    el.style.color = 'var(--red)';
+    el.textContent = '✗ Request failed';
+  }
+}
+
+// ── LOAD KINGDOM MAP ──────────────────────────────────────────────────────────
+
+async function loadKingdomMap() {
+  const data = await fetchJSON('/kingdom/map');
+  if (!data) {
+    document.getElementById('kingdom-map').innerHTML = '<div id="map-loading">MAP DATA UNAVAILABLE</div>';
+    return;
+  }
+  
+  window._kingdomDistricts = data.districts;
+  
+  // Resources bar
+  const res = data.resources || {};
+  document.getElementById('res-gold').textContent = `£${(res.gold||0).toFixed(2)}`;
+  document.getElementById('res-knowledge').textContent = res.knowledge || 0;
+  document.getElementById('res-focus').textContent = `${res.focus||0}%`;
+  document.getElementById('res-stability').textContent = `${res.stability||0}/100`;
+  
+  // Map districts
+  const districtOrder = ['pulsebreak_arena','command_tower','venture_lab','pitwall_workshop','bvs_garage','knowledge_vault'];
+  const ordered = districtOrder.map(id => data.districts.find(d => d.id === id)).filter(Boolean);
+  
+  const mapEl = document.getElementById('kingdom-map');
+  mapEl.innerHTML = ordered.map(buildDistrict).join('');
+  
+  // Ticker
+  buildTicker(data);
+  
+  return data;
+}
+
+// ── EXISTING DASHBOARD PANELS ─────────────────────────────────────────────────
+
 async function loadDashboard() {
-  const [brief, health, leaderboard, lessons, recon, agentEcon] = await Promise.all([
+  const [brief, health, leaderboard, lessons, recon, agentEcon, kingdomData, schedulerStatus] = await Promise.all([
     fetchJSON('/brief/morning'),
     fetchJSON('/kingdom/health'),
     fetchJSON('/leaderboard/opportunities'),
     fetchJSON('/lessons'),
     fetchJSON('/revenue-recon'),
     fetchJSON('/agent-economics/dashboard'),
+    loadKingdomMap(),
+    fetchJSON('/scheduler/status'),
   ]);
+
+  // Activity feed
+  renderActivity(kingdomData?.agent_activity || [], lessons || []);
+  
+  // Scheduler status
+  renderScheduler(schedulerStatus);
 
   const panels = [];
 
@@ -214,8 +731,8 @@ async function loadDashboard() {
       <div class="metric"><span class="metric-label">Kingdom Health</span><span>${badge(ks)} ${brief.kingdom_health || '—'}</span></div>
       <div class="metric"><span class="metric-label">Founder Capacity</span><span>${brief.founder_capacity || '—'}%</span></div>
       <div class="metric"><span class="metric-label">Decision Accuracy</span><span>${((brief.decision_accuracy||0)*100).toFixed(0)}%</span></div>
-      <div class="metric"><span class="metric-label">Top Assumption Risk</span><span style="color:var(--amber);font-size:0.8rem">${(brief.assumption_risk||'').slice(0,40)}</span></div>
-      <div style="margin-top:12px;font-size:0.75rem;color:var(--muted)">DO TODAY:</div>
+      <div class="metric"><span class="metric-label">Top Assumption Risk</span><span style="color:var(--amber);font-size:0.78rem">${(brief.assumption_risk||'').slice(0,40)}</span></div>
+      <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">DO TODAY:</div>
       ${todayItems}
     `));
   }
@@ -230,7 +747,7 @@ async function loadDashboard() {
       <div class="metric"><span class="metric-label">Total Revenue Est.</span><span class="metric-value">£${(revenueData.total_estimated_revenue||0).toFixed(2)}</span></div>
       <div class="metric"><span class="metric-label">Concentration</span><span class="metric-value">${revenueData.concentration_pct||0}%</span></div>
       <div class="metric"><span class="metric-label">Confidence</span><span class="metric-value">${revenueData.confidence||0}%</span></div>
-      <div style="margin-top:12px;font-size:0.8rem;color:var(--cyan)">▸ ${revenueData.recommended_next_product||'Validate demand first'}</div>
+      <div style="margin-top:10px;font-size:0.78rem;color:var(--cyan)">▸ ${revenueData.recommended_next_product||'Validate demand first'}</div>
     `));
   }
 
@@ -293,20 +810,38 @@ async function loadDashboard() {
     `));
   }
 
+  // Revenue Agents panel
+  panels.push(panel('REVENUE AGENTS', 'green', `
+    <h2>Automated Agents</h2>
+    <div class="metric"><span class="metric-label">🏭 Print Forge AI</span><span style="color:var(--green)">ACTIVE</span></div>
+    <div class="metric"><span class="metric-label">🎵 Vibes AI</span><span style="color:var(--green)">ACTIVE</span></div>
+    <div class="metric"><span class="metric-label">🔧 Lead Forge AI</span><span style="color:var(--green)">ACTIVE</span></div>
+    <div class="metric"><span class="metric-label">🚀 Opportunity Scout</span><span style="color:var(--green)">ACTIVE</span></div>
+    <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">All agents run deterministically — no external API calls</div>
+  `));
+
   // Backups panel
   panels.push(panel('BACKUPS', '', `
     <h2>System Backups</h2>
     <div class="metric"><span class="metric-label">Status</span><span>${badge('green')} OK</span></div>
     <div class="metric"><span class="metric-label">Last Backup</span><span class="metric-value">Manual</span></div>
-    <div style="margin-top:12px">
-      <a href="/backup/list" style="color:var(--cyan);font-size:0.8rem;text-decoration:none">View Backups →</a>
+    <div style="margin-top:10px">
+      <a href="/backup/list" style="color:var(--cyan);font-size:0.78rem;text-decoration:none">View Backups →</a>
     </div>
   `));
 
   document.getElementById('panels').innerHTML = panels.join('');
 }
 
+// Auto-refresh every 60 seconds
 loadDashboard();
+setInterval(() => {
+  loadKingdomMap();
+  fetchJSON('/lessons').then(l => {
+    fetchJSON('/kingdom/map').then(m => renderActivity(m?.agent_activity||[], l||[]));
+  });
+  fetchJSON('/scheduler/status').then(renderScheduler);
+}, 60000);
 </script>
 </body>
 </html>
