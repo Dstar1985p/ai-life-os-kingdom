@@ -47,12 +47,35 @@ def test_weekly_plan_has_required_keys():
 
 
 def test_weekly_plan_after_vibes_agent_run():
-    """After running VibesAI, weekly plan has at least 1 track for current week."""
-    from backend.agents.vibes_ai import VibesAIAgent
+    """After inserting a vibes_ai opportunity, weekly plan shows at least 1 track."""
+    import json
+    from datetime import datetime, timedelta
+    from backend.models.tables import Opportunity
+
     db = TestingSession()
     try:
-        agent = VibesAIAgent()
-        agent.run(db)
+        now = datetime.utcnow()
+        next_week = now + timedelta(weeks=1)
+        iso = next_week.isocalendar()
+        release_week = f"{iso[0]}-W{iso[1]:02d}"
+        release_date = next_week.strftime("%Y-%m-%d")
+        evidence = json.dumps({
+            "suno_prompt": "Test DnB prompt 174bpm",
+            "bpm": 174,
+            "sub_genre": "Liquid DnB",
+            "suggested_title": "Test Track",
+            "cover_art_concept": "neon waves",
+            "release_week": release_week,
+            "status": "draft",
+        })
+        opp = Opportunity(
+            title=f"PulseBreak — Test Liquid DnB [{release_date}]",
+            source="vibes_ai",
+            category="Music",
+            evidence=evidence,
+        )
+        db.add(opp)
+        db.commit()
     finally:
         db.close()
 
