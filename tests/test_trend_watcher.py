@@ -43,8 +43,6 @@ def test_fetch_trends_returns_empty_on_bad_xml():
     """_fetch_trends handles invalid XML gracefully."""
     agent = TrendWatcherAgent()
     # Monkeypatch urlopen to return invalid XML
-    import urllib.request
-    from io import BytesIO
     from unittest.mock import patch, MagicMock
 
     mock_resp = MagicMock()

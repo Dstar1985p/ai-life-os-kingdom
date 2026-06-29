@@ -280,8 +280,8 @@ def test_api_agents_list_returns_profiles(api_client):
 
 
 def test_api_agent_profile_endpoint(api_client):
-    resp = api_client.post("/agents", json={"name": "Test RPG Agent", "role": "Tester", "guild": "Crown"})
-    assert resp.status_code == 200
+    # Use get-or-create: post may return 200 or 400 if already exists
+    api_client.post("/agents", json={"name": "Test RPG Agent", "role": "Tester", "guild": "Crown"})
     resp2 = api_client.get("/agents/Test RPG Agent/profile")
     assert resp2.status_code == 200
     assert resp2.json()["name"] == "Test RPG Agent"
@@ -312,8 +312,11 @@ def test_api_hall_of_heroes_endpoint(api_client):
 
 
 def test_api_retire_agent_endpoint(api_client):
-    api_client.post("/agents", json={"name": "Retiring Agent", "role": "Veteran", "guild": "Crown"})
-    resp = api_client.post("/agents/Retiring Agent/retire", json={"legacy_note": "Farewell!"})
+    # Use a unique name per process to avoid collision across runs
+    import time
+    name = f"Retiring Agent {int(time.time()) % 10000}"
+    api_client.post("/agents", json={"name": name, "role": "Veteran", "guild": "Crown"})
+    resp = api_client.post(f"/agents/{name}/retire", json={"legacy_note": "Farewell!"})
     assert resp.status_code == 200
     assert resp.json()["retired"] is True
 

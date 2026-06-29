@@ -62,7 +62,7 @@ def test_roi_reaper_does_not_archive_pursue_now(db):
     _make_opp(db, status="pursue_now", score=10.0, age_days=100)
     agent = ROIReaperAgent()
     result = agent.run(db)
-    opp = db.query(Opportunity).first()
+    db.query(Opportunity).first()  # check DB state
     # pursue_now with score < 30 and age >= 7: rule applies, but let's verify behaviour
     # The spec says archive on score<30 after 7d — pursue_now is not in status filter
     # so it CAN be archived. Actually per spec only status != "archived" is filtered.
@@ -142,4 +142,4 @@ def test_roi_reaper_adds_lesson_when_archiving(db):
     agent.run(db)
     lessons = db.query(Lesson).all()
     assert len(lessons) > 0
-    assert any("ROI Reaper" in (l.lesson or "") for l in lessons)
+    assert any("ROI Reaper" in (x.lesson or "") for x in lessons)

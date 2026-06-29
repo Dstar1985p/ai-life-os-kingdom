@@ -32,11 +32,14 @@ def list_agents(db: Session = Depends(get_db)):
 
 @router.post("")
 def create_agent(payload: AgentCreate, db: Session = Depends(get_db)):
+    existing = db.query(Agent).filter(Agent.name == payload.name).first()
+    if existing:
+        return get_agent_profile(existing.name, db)
     agent = Agent(**payload.model_dump())
     db.add(agent)
     db.commit()
     db.refresh(agent)
-    return agent
+    return get_agent_profile(agent.name, db)
 
 
 @router.get("/{name}/profile")
