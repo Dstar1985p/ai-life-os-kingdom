@@ -1,1 +1,8 @@
 .claude/
+
+# Build artifacts and local DB
+__pycache__/
+*.pyc
+*.pyo
+*.db
+test_*.db
