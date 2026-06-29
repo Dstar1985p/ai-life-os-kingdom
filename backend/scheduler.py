@@ -104,6 +104,21 @@ def _send_weekly_digest() -> None:
         db.close()
 
 
+def _run_crisis_scan_job() -> None:
+    from backend.services.crisis_engine import run_crisis_scan, save_crisis_scan
+    db = SessionLocal()
+    try:
+        result = run_crisis_scan(db)
+        save_crisis_scan(result, db)
+        if result["is_crisis"]:
+            # Could trigger email here in future — for now just log
+            logger.warning("CRISIS ALERT: %s — %d severity points", result["crisis_level"], result["total_severity"])
+    except Exception:
+        logger.exception("Crisis scan job failed")
+    finally:
+        db.close()
+
+
 def start_scheduler() -> BackgroundScheduler:
     global _scheduler
     _scheduler = BackgroundScheduler(daemon=True)
@@ -131,6 +146,14 @@ def start_scheduler() -> BackgroundScheduler:
                 id=f"agent_{agent_name.lower().replace(' ', '_')}",
                 replace_existing=True,
             )
+
+    # Crisis scan — every 6 hours
+    _scheduler.add_job(
+        _run_crisis_scan_job,
+        trigger=IntervalTrigger(hours=6),
+        id="crisis_scan",
+        replace_existing=True,
+    )
 
     # Weekly digest email — every Monday at 8am
     _scheduler.add_job(

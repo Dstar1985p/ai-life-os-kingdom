@@ -153,6 +153,7 @@ class Lesson(Base):
     lesson: Mapped[str] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(120), default="manual")
     confidence_score: Mapped[float] = mapped_column(Float, default=50.0)
+    evidence: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

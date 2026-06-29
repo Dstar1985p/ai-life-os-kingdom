@@ -395,6 +395,42 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 </head>
 <body>
 
+<!-- Crisis Monitor Bar -->
+<div id="crisis-bar" style="display:none; padding:12px 20px; font-family:monospace; font-size:14px; font-weight:bold; text-align:center; position:sticky; top:0; z-index:1000;">
+  <span id="crisis-icon">⚠️</span>
+  <span id="crisis-message">CRISIS LEVEL: RED — 6 severity points active</span>
+  <button onclick="showCrisisDetail()" style="margin-left:20px; padding:4px 12px;">VIEW ACTION PLAN</button>
+  <button onclick="acknowledgeCrisis()" style="margin-left:8px; padding:4px 12px;">ACKNOWLEDGE</button>
+</div>
+
+<!-- Crisis Detail Modal -->
+<div id="crisis-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:2000; overflow-y:auto;">
+  <div style="max-width:640px; margin:60px auto; background:#0d1117; border:1px solid #cc0000; border-radius:8px; padding:28px;">
+    <h2 style="color:#ff3355; font-family:monospace; margin-bottom:4px;">🚨 CRISIS BRIEF</h2>
+    <div id="crisis-modal-level" style="font-family:monospace; font-size:13px; color:#4a5568; margin-bottom:20px;"></div>
+    <h3 style="color:#ffaa00; font-family:monospace; margin-bottom:10px; font-size:13px;">ACTIVE SIGNALS</h3>
+    <div id="crisis-modal-signals" style="margin-bottom:20px;"></div>
+    <h3 style="color:#00ff88; font-family:monospace; margin-bottom:10px; font-size:13px;">ACTION PLAN</h3>
+    <ol id="crisis-modal-actions" style="margin-left:20px; font-family:monospace; font-size:13px; color:#c8d4e0; line-height:1.8;"></ol>
+    <div style="margin-top:24px; display:flex; gap:12px; flex-wrap:wrap;">
+      <button onclick="runNewCrisisScan()" style="padding:8px 16px; background:#cc0000; color:white; border:none; cursor:pointer; font-family:monospace; font-size:13px;">RUN NEW SCAN</button>
+      <button onclick="document.getElementById('crisis-modal').style.display='none'" style="padding:8px 16px; background:#1a2332; color:#c8d4e0; border:1px solid #1a2332; cursor:pointer; font-family:monospace; font-size:13px;">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes crisis-pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+@keyframes crisis-pulse-fast { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.crisis-amber { background:#ff9800; color:#1a0a00; animation:none; }
+.crisis-red { background:#cc0000; color:#ffffff; animation:crisis-pulse 1.4s ease-in-out infinite; }
+.crisis-critical { background:#ff0000; color:#ffffff; animation:crisis-pulse-fast 0.7s ease-in-out infinite; }
+.severity-badge { display:inline-block; padding:2px 7px; border-radius:3px; font-size:11px; font-weight:bold; margin-right:8px; }
+.sev-1 { background:#ff9800; color:#000; }
+.sev-2 { background:#cc0000; color:#fff; }
+.sev-3 { background:#ff0000; color:#fff; }
+</style>
+
 <header>
   <h1>⚔ KINGDOM</h1>
   <p>AI LIFE OS — COMMAND CENTRE v1.3 — VISUAL KINGDOM WORLD</p>
@@ -703,6 +739,7 @@ async function loadKingdomMap() {
 // ── EXISTING DASHBOARD PANELS ─────────────────────────────────────────────────
 
 async function loadDashboard() {
+  loadCrisisStatus();
   const [brief, health, leaderboard, lessons, recon, agentEcon, kingdomData, schedulerStatus] = await Promise.all([
     fetchJSON('/brief/morning'),
     fetchJSON('/kingdom/health'),
@@ -1130,6 +1167,102 @@ async function generatePrintifyConcepts() {
     loadDashboard();
   } catch(e) {
     alert('Failed to generate Printify concepts');
+  }
+}
+
+// ── CRISIS MONITOR ──
+let _lastCrisisData = null;
+
+async function loadCrisisStatus() {
+  try {
+    const data = await fetchJSON('/crisis/status');
+    _lastCrisisData = data;
+    updateCrisisBar(data);
+  } catch(e) {
+    // Graceful degradation — hide bar on error
+  }
+}
+
+function updateCrisisBar(data) {
+  const bar = document.getElementById('crisis-bar');
+  const msg = document.getElementById('crisis-message');
+  const icon = document.getElementById('crisis-icon');
+  if (!bar || !data) return;
+
+  const level = data.crisis_level || 'GREEN';
+  bar.className = '';
+  bar.classList.remove('crisis-amber','crisis-red','crisis-critical');
+
+  if (level === 'GREEN') {
+    bar.style.display = 'none';
+    return;
+  }
+
+  bar.style.display = 'block';
+  if (level === 'AMBER') {
+    bar.classList.add('crisis-amber');
+    icon.textContent = '⚠️';
+  } else if (level === 'RED') {
+    bar.classList.add('crisis-red');
+    icon.textContent = '🚨';
+  } else if (level === 'CRITICAL') {
+    bar.classList.add('crisis-critical');
+    icon.textContent = '🔴';
+  }
+
+  msg.textContent = `CRISIS LEVEL: ${level} — ${data.total_severity} severity points active`;
+}
+
+function showCrisisDetail() {
+  const data = _lastCrisisData;
+  if (!data) return;
+
+  // Level line
+  document.getElementById('crisis-modal-level').textContent =
+    `Scanned: ${data.scanned_at || 'unknown'} | Total severity: ${data.total_severity}`;
+
+  // Signals
+  const signalsEl = document.getElementById('crisis-modal-signals');
+  if (data.signals && data.signals.length > 0) {
+    signalsEl.innerHTML = data.signals.map(s =>
+      `<div style="margin-bottom:8px; font-family:monospace; font-size:13px;">` +
+      `<span class="severity-badge sev-${s.severity}">SEV ${s.severity}</span>` +
+      `<strong style="color:#c8d4e0;">${s.signal.replace(/_/g,' ').toUpperCase()}</strong>` +
+      ` — <span style="color:#4a5568;">${s.detail}</span></div>`
+    ).join('');
+  } else {
+    signalsEl.innerHTML = '<p style="color:#4a5568; font-family:monospace; font-size:13px;">No active signals.</p>';
+  }
+
+  // Actions
+  const actionsEl = document.getElementById('crisis-modal-actions');
+  if (data.action_plan && data.action_plan.length > 0) {
+    actionsEl.innerHTML = data.action_plan.map(a =>
+      `<li style="margin-bottom:8px;">${a}</li>`
+    ).join('');
+  } else {
+    actionsEl.innerHTML = '<li>No actions required — system is healthy.</li>';
+  }
+
+  document.getElementById('crisis-modal').style.display = 'block';
+}
+
+async function acknowledgeCrisis() {
+  try {
+    await fetch('/crisis/acknowledge', {method:'POST'});
+    document.getElementById('crisis-bar').style.display = 'none';
+  } catch(e) {}
+}
+
+async function runNewCrisisScan() {
+  try {
+    const data = await fetchJSON('/crisis/scan');
+    _lastCrisisData = data;
+    updateCrisisBar(data);
+    // Refresh modal content
+    showCrisisDetail();
+  } catch(e) {
+    alert('Crisis scan failed');
   }
 }
 

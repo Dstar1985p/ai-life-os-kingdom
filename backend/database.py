@@ -1,5 +1,9 @@
-from sqlalchemy import create_engine
+import logging
+
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+logger = logging.getLogger(__name__)
 
 DATABASE_URL = "sqlite:///./kingdom_alpha.db"
 
@@ -7,6 +11,20 @@ engine = create_engine(
     DATABASE_URL,
     connect_args={"check_same_thread": False},
 )
+
+
+def _apply_migrations(eng) -> None:
+    """Apply additive column migrations that SQLAlchemy create_all won't handle."""
+    try:
+        with eng.connect() as conn:
+            # Add evidence column to lessons if not present
+            cols = [row[1] for row in conn.execute(text("PRAGMA table_info(lessons)"))]
+            if "evidence" not in cols:
+                conn.execute(text("ALTER TABLE lessons ADD COLUMN evidence TEXT DEFAULT ''"))
+                conn.commit()
+                logger.info("Migration applied: lessons.evidence column added")
+    except Exception:
+        logger.exception("Migration step failed (non-fatal)")
 
 SessionLocal = sessionmaker(
     autocommit=False,

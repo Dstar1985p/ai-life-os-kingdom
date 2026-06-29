@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
 
-from backend.database import Base, engine
+from backend.database import Base, engine, _apply_migrations
 from backend.api.routes_agents import router as agents_router
 from backend.api.routes_quests import router as quests_router
 from backend.api.routes_opportunities import router as opportunities_router
@@ -33,9 +33,11 @@ from backend.api.routes_log import router as log_router
 from backend.api.routes_achievements import router as achievements_router
 from backend.api.routes_learning import router as learning_router
 from backend.api.routes_music_licensing import router as music_licensing_router
+from backend.api.routes_crisis import router as crisis_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
+_apply_migrations(engine)
 seed_defaults()
 
 
@@ -43,6 +45,7 @@ seed_defaults()
 async def lifespan(app: FastAPI):
     # Also run on app startup (for uvicorn / production)
     Base.metadata.create_all(bind=engine)
+    _apply_migrations(engine)
     seed_defaults()
     # Start background scheduler
     try:
@@ -97,6 +100,7 @@ app.include_router(log_router)
 app.include_router(achievements_router)
 app.include_router(learning_router)
 app.include_router(music_licensing_router)
+app.include_router(crisis_router)
 
 
 @app.get("/", include_in_schema=False)
