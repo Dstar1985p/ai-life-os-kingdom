@@ -904,6 +904,91 @@ async function loadDashboard() {
     <div id="council-result" style="margin-top:12px"></div>
   `));
 
+  // Sprint Planner panel
+  try {
+    const sprintPlan = await fetchJSON('/sprint/plan');
+    const focusItems = sprintPlan && sprintPlan.focus_items ? sprintPlan.focus_items : [];
+    const sprintTheme = sprintPlan ? sprintPlan.sprint_theme : 'Kingdom Foundations';
+    const totalHours = sprintPlan ? sprintPlan.total_estimated_hours : 0;
+    const focusCards = focusItems.length
+      ? focusItems.map(item => `
+          <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:600;font-size:0.82rem">${item.title}</span>
+              <span style="font-size:0.7rem;color:var(--cyan);background:var(--surface);padding:2px 6px;border-radius:3px">${item.item_type}</span>
+            </div>
+            <div style="font-size:0.7rem;color:var(--muted);margin-top:3px">${item.reason}</div>
+            <div style="display:flex;gap:10px;margin-top:4px;font-size:0.7rem">
+              <span>&#x23F1; ${item.estimated_hours}h</span>
+              <span style="color:var(--amber)">${item.venture || ''}</span>
+            </div>
+          </div>`).join('')
+      : '<div style="color:var(--muted);font-size:0.8rem">No open quests or opportunities to plan — add some to get started.</div>';
+    panels.push(panel('SPRINT PLANNER', 'cyan', `
+      <h2>&#x1F3AF; This Week's Focus</h2>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:0.75rem;color:var(--cyan)">${sprintTheme}</span>
+        <span style="font-size:0.75rem;color:var(--muted)">&#x23F1; ${totalHours}h total</span>
+      </div>
+      ${focusCards}
+    `));
+  } catch(e) {
+    panels.push(panel('SPRINT PLANNER', 'amber', '<h2>&#x1F3AF; Sprint Planner</h2><div style="color:var(--muted)">Could not load sprint plan.</div>'));
+  }
+
+  // Captain's Log panel
+  try {
+    const logEntry = await fetchJSON('/log/entry');
+    const moodColour = logEntry && logEntry.mood === 'triumphant' ? 'var(--green)' : logEntry && logEntry.mood === 'steady' ? 'var(--cyan)' : 'var(--muted)';
+    const moodIcon = logEntry && logEntry.mood === 'triumphant' ? '&#x1F3C6;' : logEntry && logEntry.mood === 'steady' ? '&#x2694;' : '&#x1F319;';
+    const highlights = logEntry && logEntry.highlights && logEntry.highlights.length
+      ? logEntry.highlights.map(h => `<div style="font-size:0.72rem;color:var(--muted);padding:2px 0">&#x2022; ${h}</div>`).join('')
+      : '<div style="font-size:0.72rem;color:var(--muted)">No highlights this week.</div>';
+    const narrative = logEntry ? logEntry.narrative : 'Log unavailable.';
+    const mood = logEntry ? logEntry.mood : 'quiet';
+    panels.push(panel("CAPTAIN'S LOG", 'green', `
+      <h2>&#x1F4DC; Captain's Log</h2>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <span style="background:${moodColour}22;border:1px solid ${moodColour};color:${moodColour};font-size:0.7rem;padding:2px 8px;border-radius:12px;font-weight:600">${moodIcon} ${mood.toUpperCase()}</span>
+      </div>
+      <p style="font-size:0.8rem;line-height:1.55;color:var(--fg);margin-bottom:10px">${narrative}</p>
+      <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+        ${highlights}
+      </div>
+    `));
+  } catch(e) {
+    panels.push(panel("CAPTAIN'S LOG", 'amber', "<h2>&#x1F4DC; Captain's Log</h2><div style=\"color:var(--muted)\">Could not load log entry.</div>"));
+  }
+
+  // Achievements panel
+  try {
+    const achievements = await fetchJSON('/achievements');
+    const achievementCards = achievements && achievements.length
+      ? achievements.map(a => {
+          const glow = a.unlocked ? 'border-color:var(--amber);box-shadow:0 0 6px var(--amber)33' : 'opacity:0.45';
+          const icon = a.unlocked ? '&#x1F3C6;' : '&#x1F512;';
+          const dateStr = a.unlocked && a.unlocked_at ? ` <span style="font-size:0.65rem;color:var(--muted)">${a.unlocked_at.slice(0,10)}</span>` : '';
+          return `<div style="border:1px solid var(--border);border-radius:5px;padding:6px 8px;${glow}">
+            <div style="font-size:0.75rem;font-weight:600">${icon} ${a.title}${dateStr}</div>
+            <div style="font-size:0.67rem;color:var(--muted);margin-top:2px">${a.description}</div>
+          </div>`;
+        }).join('')
+      : '<div style="color:var(--muted)">No achievements yet.</div>';
+    const unlockedCount = achievements ? achievements.filter(a => a.unlocked).length : 0;
+    panels.push(panel('ACHIEVEMENTS', 'amber', `
+      <h2>&#x1F3C6; Trophy Hall</h2>
+      <div style="margin-bottom:8px;font-size:0.78rem;color:var(--amber)">${unlockedCount} / ${achievements ? achievements.length : 0} unlocked</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        ${achievementCards}
+      </div>
+      <div style="margin-top:10px">
+        <button onclick="fetch('/achievements/check',{method:'POST'}).then(r=>r.json()).then(d=>{if(d.count>0){alert('Unlocked: '+d.newly_unlocked.map(a=>a.title).join(', '));}else{alert('No new achievements this time.');}loadDashboard();}).catch(e=>alert('Error: '+e))" class="quick-btn">&#x1F50D; Check Achievements</button>
+      </div>
+    `));
+  } catch(e) {
+    panels.push(panel('ACHIEVEMENTS', 'amber', '<h2>&#x1F3C6; Trophy Hall</h2><div style="color:var(--muted)">Could not load achievements.</div>'));
+  }
+
   document.getElementById('panels').innerHTML = panels.join('');
 }
 
