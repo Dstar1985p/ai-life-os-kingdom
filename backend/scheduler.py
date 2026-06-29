@@ -19,12 +19,13 @@ _AGENT_REGISTRY: dict[str, Any] = {}
 _SCHEDULE = {
     "Print Forge AI": {"hours": 6},
     "Vibes AI": {"hours": 12},
-    "Lead Forge AI": {"hours": 24},
+    "Printify Studio": {"hours": 8},
     "Opportunity Scout": {"hours": 4},
     "Watch Folder": {"seconds": 60},
     "PulseBreak Track Processor": {"minutes": 5},
     "ROI Reaper": {"hours": 24},
     "Trend Watcher": {"hours": 4},
+    "Music Licensing": {"hours": 24},
 }
 
 _scheduler: BackgroundScheduler | None = None
@@ -34,17 +35,19 @@ def _get_agents() -> dict[str, Any]:
     if not _AGENT_REGISTRY:
         from backend.agents.print_forge import PrintForgeAgent
         from backend.agents.vibes_ai import VibesAIAgent
-        from backend.agents.lead_forge import LeadForgeAgent
+        from backend.agents.lead_forge import PrintifyAgent
         from backend.agents.opportunity_scout import OpportunityScoutAgent
         from backend.agents.roi_reaper import ROIReaperAgent
         from backend.agents.trend_watcher import TrendWatcherAgent
 
         _AGENT_REGISTRY["Print Forge AI"] = PrintForgeAgent()
         _AGENT_REGISTRY["Vibes AI"] = VibesAIAgent()
-        _AGENT_REGISTRY["Lead Forge AI"] = LeadForgeAgent()
+        _AGENT_REGISTRY["Printify Studio"] = PrintifyAgent()
         _AGENT_REGISTRY["Opportunity Scout"] = OpportunityScoutAgent()
         _AGENT_REGISTRY["ROI Reaper"] = ROIReaperAgent()
         _AGENT_REGISTRY["Trend Watcher"] = TrendWatcherAgent()
+        from backend.agents.music_licensing import MusicLicensingAgent
+        _AGENT_REGISTRY["Music Licensing"] = MusicLicensingAgent()
     return _AGENT_REGISTRY
 
 

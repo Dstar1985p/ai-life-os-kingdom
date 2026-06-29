@@ -142,7 +142,7 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 .district.command { grid-column: 2; grid-row: 2; }
 .district.pitwall { grid-column: 1; grid-row: 2; }
 .district.pulsebreak { grid-column: 1; grid-row: 1; }
-.district.bvs { grid-column: 3; grid-row: 2; }
+.district.printify { grid-column: 3; grid-row: 2; }
 .district.venture { grid-column: 3; grid-row: 1; }
 .district.knowledge { grid-column: 2; grid-row: 3; }
 
@@ -473,7 +473,7 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
       <div style="display:flex;flex-direction:column;gap:8px">
         <button onclick="triggerAgent('Print Forge AI')" class="quick-btn">▶ Run Print Forge</button>
         <button onclick="triggerAgent('Vibes AI')" class="quick-btn">▶ Run Vibes AI</button>
-        <button onclick="triggerAgent('Lead Forge AI')" class="quick-btn">▶ Run Lead Forge</button>
+        <button onclick="triggerAgent('Printify Studio')" class="quick-btn">▶ Run Printify</button>
         <button onclick="triggerAgent('Opportunity Scout')" class="quick-btn">▶ Run Scout</button>
         <div id="action-result" style="font-size:0.7rem;color:var(--green);margin-top:4px;min-height:20px"></div>
       </div>
@@ -688,7 +688,7 @@ async function loadKingdomMap() {
   document.getElementById('res-stability').textContent = `${res.stability||0}/100`;
   
   // Map districts
-  const districtOrder = ['pulsebreak_arena','command_tower','venture_lab','pitwall_workshop','bvs_garage','knowledge_vault'];
+  const districtOrder = ['pulsebreak_arena','command_tower','venture_lab','pitwall_workshop','printify_studio','knowledge_vault'];
   const ordered = districtOrder.map(id => data.districts.find(d => d.id === id)).filter(Boolean);
   
   const mapEl = document.getElementById('kingdom-map');
@@ -815,9 +815,30 @@ async function loadDashboard() {
     <h2>Automated Agents</h2>
     <div class="metric"><span class="metric-label">🏭 Print Forge AI</span><span style="color:var(--green)">ACTIVE</span></div>
     <div class="metric"><span class="metric-label">🎵 Vibes AI</span><span style="color:var(--green)">ACTIVE</span></div>
-    <div class="metric"><span class="metric-label">🔧 Lead Forge AI</span><span style="color:var(--green)">ACTIVE</span></div>
+    <div class="metric"><span class="metric-label">🖨️ Printify Studio</span><span style="color:var(--green)">ACTIVE</span></div>
     <div class="metric"><span class="metric-label">🚀 Opportunity Scout</span><span style="color:var(--green)">ACTIVE</span></div>
     <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">All agents run deterministically — no external API calls</div>
+  `));
+
+  // Printify Studio panel
+  const printifyConcepts = await fetchJSON('/printify/concepts').catch(() => null);
+  const pcList = printifyConcepts && printifyConcepts.concepts
+    ? printifyConcepts.concepts.slice(0, 4).map(c => {
+        const ev = c.evidence || {};
+        return `<div class="list-item">
+          <span style="color:var(--cyan)">${ev.title || c.title}</span>
+          <span style="color:var(--muted);font-size:0.68rem">${ev.product_type || ''} · £${ev.suggested_price_gbp || ''} · ${ev.estimated_margin_pct || ''}% margin · Score: ${Math.round(c.kingdom_score || 0)}</span>
+        </div>`;
+      }).join('')
+    : '<div style="color:var(--muted);font-size:0.72rem">No concepts yet — click Generate to run agent</div>';
+  panels.push(panel('PRINTIFY STUDIO', 'green', `
+    <h2>&#x1F5A8;&#xFE0F; Printify Studio</h2>
+    <div style="font-size:0.7rem;color:var(--muted);margin-bottom:10px">Print-on-demand concepts for Pitwall Classics</div>
+    <div id="printify-concepts-list">${pcList}</div>
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <button onclick="generatePrintifyConcepts()" class="quick-btn">Generate New Concepts</button>
+      <a href="/printify/concepts" target="_blank" style="color:var(--cyan);font-size:0.75rem;align-self:center">View All →</a>
+    </div>
   `));
 
   // PulseBreak Studio panel
@@ -840,6 +861,20 @@ async function loadDashboard() {
       ${!ytAvailable ? '<a href="/docs#/Vibes%20AI/youtube_status_vibes_youtube_status_get" style="color:var(--cyan);font-size:0.78rem;text-decoration:none">&#x2699;&#xFE0F; Setup YouTube</a>' : ''}
     </div>
   `));
+
+  // PulseBreak Licensing panel
+  panels.push(panel('PULSEBREAK LICENSING', 'cyan', `
+    <h2>&#x1F3B5; PulseBreak Licensing</h2>
+    <p style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">Sync licensing concepts for Pond5, AudioJungle &amp; more</p>
+    <div id="licensing-revenue-estimate" style="font-size:1.3em;color:#0dcaf0;margin-bottom:8px">Loading...</div>
+    <div id="licensing-concepts-list">Loading...</div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="generateLicensingConcepts()" class="quick-btn">&#x25B6; Generate Concepts</button>
+      <a href="/music-licensing/concepts" target="_blank" style="color:var(--cyan);font-size:0.78rem;text-decoration:none;align-self:center">View All &#x2192;</a>
+    </div>
+  `));
+  loadLicensingConcepts();
+  loadLicensingRevenue();
 
   // Backups panel
   panels.push(panel('BACKUPS', '', `
@@ -870,7 +905,7 @@ async function loadDashboard() {
       <div style="margin-top:12px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px">
         <div style="font-size:0.7rem;letter-spacing:2px;color:var(--muted);margin-bottom:8px">ADD ENTRY</div>
         <select id="t-venture" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
-          <option>Pitwall Classics</option><option>PulseBreak</option><option>BVS Motors</option>
+          <option>Pitwall Classics</option><option>PulseBreak</option><option>Printify Studio</option>
         </select>
         <select id="t-type" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
           <option value="income">Income</option><option value="expense">Expense</option>
@@ -1033,6 +1068,69 @@ function conveneCouncil() {
     `;
   })
   .catch(err => { resultEl.innerHTML = `<span style="color:var(--red)">Network error: ${err}</span>`; });
+}
+
+// PulseBreak Licensing functions
+async function loadLicensingConcepts() {
+  const el = document.getElementById('licensing-concepts-list');
+  if (!el) return;
+  try {
+    const data = await fetchJSON('/music-licensing/concepts');
+    if (!data || !data.concepts || data.concepts.length === 0) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem">No concepts yet — click Generate Concepts</div>';
+      return;
+    }
+    el.innerHTML = data.concepts.slice(0, 5).map(c => {
+      const ev = c.evidence || {};
+      const platforms = (ev.recommended_platforms || []).join(', ');
+      const rev = ev.estimated_monthly_revenue_gbp ? '£' + ev.estimated_monthly_revenue_gbp.toFixed(2) + '/mo' : '';
+      return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:7px 10px;margin-bottom:5px;font-size:0.78rem">'
+        + '<div style="color:var(--cyan);margin-bottom:2px">' + (ev.track_title || c.title) + '</div>'
+        + '<div style="color:var(--muted)">' + (ev.sub_genre || '') + (platforms ? ' • ' + platforms : '') + '</div>'
+        + (rev ? '<div style="color:var(--green);font-size:0.75rem">Est. ' + rev + '</div>' : '')
+        + '</div>';
+    }).join('');
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="color:var(--muted)">Could not load concepts</div>';
+  }
+}
+
+async function loadLicensingRevenue() {
+  const el = document.getElementById('licensing-revenue-estimate');
+  if (!el) return;
+  try {
+    const data = await fetchJSON('/music-licensing/revenue-estimate');
+    if (data && data.total_monthly_estimate_gbp !== undefined) {
+      el.innerHTML = 'Est. <strong>£' + data.total_monthly_estimate_gbp.toFixed(2) + '/month</strong> passive (' + (data.concept_count || 0) + ' concepts)';
+    } else {
+      el.innerHTML = 'Est. £0.00/month passive';
+    }
+  } catch(e) {
+    if (el) el.innerHTML = 'Revenue estimate unavailable';
+  }
+}
+
+async function generateLicensingConcepts() {
+  try {
+    const res = await fetch('/music-licensing/generate', {method: 'POST'});
+    const data = await res.json();
+    alert('Generated: ' + (data.opportunities_created || 0) + ' new concept(s), updated: ' + (data.opportunities_updated || 0));
+    loadLicensingConcepts();
+    loadLicensingRevenue();
+  } catch(e) {
+    alert('Failed to generate concepts');
+  }
+}
+
+async function generatePrintifyConcepts() {
+  try {
+    const res = await fetch('/printify/generate', {method: 'POST'});
+    const data = await res.json();
+    alert('Printify: Generated ' + (data.opportunities_created || 0) + ' new POD concept(s)');
+    loadDashboard();
+  } catch(e) {
+    alert('Failed to generate Printify concepts');
+  }
 }
 
 // Auto-refresh every 60 seconds

@@ -31,6 +31,7 @@ from backend.api.routes_sprint import router as sprint_router
 from backend.api.routes_log import router as log_router
 from backend.api.routes_achievements import router as achievements_router
 from backend.api.routes_learning import router as learning_router
+from backend.api.routes_music_licensing import router as music_licensing_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -93,6 +94,7 @@ app.include_router(sprint_router)
 app.include_router(log_router)
 app.include_router(achievements_router)
 app.include_router(learning_router)
+app.include_router(music_licensing_router)
 
 
 @app.get("/", include_in_schema=False)
