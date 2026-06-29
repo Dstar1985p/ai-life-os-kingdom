@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
@@ -6,6 +7,96 @@ from backend.models.tables import Agent, CouncilVote, Decision
 from backend.api.schemas import CouncilSessionCreate
 
 router = APIRouter(prefix="/council", tags=["Council"])
+
+
+# ---------------------------------------------------------------------------
+# Decision Council — new multi-perspective endpoints
+# ---------------------------------------------------------------------------
+
+class CouncilProposalRequest(BaseModel):
+    proposal: str
+    context: str = ""
+
+
+@router.post("/convene")
+def convene_council(payload: CouncilProposalRequest, db: Session = Depends(get_db)):
+    """Run a Decision Council session with 5 virtual members."""
+    from backend.services.council import run_council_session
+    result = run_council_session(proposal=payload.proposal, context=payload.context, db=db)
+    if result.get("verdict") == "ERROR":
+        raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+    return result
+
+
+@router.get("/sessions")
+def list_council_sessions(db: Session = Depends(get_db)):
+    """List the last 20 council sessions (grouped by session_id prefix in proposal)."""
+    rows = (
+        db.query(CouncilVote)
+        .filter(CouncilVote.proposal.like("[SESSION:%"))
+        .order_by(CouncilVote.created_at.desc())
+        .limit(100)
+        .all()
+    )
+
+    # Group by session_id
+    sessions: dict[str, dict] = {}
+    for row in rows:
+        # Extract session_id from "[SESSION:uuid] text"
+        try:
+            sid = row.proposal.split("[SESSION:")[1].split("]")[0]
+            proposal_text = row.proposal.split("] ", 1)[1] if "] " in row.proposal else row.proposal
+        except IndexError:
+            continue
+        if sid not in sessions:
+            sessions[sid] = {
+                "session_id": sid,
+                "proposal": proposal_text,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "vote_count": 0,
+            }
+        sessions[sid]["vote_count"] += 1
+
+    result = list(sessions.values())[:20]
+    return {"sessions": result, "total": len(result)}
+
+
+@router.get("/sessions/{session_id}")
+def get_council_session(session_id: str, db: Session = Depends(get_db)):
+    """Return all votes for a specific council session."""
+    rows = (
+        db.query(CouncilVote)
+        .filter(CouncilVote.proposal.like(f"[SESSION:{session_id}]%"))
+        .order_by(CouncilVote.created_at.asc())
+        .all()
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    proposal_text = rows[0].proposal.split("] ", 1)[1] if "] " in rows[0].proposal else rows[0].proposal
+    votes = [
+        {
+            "agent_name": r.agent_name,
+            "vote": r.vote,
+            "reasoning": r.reasoning,
+            "confidence_score": r.confidence_score,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+    for_count = sum(1 for v in votes if v["vote"] == "for")
+    against_count = sum(1 for v in votes if v["vote"] == "against")
+    neutral_count = sum(1 for v in votes if v["vote"] == "neutral")
+
+    return {
+        "session_id": session_id,
+        "proposal": proposal_text,
+        "votes": votes,
+        "for_count": for_count,
+        "against_count": against_count,
+        "neutral_count": neutral_count,
+    }
 
 
 @router.post("/session")
