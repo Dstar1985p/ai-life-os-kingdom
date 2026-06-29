@@ -11,6 +11,13 @@ test_*.db
 .youtube_token.json
 .youtube_credentials.json
 
+# Etsy OAuth tokens
+.etsy_token.json
+.etsy_credentials.json
+
+# Kingdom email config
+.kingdom_email.json
+
 # PulseBreak audio/video files
 pulsebreak_tracks/*.mp3
 pulsebreak_tracks/*.wav

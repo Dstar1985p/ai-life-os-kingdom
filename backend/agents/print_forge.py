@@ -82,6 +82,32 @@ class PrintForgeAgent(BaseRevenueAgent):
     name = "Print Forge AI"
     mission = "Identify winning motorsport art themes and create listing drafts"
 
+    def _push_to_etsy_draft(self, concept: dict, db) -> dict:
+        """Push a listing concept to Etsy as a draft (if Etsy is authorised)."""
+        from backend.services.etsy_oauth import create_draft_listing, EtsyNotAuthorisedError, get_etsy_status
+
+        status = get_etsy_status()
+        if not status.get("available"):
+            return {"pushed": False, "reason": "Etsy not configured"}
+
+        try:
+            # Convert comma-separated tags string to list
+            tags = concept.get("tags", "")
+            if isinstance(tags, str):
+                tags = [t.strip() for t in tags.split(",") if t.strip()]
+
+            result = create_draft_listing(
+                title=concept["title"],
+                description=concept.get("description", concept["title"]),
+                price=concept.get("price", 3.99),
+                tags=tags,
+            )
+            return {"pushed": True, "listing_id": result["listing_id"], "url": result["etsy_manage_url"]}
+        except EtsyNotAuthorisedError:
+            return {"pushed": False, "reason": "Etsy not authorised"}
+        except Exception as e:
+            return {"pushed": False, "reason": str(e)}
+
     def run(self, db: Session) -> AgentRunResult:
         existing = {
             row.title
@@ -100,6 +126,7 @@ class PrintForgeAgent(BaseRevenueAgent):
         concepts = _generate_concepts(existing, lesson_texts)
         created = 0
         updated = 0
+        new_concepts = []
         for c in concepts:
             scores = {
                 "revenue_score": 70.0,
@@ -116,15 +143,26 @@ class PrintForgeAgent(BaseRevenueAgent):
             )
             if is_new:
                 created += 1
+                new_concepts.append(c)
             else:
                 updated += 1
 
         db.commit()
 
+        # Push top 3 new concepts to Etsy as drafts
+        etsy_drafts_created = 0
+        etsy_results = []
+        for concept in new_concepts[:3]:
+            etsy_result = self._push_to_etsy_draft(concept, db)
+            etsy_results.append(etsy_result)
+            if etsy_result.get("pushed"):
+                etsy_drafts_created += 1
+
         lesson = (
             f"Print Forge AI ran: found {len(existing)} existing concepts, "
             f"created {created} new, updated {updated} existing motorsport listing concepts. "
-            f"Lessons applied: {len(lesson_texts)}."
+            f"Lessons applied: {len(lesson_texts)}. "
+            f"Etsy drafts created: {etsy_drafts_created}."
         )
         result = AgentRunResult(
             status="ok",
@@ -133,8 +171,10 @@ class PrintForgeAgent(BaseRevenueAgent):
             opportunities_updated=updated,
             lessons=[lesson],
             actions_taken=[
-                f"Generated {created} new + {updated} updated Pitwall Classics listing concepts"
+                f"Generated {created} new + {updated} updated Pitwall Classics listing concepts",
+                f"Pushed {etsy_drafts_created} draft listings to Etsy",
             ],
         )
+        result.etsy_drafts_created = etsy_drafts_created  # type: ignore[attr-defined]
         self._record_run(result, db)
         return result

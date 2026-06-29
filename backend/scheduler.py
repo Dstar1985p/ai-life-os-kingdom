@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 from typing import Any
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from backend.database import SessionLocal
@@ -85,6 +87,20 @@ def _run_pulsebreak_scan() -> None:
         db.close()
 
 
+def _send_weekly_digest() -> None:
+    from backend.services.weekly_digest import generate_weekly_digest
+    from backend.services.email_notifier import send_weekly_digest_email
+    db = SessionLocal()
+    try:
+        digest = generate_weekly_digest(db)
+        result = send_weekly_digest_email(digest)
+        logger.info("Weekly digest email: %s", result)
+    except Exception:
+        logger.exception("Weekly digest email failed")
+    finally:
+        db.close()
+
+
 def start_scheduler() -> BackgroundScheduler:
     global _scheduler
     _scheduler = BackgroundScheduler(daemon=True)
@@ -113,6 +129,15 @@ def start_scheduler() -> BackgroundScheduler:
                 replace_existing=True,
             )
 
+    # Weekly digest email — every Monday at 8am
+    _scheduler.add_job(
+        _send_weekly_digest,
+        CronTrigger(day_of_week="mon", hour=8, minute=0),
+        id="weekly_digest_email",
+        name="Weekly Digest Email",
+        replace_existing=True,
+    )
+
     _scheduler.start()
     logger.info("Scheduler started with %d jobs", len(_scheduler.get_jobs()))
     return _scheduler
@@ -123,6 +148,16 @@ def stop_scheduler() -> None:
     if _scheduler and _scheduler.running:
         _scheduler.shutdown(wait=False)
         _scheduler = None
+
+
+def _next_monday_8am() -> str:
+    """Return ISO string for next Monday at 08:00 UTC."""
+    now = datetime.utcnow()
+    days_until_monday = (7 - now.weekday()) % 7 or 7
+    next_monday = (now + timedelta(days=days_until_monday)).replace(
+        hour=8, minute=0, second=0, microsecond=0
+    )
+    return next_monday.isoformat()
 
 
 def get_scheduler_status() -> list[dict]:
@@ -165,6 +200,24 @@ def get_scheduler_status() -> list[dict]:
                 "mission": getattr(agent_obj, "mission", "Watch folder auto-import") if agent_obj else "Watch folder auto-import",
             }
         )
+
+    # Add weekly digest email entry
+    digest_job = jobs.get("weekly_digest_email")
+    digest_next_run = (
+        digest_job.next_run_time.isoformat()
+        if digest_job and digest_job.next_run_time
+        else _next_monday_8am()
+    )
+    rows.append(
+        {
+            "name": "Weekly Digest Email",
+            "job_id": "weekly_digest_email",
+            "interval": "Monday 8am",
+            "next_run": digest_next_run,
+            "scheduler_running": _scheduler is not None and _scheduler.running,
+            "mission": "Send weekly Kingdom digest email every Monday at 8am",
+        }
+    )
 
     return rows
 

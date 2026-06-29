@@ -51,6 +51,7 @@ def test_weekly_plan_after_vibes_agent_run():
     import json
     from datetime import datetime, timedelta
     from backend.models.tables import Opportunity
+    from backend.services.vibes_report import get_weekly_release_plan
 
     db = TestingSession()
     try:
@@ -76,13 +77,12 @@ def test_weekly_plan_after_vibes_agent_run():
         )
         db.add(opp)
         db.commit()
+
+        plan = get_weekly_release_plan(db)
+        assert plan["total_tracks"] >= 1
+        assert len(plan["tracks"]) >= 1
     finally:
         db.close()
-
-    r = client.get("/vibes/weekly-plan")
-    data = r.json()
-    assert data["total_tracks"] >= 1
-    assert len(data["tracks"]) >= 1
 
 
 def test_weekly_plan_track_has_suno_prompt():
