@@ -54,4 +54,11 @@ def update_quest(quest_id: int, payload: QuestUpdate, db: Session = Depends(get_
         except Exception:
             pass  # Don't fail the route if progression errors
 
+    if completing:
+        try:
+            from backend.services.learning_engine import update_weights
+            update_weights(db)
+        except Exception:
+            pass
+
     return quest

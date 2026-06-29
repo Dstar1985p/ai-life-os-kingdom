@@ -316,6 +316,13 @@ def run_council_session(
                 db.add(row)
             db.commit()
 
+        try:
+            from backend.services.learning_engine import log_token_usage
+            combined = " ".join(m.get("reasoning", "") for m in members)
+            log_token_usage("council", combined, db)
+        except Exception:
+            pass
+
         return {
             "session_id": session_id,
             "proposal": proposal,

@@ -138,6 +138,12 @@ def generate_log_entry(db: Session, period_days: int = 7) -> dict:
         narrative = _build_narrative(stats)
         highlights = _build_highlights(stats, completed_titles, agents_levelled_up)
 
+        try:
+            from backend.services.learning_engine import log_token_usage
+            log_token_usage("captains_log", narrative, db)
+        except Exception:
+            pass
+
         return {
             "period_days": period_days,
             "generated_at": datetime.utcnow().isoformat(),

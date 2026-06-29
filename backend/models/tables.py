@@ -218,3 +218,22 @@ class RevenueEntry(Base):
     category: Mapped[str] = mapped_column(String(120), default="General")  # "Sale", "Subscription", "Tool", "Ads", etc.
     source: Mapped[str] = mapped_column(String(120), default="manual")  # "manual", "etsy_import", "auto"
     recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class LearningWeight(Base):
+    __tablename__ = "learning_weights"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    key: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    weight: Mapped[float] = mapped_column(Float, default=1.0)
+    evidence_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_updated: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TokenUsageLog(Base):
+    __tablename__ = "token_usage_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    feature: Mapped[str] = mapped_column(String(120))
+    estimated_tokens: Mapped[int] = mapped_column(Integer)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

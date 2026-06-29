@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models.tables import Decision, Agent
 from backend.services.kingdom_health import get_kingdom_health, get_founder_capacity
+from backend.services.learning_engine import update_weights
 from backend.services.decision_journal import get_decision_summary
 from backend.services.agent_progression import (
     award_xp,
@@ -86,6 +87,12 @@ def update_decision_outcome(
     except Exception:
         pass  # Don't fail the route if progression system errors
 
+    try:
+        update_weights(db)
+    except Exception:
+        pass
+
+    db.refresh(decision)
     return decision
 
 
