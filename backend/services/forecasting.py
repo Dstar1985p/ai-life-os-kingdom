@@ -106,6 +106,9 @@ def get_revenue_forecast(db: Session) -> dict:
     ventures = [_venture_forecast(db, v, v) for v in VENTURES]
     kingdom = _venture_forecast(db, None, "Kingdom Total")
     best = max(ventures, key=lambda x: x["forecast_90d_gbp"]) if ventures else None
+    # Backward-compat keys used by focus_engine and existing tests
+    monthly_low = round(kingdom["forecast_30d_gbp"], 2)
+    monthly_high = round(kingdom["forecast_90d_gbp"] / 3, 2)
     return {
         "generated_at": datetime.utcnow().isoformat(),
         "period_weeks_history": 8,
@@ -113,6 +116,10 @@ def get_revenue_forecast(db: Session) -> dict:
         "kingdom_total": kingdom,
         "top_venture_90d": best["venture"] if best else None,
         "insights": _generate_insights(ventures, kingdom),
+        # Legacy keys — kept for backward compatibility
+        "total_estimated_monthly_low": f"£{monthly_low:.0f}",
+        "total_estimated_monthly_high": f"£{monthly_high:.0f}",
+        "forecast_period": "next 3 months",
     }
 
 
@@ -155,8 +162,19 @@ def get_regret_score(opportunity_id: int, db) -> dict:
         regret_score += 10; factors.append("Top-tier overall score")
     regret_score = min(100, regret_score)
     verdict = "act_now" if regret_score >= 70 else "act_soon" if regret_score >= 40 else "safe_to_defer"
+    if regret_score >= 70:
+        message = "High regret score — you will likely regret not acting on this in 6 months."
+        answer = "Almost certainly yes"
+    elif regret_score >= 40:
+        message = "Moderate regret score — schedule this within the next 4–8 weeks."
+        answer = "Possibly"
+    else:
+        message = "Low regret score — safe to defer without significant downside."
+        answer = "Probably not"
     return {
         "opportunity": opp.title, "regret_score": regret_score,
-        "verdict": verdict, "regret_factors": factors,
+        "verdict": verdict, "message": message, "regret_factors": factors,
+        "six_month_question": f"If you ignored '{opp.title}' for 6 months, would you regret it?",
+        "answer": answer,
         "generated_at": datetime.utcnow().isoformat(),
     }

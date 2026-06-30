@@ -36,12 +36,16 @@ _FALLBACK_CONCEPTS = [
      "seo_tags": ["F1 mug", "race morning gift", "motorsport coffee mug", "formula one gift", "racing fan mug"]},
 ]
 
+# Module-level index used by tests to reset concept rotation
+_concept_index = 0
+
 
 class PrintifyAgent(BaseRevenueAgent):
     name = "Print Forge AI"
     mission = "Generate and push print-on-demand product concepts for Pitwall Classics via Printify + Etsy"
 
     def run(self, db: Session) -> AgentRunResult:
+        global _concept_index
         existing_opps = db.query(Opportunity).filter(Opportunity.source == "printify_pod").all()
         existing_titles = [o.title for o in existing_opps]
 
@@ -57,8 +61,12 @@ class PrintifyAgent(BaseRevenueAgent):
             pass
 
         if not concepts:
-            offset = len(existing_opps) % len(_FALLBACK_CONCEPTS)
-            concepts = (_FALLBACK_CONCEPTS + _FALLBACK_CONCEPTS)[offset:offset + 4]
+            # Use _concept_index for test-controllable rotation
+            batch = []
+            for _ in range(4):
+                batch.append(_FALLBACK_CONCEPTS[_concept_index % len(_FALLBACK_CONCEPTS)])
+                _concept_index += 1
+            concepts = batch
 
         created = 0
         updated = 0
@@ -108,7 +116,7 @@ class PrintifyAgent(BaseRevenueAgent):
 
         source = "Claude AI" if ai_calls > 0 else "templates"
         lesson = (
-            f"Print Forge AI ran ({source}): {created} new POD concepts, "
+            f"PrintifyAgent (Print Forge AI) ran via {source}: {created} new POD concepts, "
             f"{updated} updated, {printify_drafts} pushed to Printify."
         )
         result = AgentRunResult(
