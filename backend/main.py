@@ -54,6 +54,7 @@ from backend.api.routes_new_agents import router as new_agents_router
 from backend.api.routes_etsy_webhook import router as etsy_webhook_router
 from backend.api.routes_goals import router as goals_router
 from backend.api.routes_backup import router as backup_router
+from backend.api.routes_launch import router as launch_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -146,6 +147,7 @@ app.include_router(new_agents_router)
 app.include_router(etsy_webhook_router)
 app.include_router(goals_router)
 app.include_router(backup_router)
+app.include_router(launch_router)
 
 
 @app.get("/", include_in_schema=False)

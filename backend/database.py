@@ -40,6 +40,37 @@ def _apply_migrations(eng) -> None:
                 )
             """))
             conn.commit()
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS launch_checklists (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    venture VARCHAR(120) NOT NULL,
+                    item VARCHAR(255) NOT NULL,
+                    category VARCHAR(80) DEFAULT 'general',
+                    completed BOOLEAN DEFAULT 0,
+                    completed_at DATETIME,
+                    notes TEXT DEFAULT '',
+                    created_at DATETIME
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS ab_tests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    venture VARCHAR(120) NOT NULL,
+                    listing_id VARCHAR(80) DEFAULT '',
+                    name VARCHAR(255) NOT NULL,
+                    variant_a TEXT NOT NULL,
+                    variant_b TEXT NOT NULL,
+                    metric VARCHAR(80) DEFAULT 'clicks',
+                    a_value FLOAT DEFAULT 0,
+                    b_value FLOAT DEFAULT 0,
+                    winner VARCHAR(10),
+                    status VARCHAR(20) DEFAULT 'running',
+                    notes TEXT DEFAULT '',
+                    started_at DATETIME,
+                    concluded_at DATETIME
+                )
+            """))
+            conn.commit()
     except Exception:
         logger.exception("Migration step failed (non-fatal)")
 
