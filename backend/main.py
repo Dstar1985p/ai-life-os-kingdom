@@ -36,6 +36,9 @@ from backend.api.routes_music_licensing import router as music_licensing_router
 from backend.api.routes_crisis import router as crisis_router
 from backend.api.routes_setup import router as setup_router
 from backend.api.routes_updater import router as updater_router
+from backend.api.routes_mission import router as mission_router
+from backend.api.routes_chat import router as chat_router
+from backend.api.routes_reminders import router as reminders_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -110,6 +113,9 @@ app.include_router(music_licensing_router)
 app.include_router(crisis_router)
 app.include_router(setup_router)
 app.include_router(updater_router)
+app.include_router(mission_router)
+app.include_router(chat_router)
+app.include_router(reminders_router)
 
 
 @app.get("/", include_in_schema=False)

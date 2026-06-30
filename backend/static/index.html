@@ -202,6 +202,43 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
   .district.command { grid-column: 1 / -1; }
   .district.knowledge { grid-column: 1 / -1; }
 }
+
+/* ===== DAILY MISSION ===== */
+.mission-action { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; display: flex; gap: 10px; align-items: flex-start; }
+.mission-rank { background: var(--cyan); color: #000; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; flex-shrink: 0; margin-top: 2px; }
+.mission-rank.rank-2 { background: var(--amber); }
+.mission-rank.rank-3 { background: var(--purple); }
+.mission-content { flex: 1; }
+.mission-title { font-size: 0.85rem; color: var(--text); font-weight: bold; margin-bottom: 3px; }
+.mission-why { font-size: 0.72rem; color: var(--muted); line-height: 1.4; margin-bottom: 4px; }
+.mission-meta { font-size: 0.65rem; color: var(--cyan); letter-spacing: 1px; }
+.mission-theme { font-size: 0.72rem; color: var(--amber); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+.mission-motivational { font-size: 0.78rem; color: var(--green); font-style: italic; margin-bottom: 12px; padding: 8px; border-left: 2px solid var(--green); }
+
+/* ===== REMINDERS BADGE ===== */
+#reminders-badge { display: inline-flex; align-items: center; justify-content: center; background: var(--amber); color: #000; border-radius: 10px; padding: 2px 7px; font-size: 0.65rem; font-weight: bold; margin-left: 8px; cursor: pointer; display: none; }
+#reminders-badge.urgent { background: var(--red); color: #fff; }
+
+/* ===== CHAT WIDGET ===== */
+#chat-bubble { position: fixed; bottom: 24px; right: 24px; z-index: 900; background: var(--cyan); color: #000; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; cursor: pointer; box-shadow: 0 4px 20px rgba(0,212,255,0.4); border: none; transition: transform 0.2s; }
+#chat-bubble:hover { transform: scale(1.1); }
+#chat-drawer { position: fixed; bottom: 90px; right: 24px; z-index: 901; width: 340px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 40px rgba(0,0,0,0.6); display: none; flex-direction: column; max-height: 520px; }
+#chat-drawer.open { display: flex; }
+#chat-drawer-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+#chat-drawer-header select { background: var(--surface2); border: 1px solid var(--border); color: var(--cyan); font-family: 'Courier New', monospace; font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; flex: 1; }
+#chat-drawer-header .chat-close { background: none; border: 1px solid var(--border); color: var(--muted); width: 26px; height: 26px; cursor: pointer; font-size: 0.9rem; border-radius: 3px; font-family: monospace; }
+#chat-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 200px; }
+.chat-msg { padding: 8px 10px; border-radius: 6px; font-size: 0.78rem; line-height: 1.5; max-width: 90%; }
+.chat-msg.user { background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.2); color: var(--text); align-self: flex-end; }
+.chat-msg.agent { background: var(--surface2); border: 1px solid var(--border); color: var(--text); align-self: flex-start; }
+.chat-msg .msg-agent { font-size: 0.65rem; color: var(--cyan); letter-spacing: 1px; margin-bottom: 4px; }
+.chat-actions { padding: 4px 10px 8px; }
+.chat-action-tag { display: inline-block; background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3); color: var(--green); font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; margin: 2px; cursor: pointer; }
+#chat-input-row { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+#chat-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'Courier New', monospace; font-size: 0.78rem; padding: 8px 10px; border-radius: 4px; resize: none; }
+#chat-input:focus { outline: none; border-color: var(--cyan); }
+#chat-send { background: var(--cyan); color: #000; border: none; padding: 8px 12px; font-family: 'Courier New', monospace; font-size: 0.72rem; font-weight: bold; cursor: pointer; border-radius: 4px; }
+#chat-send:hover { opacity: 0.85; }
 </style>
 </head>
 <body>
@@ -215,7 +252,7 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 </div>
 
 <header>
-  <h1>&#x2694; KINGDOM</h1>
+  <h1>&#x2694; KINGDOM <span id="reminders-badge" onclick="toggleRemindersPanel()" title="Active reminders">0</span></h1>
   <p>AI LIFE OS &#x2014; COMMAND CENTRE v2.0 &#x2014; PIXEL KINGDOM WORLD</p>
 </header>
 
@@ -1340,7 +1377,134 @@ async function applyUpdate() {
 // Check for updates 5 s after boot (server needs to finish its async check)
 setTimeout(checkForUpdate, 5000);
 
+/* ── DAILY MISSION ── */
+async function loadDailyMission() {
+  try {
+    const m = await fetchJSON('/mission/today');
+    if (!m) return null;
+    return m;
+  } catch(e) { return null; }
+}
+async function regenerateMission() {
+  const btn = document.getElementById('mission-regen-btn');
+  if (btn) { btn.textContent = 'GENERATING...'; btn.disabled = true; }
+  try {
+    const m = await fetch('/mission/regenerate', {method:'POST'}).then(r=>r.json());
+    renderMissionPanel(m);
+  } catch(e) { if(btn){ btn.textContent = 'REGENERATE'; btn.disabled = false; } }
+}
+function renderMissionPanel(m) {
+  const el = document.getElementById('mission-panel-content');
+  if (!el || !m) return;
+  const rankClass = r => r === 1 ? '' : r === 2 ? ' rank-2' : ' rank-3';
+  const actions = (m.actions||[]).map(a => `
+    <div class="mission-action">
+      <div class="mission-rank${rankClass(a.rank)}">${a.rank}</div>
+      <div class="mission-content">
+        <div class="mission-title">${a.title||''}</div>
+        <div class="mission-why">${a.why||''}</div>
+        <div class="mission-meta">~${a.estimated_minutes||'?'} min &bull; ${a.venture||''} &bull; ${a.agent||''}</div>
+      </div>
+    </div>`).join('');
+  el.innerHTML = `
+    <div class="mission-theme">${m.theme||'Daily Focus'}</div>
+    <div class="mission-motivational">${m.motivational_line||''}</div>
+    ${actions}
+    <div style="margin-top:10px;text-align:right"><button id="mission-regen-btn" onclick="regenerateMission()" class="quick-btn">&#x21BA; REGENERATE</button></div>`;
+}
+
+/* ── SMART REMINDERS ── */
+async function loadReminders() {
+  try {
+    const data = await fetchJSON('/reminders/active');
+    if (!data) return;
+    const count = data.count || 0;
+    const badge = document.getElementById('reminders-badge');
+    if (badge) {
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'inline-flex' : 'none';
+      const hasUrgent = (data.reminders||[]).some(r => r.severity === 'urgent');
+      badge.classList.toggle('urgent', hasUrgent);
+    }
+    // render reminders panel if open
+    const rPanel = document.getElementById('reminders-panel-content');
+    if (rPanel && data.reminders) renderRemindersList(data.reminders, rPanel);
+  } catch(e) {}
+}
+function renderRemindersList(reminders, el) {
+  if (!reminders.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.78rem;padding:8px 0">No active reminders — kingdom is on track!</div>'; return; }
+  const sevColor = s => s === 'urgent' ? 'var(--red)' : s === 'warning' ? 'var(--amber)' : 'var(--muted)';
+  el.innerHTML = reminders.map(r => `
+    <div class="mission-action" style="border-color:${sevColor(r.severity)}20">
+      <div class="mission-content">
+        <div class="mission-title" style="color:${sevColor(r.severity)}">${r.title}</div>
+        <div class="mission-why">${r.description}</div>
+        <div style="margin-top:4px"><button onclick="dismissReminder('${r.id}',this)" style="font-size:0.65rem;background:none;border:1px solid var(--border);color:var(--muted);padding:2px 8px;cursor:pointer;border-radius:3px;font-family:monospace">DISMISS</button></div>
+      </div>
+    </div>`).join('');
+}
+function toggleRemindersPanel() {
+  const el = document.getElementById('reminders-section');
+  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+async function dismissReminder(id, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    await fetch(`/reminders/dismiss/${encodeURIComponent(id)}`, {method:'POST'});
+    loadReminders();
+  } catch(e) { if(btn) btn.disabled = false; }
+}
+
+/* ── AGENT CHAT ── */
+let chatOpen = false;
+function toggleChat() {
+  chatOpen = !chatOpen;
+  document.getElementById('chat-drawer').classList.toggle('open', chatOpen);
+}
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const agent = document.getElementById('chat-agent-select').value;
+  const message = (input.value||'').trim();
+  if (!message) return;
+  input.value = '';
+  appendChatMsg('user', null, message, []);
+  const sendBtn = document.getElementById('chat-send');
+  sendBtn.disabled = true; sendBtn.textContent = '...';
+  try {
+    const res = await fetch('/chat/message', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({agent, message})
+    });
+    const data = await res.json();
+    appendChatMsg('agent', data.agent, data.reply, data.suggested_actions||[]);
+  } catch(e) {
+    appendChatMsg('agent', 'System', 'Unable to reach agent — check API connection.', []);
+  }
+  sendBtn.disabled = false; sendBtn.textContent = 'SEND';
+}
+function appendChatMsg(type, agentName, text, actions) {
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + type;
+  let html = '';
+  if (type === 'agent' && agentName) html += `<div class="msg-agent">${agentName.toUpperCase()}</div>`;
+  html += `<div>${text}</div>`;
+  if (actions && actions.length) {
+    html += '<div class="chat-actions">' + actions.map(a=>`<span class="chat-action-tag" onclick="document.getElementById('chat-input').value='${a.replace(/'/g,"\\'")}'">${a}</span>`).join('') + '</div>';
+  }
+  div.innerHTML = html;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('chat-input');
+  if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
+});
+
 /* ── BOOT ── */
+loadReminders();
+setInterval(loadReminders, 120000);
 loadDashboard();
 pollCharacterStates();
 setInterval(()=>{
