@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.services.vibes_report import get_weekly_release_plan, mark_track_status
 from backend.services.youtube_uploader import get_youtube_status
-from backend.services.pulsebreak_watch import scan_and_process, TRACKS_DIR, PROCESSED_DIR
+from backend.services.pulsebreak_watch import (
+    scan_and_process, approve_track, reject_track, list_review_queue,
+    TRACKS_DIR, PROCESSED_DIR, REVIEW_DIR, REJECTED_DIR,
+)
 
 router = APIRouter(prefix="/vibes", tags=["Vibes AI"])
 
@@ -71,3 +74,73 @@ def processed_tracks() -> dict:
         return {"files": [], "count": 0}
     files = [f.name for f in PROCESSED_DIR.iterdir() if f.is_file()]
     return {"files": files, "count": len(files)}
+
+
+# ── Quality gate / review queue ──────────────────────────────────────────────
+
+@router.get("/review")
+def review_queue() -> dict:
+    """List tracks quarantined for founder review with full quality reports."""
+    tracks = list_review_queue()
+    return {"tracks": tracks, "count": len(tracks)}
+
+
+@router.post("/review/{track_name}/approve")
+def approve_queued_track(track_name: str, db: Session = Depends(get_db)) -> dict:
+    """
+    Approve a quarantined track.
+    Moves it back to the processing queue — it will be picked up on the next scan.
+    """
+    result = approve_track(track_name, db)
+    if result.get("status") == "not_found":
+        raise HTTPException(status_code=404, detail=result["message"])
+    return result
+
+
+@router.post("/review/{track_name}/reject")
+def reject_queued_track(track_name: str, db: Session = Depends(get_db)) -> dict:
+    """Reject a quarantined track — moves it to rejected/ folder."""
+    result = reject_track(track_name, db)
+    if result.get("status") == "not_found":
+        raise HTTPException(status_code=404, detail=result["message"])
+    return result
+
+
+@router.post("/quality-check")
+def quality_check_upload_queue(db: Session = Depends(get_db)) -> dict:
+    """
+    Run quality analysis on all files currently in the upload queue (without processing them).
+    Useful for previewing scores before committing to the pipeline.
+    """
+    from backend.services.track_quality import analyse_track
+    if not TRACKS_DIR.exists():
+        return {"results": []}
+    audio_extensions = {".mp3", ".wav", ".m4a", ".flac"}
+    results = []
+    for f in TRACKS_DIR.iterdir():
+        if f.is_file() and f.suffix.lower() in audio_extensions:
+            report = analyse_track(f)
+            results.append({
+                "file": f.name,
+                "score": report.score,
+                "verdict": report.verdict,
+                "summary": report.summary,
+                "duration_secs": report.duration_secs,
+                "peak_db": report.peak_db,
+                "rms_db": report.rms_db,
+                "dynamic_range_db": report.dynamic_range_db,
+                "checks": [
+                    {"name": c.name, "passed": c.passed, "detail": c.detail, "severity": c.severity}
+                    for c in report.checks
+                ],
+            })
+    return {"results": results, "count": len(results)}
+
+
+@router.get("/rejected")
+def rejected_tracks() -> dict:
+    """List tracks that failed the quality gate or were manually rejected."""
+    if not REJECTED_DIR.exists():
+        return {"files": [], "count": 0}
+    files = [f.name for f in REJECTED_DIR.iterdir() if f.is_file()]
+    return {"files": sorted(files), "count": len(files)}
