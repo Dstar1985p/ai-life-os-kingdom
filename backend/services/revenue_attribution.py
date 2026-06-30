@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from sqlalchemy.orm import Session
 
-from backend.models.tables import EtsyOrder, Opportunity, LearningWeight, Lesson, RevenueEntry
+from backend.models.tables import AgentRun, EtsyOrder, Opportunity, LearningWeight, Lesson, RevenueEntry
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,7 @@ def attribute_recent_orders(db: Session, days: int = 7) -> dict:
     attributed = 0
     total_revenue = 0.0
     category_wins: dict[str, int] = {}
+    agent_revenue: dict[str, float] = {}  # agent_name → revenue this run
 
     for order in orders:
         title = order.product_title or ""
@@ -90,7 +91,19 @@ def attribute_recent_orders(db: Session, days: int = 7) -> dict:
             attributed += 1
             category = opp.category or "General"
             category_wins[category] = category_wins.get(category, 0) + 1
-            total_revenue += order.revenue_estimate or (order.item_price * order.quantity)
+            sale_revenue = order.revenue_estimate or (order.item_price * order.quantity)
+            total_revenue += sale_revenue
+
+            # Map opportunity source → agent name for revenue attribution
+            _SOURCE_TO_AGENT = {
+                "print_forge_ai": "Print Forge AI",
+                "vibes_ai": "Vibes AI",
+                "printify_pod": "Printify Studio",
+                "opportunity_scout": "Opportunity Scout",
+            }
+            agent_name = _SOURCE_TO_AGENT.get(opp.source, "")
+            if agent_name:
+                agent_revenue[agent_name] = agent_revenue.get(agent_name, 0.0) + sale_revenue
 
             # Boost learning weight for the winning category
             _update_category_weight(category, _ATTRIBUTION_BOOST, db)
@@ -109,6 +122,22 @@ def attribute_recent_orders(db: Session, days: int = 7) -> dict:
                 opp.evidence = json.dumps(ev)
             except Exception:
                 pass
+
+    # Write revenue back to each agent's most recent AgentRun so throttle math is accurate
+    for a_name, rev in agent_revenue.items():
+        try:
+            run = (
+                db.query(AgentRun)
+                .filter(AgentRun.agent_name == a_name)
+                .order_by(AgentRun.run_at.desc())
+                .first()
+            )
+            if run:
+                run.revenue_generated_gbp = round(run.revenue_generated_gbp + rev, 2)
+                roi = run.revenue_generated_gbp / run.estimated_cost_gbp if run.estimated_cost_gbp > 0 else 0.0
+                run.roi = round(roi, 3)
+        except Exception:
+            pass
 
     db.commit()
 

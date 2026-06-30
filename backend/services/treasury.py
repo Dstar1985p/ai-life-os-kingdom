@@ -10,6 +10,14 @@ from backend.models.tables import RevenueEntry, TokenUsageLog
 
 VENTURES = ["Pitwall Classics", "PulseBreak", "Printify Studio"]
 
+# Mirrors ai_brain.py — GBP per token for cost display in treasury
+_MODEL_COST_USD_PER_1M = {
+    "claude-haiku-4-5-20251001": 0.40,
+    "claude-sonnet-4-6": 3.50,
+    "claude-opus-4-8": 22.0,
+}
+_DEFAULT_COST_USD_PER_1M = 3.0
+
 # Known fixed costs hardcoded by the founder — used by /treasury/subscriptions
 KNOWN_SUBSCRIPTIONS = [
     {"name": "Railway (hosting)", "cost_gbp": 5.0, "period": "monthly"},
@@ -284,24 +292,40 @@ def get_api_costs(db: Session, days: Optional[int] = 30) -> dict:
     by_source: dict[str, int] = {}
     total_tokens = 0
 
+    total_cost_usd = 0.0
     for log in logs:
         date_key = log.recorded_at.strftime("%Y-%m-%d")
         day = by_date.setdefault(date_key, {"tokens": 0, "estimated_cost_gbp": 0.0})
         day["tokens"] += log.estimated_tokens
         total_tokens += log.estimated_tokens
 
-        # feature is "openrouter:xxx" or plain feature name for Claude calls
+        # Use actual_cost_usd if recorded, otherwise per-model rate, fallback to blended
+        if getattr(log, "actual_cost_usd", 0.0):
+            token_cost_usd = log.actual_cost_usd
+        else:
+            model = getattr(log, "model", "") or ""
+            rate = _MODEL_COST_USD_PER_1M.get(model, _DEFAULT_COST_USD_PER_1M)
+            token_cost_usd = (log.estimated_tokens / 1_000_000) * rate
+        total_cost_usd += token_cost_usd
+
         source = "openrouter" if log.feature.startswith("openrouter:") else "claude"
         by_source[source] = by_source.get(source, 0) + log.estimated_tokens
 
-    for day in by_date.values():
-        day["estimated_cost_gbp"] = round(
-            (day["tokens"] / 1_000_000) * _BLENDED_USD_PER_1M_TOKENS * _USD_TO_GBP, 4
-        )
+    # Recompute per-day costs using same per-record logic above
+    by_date_cost: dict[str, float] = {}
+    for log in logs:
+        date_key = log.recorded_at.strftime("%Y-%m-%d")
+        if getattr(log, "actual_cost_usd", 0.0):
+            by_date_cost[date_key] = by_date_cost.get(date_key, 0.0) + log.actual_cost_usd
+        else:
+            model = getattr(log, "model", "") or ""
+            rate = _MODEL_COST_USD_PER_1M.get(model, _DEFAULT_COST_USD_PER_1M)
+            by_date_cost[date_key] = by_date_cost.get(date_key, 0.0) + (log.estimated_tokens / 1_000_000) * rate
+    for date_key, cost_usd in by_date_cost.items():
+        if date_key in by_date:
+            by_date[date_key]["estimated_cost_gbp"] = round(cost_usd * _USD_TO_GBP, 4)
 
-    total_estimated_cost_gbp = round(
-        (total_tokens / 1_000_000) * _BLENDED_USD_PER_1M_TOKENS * _USD_TO_GBP, 4
-    )
+    total_estimated_cost_gbp = round(total_cost_usd * _USD_TO_GBP, 4)
 
     return {
         "period_days": days,

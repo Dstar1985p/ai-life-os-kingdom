@@ -13,16 +13,20 @@ from backend.services.ai_brain import SONNET_MODEL, call_claude, get_kingdom_con
 
 logger = logging.getLogger(__name__)
 
-# Agents the Commander considers "core" — if they haven't run in 24h+, it's a stall
-_MONITORED_AGENTS = [
-    "Print Forge AI", "Image Forge", "Market Scout", "Gig Scout", "Vibes AI",
-    "Opportunity Scout", "ROI Reaper", "Trend Watcher", "Music Licensing",
-    "AI Engineer", "Price Optimizer", "SEO Agent", "Content Agent",
-    "Revenue Forecaster", "AI Research", "Marketing Agent",
-]
+def _get_monitored_agents() -> list[str]:
+    """Derive monitored agent list from the scheduler registry — single source of truth."""
+    try:
+        from backend.scheduler import _SCHEDULE
+        return [name for name in _SCHEDULE if name not in ("Watch Folder", "PulseBreak Track Processor", "AI Commander")]
+    except Exception:
+        return [
+            "Print Forge AI", "Image Forge", "Market Scout", "Gig Scout", "Vibes AI",
+            "Opportunity Scout", "ROI Reaper", "Trend Watcher", "Music Licensing",
+            "AI Engineer", "Price Optimizer", "SEO Agent", "Content Agent",
+            "Revenue Forecaster", "AI Research", "Marketing Agent",
+        ]
 
 # Support agents that have no direct revenue path — exempt from the ROI throttle.
-# These are infrastructure/intelligence agents; pausing them would break discovery.
 _SUPPORT_AGENTS = {
     "Market Scout", "Gig Scout", "Trend Watcher", "AI Research",
     "ROI Reaper", "SEO Agent", "Content Agent", "Revenue Forecaster",
@@ -55,7 +59,7 @@ def _gather_kingdom_status(db: Session) -> dict:
     agents_ran_24h = {r.agent_name for r in recent_runs}
 
     # Stalled agents — in monitored list but no run in 24h
-    stalled_agents = [a for a in _MONITORED_AGENTS if a not in agents_ran_24h]
+    stalled_agents = [a for a in _get_monitored_agents() if a not in agents_ran_24h]
 
     # Revenue today vs yesterday
     today_income = (
@@ -132,7 +136,7 @@ def _throttle_unprofitable_agents(db: Session) -> list[str]:
     cutoff = datetime.utcnow() - timedelta(days=_THROTTLE_WINDOW_DAYS)
     controls = get_all_controls(db)
 
-    for agent_name in _MONITORED_AGENTS:
+    for agent_name in _get_monitored_agents():
         # Support/infrastructure agents are exempt — they drive revenue indirectly
         if agent_name in _SUPPORT_AGENTS:
             continue

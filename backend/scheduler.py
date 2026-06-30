@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -40,6 +41,8 @@ _SCHEDULE = {
 }
 
 _scheduler: BackgroundScheduler | None = None
+_running_agents: set[str] = set()
+_run_lock = threading.Lock()
 
 
 def _get_agents() -> dict[str, Any]:
@@ -90,6 +93,13 @@ def _run_agent(agent_name: str) -> None:
     if not agent:
         logger.warning("Agent not found: %s", agent_name)
         return
+
+    with _run_lock:
+        if agent_name in _running_agents:
+            logger.info("Skipping %s — already running", agent_name)
+            return
+        _running_agents.add(agent_name)
+
     db = SessionLocal()
     try:
         from backend.services.agent_control import is_paused
@@ -103,6 +113,8 @@ def _run_agent(agent_name: str) -> None:
         logger.exception("Agent %s failed", agent_name)
     finally:
         db.close()
+        with _run_lock:
+            _running_agents.discard(agent_name)
 
 
 def _run_watch_folder() -> None:
@@ -340,6 +352,7 @@ def get_scheduler_status() -> list[dict]:
                 "interval": interval_str,
                 "next_run": next_run,
                 "scheduler_running": _scheduler is not None and _scheduler.running,
+                "currently_running": agent_name in _running_agents,
                 "mission": getattr(agent_obj, "mission", "Watch folder auto-import") if agent_obj else "Watch folder auto-import",
             }
         )

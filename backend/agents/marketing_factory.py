@@ -8,7 +8,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from backend.agents.base_agent import AgentRunResult, BaseRevenueAgent
-from backend.models.tables import Lesson
+from backend.models.tables import ContentDraft, Lesson
 from backend.services.ai_brain import HAIKU_MODEL, call_claude, get_kingdom_context
 
 logger = logging.getLogger(__name__)
@@ -169,6 +169,21 @@ class MarketingFactoryAgent(BaseRevenueAgent):
             db.add(lesson)
             result.lessons.append(lesson_text)
             result.actions_taken.append(f"Generated content pack for {venture}")
+
+            # Save individual content pieces to ContentDraft for review/publish workflow
+            for caption in data.get("instagram_captions", []):
+                db.add(ContentDraft(venture=venture, content_type="social_post", platform="Instagram",
+                                    content_json=json.dumps(caption), source_agent="Marketing Factory"))
+            for script in data.get("tiktok_scripts", []):
+                db.add(ContentDraft(venture=venture, content_type="social_post", platform="TikTok",
+                                    content_json=json.dumps(script), source_agent="Marketing Factory"))
+            for email in data.get("email_subjects", []):
+                db.add(ContentDraft(venture=venture, content_type="email", platform="Email",
+                                    content_json=json.dumps(email), source_agent="Marketing Factory"))
+            if data.get("youtube_description"):
+                db.add(ContentDraft(venture=venture, content_type="social_post", platform="YouTube",
+                                    content_json=json.dumps({"description": data["youtube_description"]}),
+                                    source_agent="Marketing Factory"))
 
         db.commit()
         return self._record_run(result, db)

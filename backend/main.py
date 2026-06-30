@@ -6,13 +6,14 @@ import os
 
 from backend.database import Base, engine, _apply_migrations
 from backend.api.routes_agents import router as agents_router
-from backend.api.routes_quests import router as quests_router
+# routes_quests: RPG layer — kept for API backwards compat but not wired in
+# from backend.api.routes_quests import router as quests_router
 from backend.api.routes_opportunities import router as opportunities_router
 from backend.api.routes_decisions import router as decisions_router
 from backend.api.routes_council import router as council_router
 from backend.api.routes_brief import router as brief_router
 from backend.api.routes_knowledge import router as knowledge_router
-from backend.api.routes_assumptions import router as assumptions_router
+# from backend.api.routes_assumptions import router as assumptions_router  # RPG layer stub
 from backend.api.routes_lessons import router as lessons_router
 from backend.api.routes_kingdom import router as kingdom_router
 from backend.api.routes_revenue import router as revenue_router
@@ -47,10 +48,10 @@ from backend.api.routes_etsy_sync import router as etsy_sync_router
 from backend.api.routes_outcomes import router as outcomes_router
 from backend.api.routes_calendar import router as calendar_router
 from backend.api.routes_charts import router as charts_router
-from backend.api.routes_retro import router as retro_router
-from backend.api.routes_scenarios import router as scenarios_router
+# from backend.api.routes_retro import router as retro_router  # thin stub, no active use
+# from backend.api.routes_scenarios import router as scenarios_router  # thin stub
 from backend.api.routes_health_history import router as health_history_router
-from backend.api.routes_celebration import router as celebration_router
+# from backend.api.routes_celebration import router as celebration_router  # thin stub
 from backend.api.routes_competitor import router as competitor_router
 from backend.api.routes_export import router as export_router
 from backend.api.routes_engineer import router as engineer_router
@@ -110,13 +111,11 @@ if os.path.isdir(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 app.include_router(agents_router)
-app.include_router(quests_router)
 app.include_router(opportunities_router)
 app.include_router(decisions_router)
 app.include_router(council_router)
 app.include_router(brief_router)
 app.include_router(knowledge_router)
-app.include_router(assumptions_router)
 app.include_router(lessons_router)
 app.include_router(kingdom_router)
 app.include_router(revenue_router)
@@ -146,10 +145,7 @@ app.include_router(etsy_sync_router)
 app.include_router(outcomes_router)
 app.include_router(calendar_router)
 app.include_router(charts_router)
-app.include_router(retro_router)
-app.include_router(scenarios_router)
 app.include_router(health_history_router)
-app.include_router(celebration_router)
 app.include_router(competitor_router)
 app.include_router(export_router)
 app.include_router(engineer_router)

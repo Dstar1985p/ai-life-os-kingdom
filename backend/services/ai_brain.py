@@ -24,7 +24,20 @@ except ImportError:
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 SONNET_MODEL = "claude-sonnet-4-6"
 
-WEEKLY_TOKEN_BUDGET = 50_000
+# Per-model cost in USD per 1M tokens (blended input+output, conservative estimate)
+# Update these when Anthropic/OpenRouter pricing changes
+_MODEL_COST_USD_PER_1M: dict[str, float] = {
+    "claude-haiku-4-5-20251001": 0.40,   # $0.25 input + $1.25 output, blended ~0.40
+    "claude-sonnet-4-6": 3.50,            # $3 input + $15 output, blended ~3.50
+    "claude-opus-4-8": 22.0,              # $15 input + $75 output, blended ~22
+}
+_DEFAULT_COST_USD_PER_1M = 3.0  # fallback for unknown models
+_USD_TO_GBP = 0.79
+
+
+def _model_cost_gbp_per_token(model: str) -> float:
+    rate = _MODEL_COST_USD_PER_1M.get(model, _DEFAULT_COST_USD_PER_1M)
+    return rate * _USD_TO_GBP / 1_000_000
 
 
 def _get_client():
@@ -36,21 +49,17 @@ def _get_client():
     return _anthropic_mod.Anthropic(api_key=key)
 
 
-def _budget_ok(db) -> bool:
-    """Return True if we still have weekly token budget remaining."""
+def _log_tokens(feature: str, tokens: int, db, model: str = "") -> None:
     try:
-        from backend.services.learning_engine import get_token_budget_report
-        report = get_token_budget_report(db)
-        return report.get("status") != "over_budget"
-    except Exception:
-        return True
-
-
-def _log_tokens(feature: str, tokens: int, db):
-    try:
-        from backend.services.learning_engine import log_token_usage
-        # log_token_usage expects text; we pass a dummy string sized to match tokens
-        log_token_usage(feature, "x" * (tokens * 4), db)
+        from backend.models.tables import TokenUsageLog
+        cost = tokens * _model_cost_gbp_per_token(model) if model else 0.0
+        db.add(TokenUsageLog(
+            feature=feature,
+            estimated_tokens=tokens,
+            model=model,
+            actual_cost_usd=round(tokens * _MODEL_COST_USD_PER_1M.get(model, _DEFAULT_COST_USD_PER_1M) / 1_000_000, 6),
+        ))
+        db.commit()
     except Exception:
         pass
 
@@ -70,9 +79,6 @@ def call_claude(
     client = _get_client()
     if client is None:
         return None
-    if not _budget_ok(db):
-        logger.warning("AI Brain: weekly token budget exhausted — skipping LLM call")
-        return None
     _RETRY_DELAYS = [2, 4, 8]
     last_exc: Exception | None = None
     for attempt, delay in enumerate([0] + _RETRY_DELAYS):
@@ -87,7 +93,7 @@ def call_claude(
             )
             text = response.content[0].text if response.content else ""
             used = response.usage.input_tokens + response.usage.output_tokens
-            _log_tokens(feature, used, db)
+            _log_tokens(feature, used, db, model=model)
             return text
         except Exception as exc:
             last_exc = exc
@@ -168,6 +174,24 @@ Output must be JSON only, no markdown fences. Return an object with key "council
 Also include "summary" (1 sentence overall recommendation) and "recommended_action" (string)."""
 
 
+def _parse_json(raw: str, feature: str, db, expected_type=None) -> Optional[object]:
+    """Parse AI JSON output and log failures to SystemError instead of silently returning None."""
+    import json as _json
+    try:
+        result = _json.loads(raw)
+        if expected_type and not isinstance(result, expected_type):
+            raise ValueError(f"Expected {expected_type}, got {type(result)}")
+        return result
+    except Exception as exc:
+        logger.warning("JSON parse failed for %s: %s — raw: %.200s", feature, exc, raw)
+        try:
+            from backend.agents.base_agent import log_error
+            log_error(db, feature, exc, context=f"raw_preview={raw[:200]}")
+        except Exception:
+            pass
+        return None
+
+
 def generate_vibes_concepts(context: "dict | str", existing_titles: list[str], db) -> Optional[list[dict]]:
     existing_str = ", ".join(existing_titles[:10]) if existing_titles else "none yet"
     ctx_str = _context_to_prompt(context) if isinstance(context, dict) else context
@@ -181,11 +205,7 @@ def generate_vibes_concepts(context: "dict | str", existing_titles: list[str], d
     raw = call_claude(prompt, VIBES_SYSTEM, "vibes_ai", db, model=HAIKU_MODEL, max_tokens=1200)
     if not raw:
         return None
-    try:
-        import json
-        return json.loads(raw)
-    except Exception:
-        return None
+    return _parse_json(raw, "vibes_ai", db, list)
 
 
 def generate_printforge_concepts(context: "dict | str", existing_titles: list[str], db) -> Optional[list[dict]]:
@@ -201,11 +221,7 @@ def generate_printforge_concepts(context: "dict | str", existing_titles: list[st
     raw = call_claude(prompt, PRINTFORGE_SYSTEM, "printforge_ai", db, model=HAIKU_MODEL, max_tokens=1200)
     if not raw:
         return None
-    try:
-        import json
-        return json.loads(raw)
-    except Exception:
-        return None
+    return _parse_json(raw, "printforge_ai", db, list)
 
 
 def generate_scout_opportunities(context: "dict | str", existing_titles: list[str], db) -> Optional[list[dict]]:
@@ -220,11 +236,7 @@ def generate_scout_opportunities(context: "dict | str", existing_titles: list[st
     raw = call_claude(prompt, SCOUT_SYSTEM, "opportunity_scout", db, model=HAIKU_MODEL, max_tokens=1200)
     if not raw:
         return None
-    try:
-        import json
-        return json.loads(raw)
-    except Exception:
-        return None
+    return _parse_json(raw, "opportunity_scout", db, list)
 
 
 SEO_SYSTEM = """You are the SEO Agent for Pitwall Classics, a motorsport art brand on Etsy.
@@ -253,11 +265,7 @@ def generate_seo_briefs(context: "dict | str", listings: list[dict], db) -> Opti
     raw = call_claude(prompt, SEO_SYSTEM, "seo_agent", db, model=HAIKU_MODEL, max_tokens=1500)
     if not raw:
         return None
-    try:
-        import json
-        return json.loads(raw)
-    except Exception:
-        return None
+    return _parse_json(raw, "seo_agent", db, list)
 
 
 def generate_content_briefs(context: "dict | str", db) -> Optional[list[dict]]:
@@ -270,11 +278,7 @@ def generate_content_briefs(context: "dict | str", db) -> Optional[list[dict]]:
     raw = call_claude(prompt, CONTENT_SYSTEM, "content_agent", db, model=HAIKU_MODEL, max_tokens=1200)
     if not raw:
         return None
-    try:
-        import json
-        return json.loads(raw)
-    except Exception:
-        return None
+    return _parse_json(raw, "content_agent", db, list)
 
 
 def generate_council_analysis(decision_title: str, decision_context: str, kingdom_context: str, db) -> Optional[dict]:
@@ -291,8 +295,4 @@ def generate_council_analysis(decision_title: str, decision_context: str, kingdo
     )
     if not raw:
         return None
-    try:
-        import json
-        return json.loads(raw)
-    except Exception:
-        return None
+    return _parse_json(raw, "decision_council", db, dict)

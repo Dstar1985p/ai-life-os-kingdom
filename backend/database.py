@@ -6,18 +6,30 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 logger = logging.getLogger(__name__)
 
 import os  # noqa: E402
-# On Railway, use /data volume for persistence; locally use current dir
-_data_dir = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", ".")
-DATABASE_URL = f"sqlite:///{_data_dir}/kingdom_alpha.db"
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
+# Prefer DATABASE_URL env var (Railway Postgres plugin sets this automatically).
+# Fall back to SQLite on the persistent volume for local dev / single-dyno deploys.
+_env_url = os.environ.get("DATABASE_URL", "")
+if _env_url:
+    # Railway sometimes gives postgres:// but SQLAlchemy 1.4+ needs postgresql://
+    DATABASE_URL = _env_url.replace("postgres://", "postgresql://", 1)
+    _IS_POSTGRES = DATABASE_URL.startswith("postgresql")
+else:
+    _data_dir = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", ".")
+    DATABASE_URL = f"sqlite:///{_data_dir}/kingdom_alpha.db"
+    _IS_POSTGRES = False
+
+if _IS_POSTGRES:
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10)
+else:
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 
 def _apply_migrations(eng) -> None:
-    """Apply additive column migrations that SQLAlchemy create_all won't handle."""
+    """Apply additive column migrations that SQLAlchemy create_all won't handle.
+    On Postgres, create_all already handles schema — only SQLite needs ALTER TABLE."""
+    if _IS_POSTGRES:
+        return  # Postgres: create_all + Base.metadata handles all columns
     try:
         with eng.connect() as conn:
             # Add evidence column to lessons if not present

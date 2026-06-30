@@ -3064,6 +3064,7 @@ async function loadRooms() {
 }
 
 async function runAllInRoom(roomId) {
+  if (!confirm('Run all agents in this room? This triggers multiple AI calls and may cost tokens. Proceed?')) return;
   try {
     const r = await fetch(`/rooms/${roomId}/run-all`, { method: 'POST' });
     await r.json();
