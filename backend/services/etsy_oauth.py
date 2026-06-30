@@ -80,7 +80,10 @@ def get_etsy_headers() -> dict:
     # Refresh if expired
     expires_at = datetime.fromisoformat(token_data.get("expires_at", "2000-01-01"))
     if datetime.utcnow() > expires_at - timedelta(minutes=5):
-        token_data = _refresh_token(token_data)
+        refreshed = _refresh_token(token_data)
+        if refreshed is None:
+            raise EtsyNotAuthorisedError("Token expired and refresh failed. Re-run: python scripts/etsy_setup.py")
+        token_data = refreshed
 
     return {
         "Authorization": f"Bearer {token_data['access_token']}",

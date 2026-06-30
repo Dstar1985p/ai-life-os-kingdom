@@ -175,10 +175,13 @@ class ContentAgent(BaseRevenueAgent):
                 key = post["platform"] + post["type"]
                 if _already_posted(db, key):
                     continue
-                content = post["template"].format(
-                    product=featured_product,
-                    hashtags=post["hashtags"],
-                )
+                try:
+                    content = post["template"].format(
+                        product=featured_product,
+                        hashtags=post["hashtags"],
+                    )
+                except (KeyError, ValueError):
+                    content = post["template"]
                 self._save_brief({
                     "platform": post["platform"],
                     "type": post["type"],
@@ -196,13 +199,16 @@ class ContentAgent(BaseRevenueAgent):
                 key = post["platform"] + post["type"]
                 if _already_posted(db, key):
                     continue
-                content = post["template"].format(
-                    track=featured_track,
-                    sub_genre=track_meta.get("sub_genre", "DnB"),
-                    bpm=track_meta.get("bpm", 174),
-                    platform="Pond5, AudioJungle & Musicbed",
-                    hashtags=post["hashtags"],
-                )
+                try:
+                    content = post["template"].format(
+                        track=featured_track,
+                        sub_genre=track_meta.get("sub_genre", "DnB"),
+                        bpm=track_meta.get("bpm", 174),
+                        platform="Pond5, AudioJungle & Musicbed",
+                        hashtags=post["hashtags"],
+                    )
+                except (KeyError, ValueError):
+                    content = post["template"]
                 self._save_brief({
                     "platform": post["platform"],
                     "type": post["type"],

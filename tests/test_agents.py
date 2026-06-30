@@ -119,14 +119,14 @@ def test_printify_creates_opportunities(db):
 def test_printify_creates_lesson(db):
     agent = PrintifyAgent()
     agent.run(db)
-    lessons = db.query(Lesson).filter(Lesson.source.like("agent:Print Forge AI")).all()
+    lessons = db.query(Lesson).filter(Lesson.source.like("agent:Printify Studio")).all()
     assert len(lessons) > 0
 
 
 def test_printify_records_run(db):
     agent = PrintifyAgent()
     agent.run(db)
-    runs = db.query(AgentRun).filter(AgentRun.agent_name == "Print Forge AI").all()
+    runs = db.query(AgentRun).filter(AgentRun.agent_name == "Printify Studio").all()
     assert len(runs) == 1
 
 

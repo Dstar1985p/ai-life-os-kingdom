@@ -95,7 +95,8 @@ class RevenueForecastAgent(BaseRevenueAgent):
 
         # Current month stats
         month_revenue = _monthly_revenue(db, now.year, now.month)
-        days_in_month = (datetime(now.year, now.month % 12 + 1, 1) if now.month < 12 else datetime(now.year + 1, 1, 1)).day if now.month != 12 else 31
+        import calendar
+        days_in_month = calendar.monthrange(now.year, now.month)[1]
         days_elapsed = now.day
         days_remaining = days_in_month - days_elapsed
 

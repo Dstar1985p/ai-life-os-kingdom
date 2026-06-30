@@ -188,8 +188,8 @@ class PrintForgeAgent(BaseRevenueAgent):
                     if result.get("listing_id"):
                         etsy_drafts += 1
                         etsy_notes.append(f"Etsy draft: {concept['title'][:50]}")
-            except Exception:
-                pass
+            except Exception as exc:
+                etsy_notes.append(f"Etsy draft failed for '{concept['title'][:40]}': {exc}")
 
         lesson = (
             f"Print Forge AI: {created} new listing concepts created, {updated} already existed. "

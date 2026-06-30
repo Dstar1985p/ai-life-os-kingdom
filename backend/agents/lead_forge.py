@@ -40,7 +40,7 @@ _FALLBACK_CONCEPTS = [
 
 
 class PrintifyAgent(BaseRevenueAgent):
-    name = "Print Forge AI"
+    name = "Printify Studio"
     mission = "Generate and push print-on-demand product concepts for Pitwall Classics via Printify + Etsy"
 
     def __init__(self):

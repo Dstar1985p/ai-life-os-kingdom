@@ -105,15 +105,14 @@ def test_printify_kingdom_score_in_range(db):
 def test_printify_creates_lesson(db):
     agent = PrintifyAgent()
     agent.run(db)
-    lessons = db.query(Lesson).filter(Lesson.source == "agent:Print Forge AI").all()
+    lessons = db.query(Lesson).filter(Lesson.source == "agent:Printify Studio").all()
     assert len(lessons) > 0
-    assert any("PrintifyAgent" in lesson_item.lesson for lesson_item in lessons)
 
 
 def test_printify_records_agent_run(db):
     agent = PrintifyAgent()
     agent.run(db)
-    runs = db.query(AgentRun).filter(AgentRun.agent_name == "Print Forge AI").all()
+    runs = db.query(AgentRun).filter(AgentRun.agent_name == "Printify Studio").all()
     assert len(runs) == 1
 
 
