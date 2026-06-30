@@ -928,6 +928,7 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
   <button class="nav-tab" data-tab="opportunities" onclick="showTab('opportunities')"><span class="tab-dot" style="background:var(--cyan)"></span> Opportunities</button>
   <button class="nav-tab" data-tab="livery" onclick="showTab('livery')"><span class="tab-dot" style="background:#f97316"></span> Livery Forge</button>
   <button class="nav-tab" data-tab="intelligence" onclick="showTab('intelligence')"><span class="tab-dot" style="background:var(--pink)"></span> Intelligence</button>
+  <button class="nav-tab" data-tab="command" onclick="showTab('command')"><span class="tab-dot" style="background:#ff3366"></span> Command Centre</button>
   <button class="nav-tab" data-tab="tools" onclick="showTab('tools')"><span class="tab-dot"></span> Tools</button>
 </nav>
 
@@ -1608,6 +1609,138 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
 </div>
 </div>
 
+<!-- ══════════════════════════ PAGE: COMMAND CENTRE ══════════════════════════ -->
+<div class="page" id="page-command">
+<div class="content-area">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;color:var(--text)">⚡ Command Centre</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">Agent rooms · Treasury · AI Commander · Marketing Factory</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="cc-subtabs">
+      <button class="btn btn-sm cc-subtab active" data-cc="rooms" onclick="showCCSub('rooms')">🏛 Rooms</button>
+      <button class="btn btn-sm cc-subtab" data-cc="treasury" onclick="showCCSub('treasury')">💰 Treasury</button>
+      <button class="btn btn-sm cc-subtab" data-cc="commander" onclick="showCCSub('commander')">⚡ Commander</button>
+      <button class="btn btn-sm cc-subtab" data-cc="marketing" onclick="showCCSub('marketing')">📣 Marketing</button>
+    </div>
+  </div>
+
+  <!-- ROOMS -->
+  <div class="cc-section" id="cc-rooms">
+    <div id="rooms-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px"><div class="loading">Loading rooms…</div></div>
+  </div>
+
+  <!-- TREASURY -->
+  <div class="cc-section" id="cc-treasury" style="display:none">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="treasury-period-tabs">
+      <button class="btn btn-sm tp-btn" data-period="1d" onclick="loadTreasuryPeriod('1d')">1D</button>
+      <button class="btn btn-sm tp-btn" data-period="7d" onclick="loadTreasuryPeriod('7d')">7D</button>
+      <button class="btn btn-sm tp-btn active" data-period="1m" onclick="loadTreasuryPeriod('1m')">1M</button>
+      <button class="btn btn-sm tp-btn" data-period="3m" onclick="loadTreasuryPeriod('3m')">3M</button>
+      <button class="btn btn-sm tp-btn" data-period="6m" onclick="loadTreasuryPeriod('6m')">6M</button>
+      <button class="btn btn-sm tp-btn" data-period="1y" onclick="loadTreasuryPeriod('1y')">1YR</button>
+      <button class="btn btn-sm tp-btn" data-period="all" onclick="loadTreasuryPeriod('all')">ALL TIME</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.5rem;font-weight:800;color:var(--green)" id="tr-income">£0</div><div style="font-size:0.65rem;color:var(--muted)">Income</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.5rem;font-weight:800;color:var(--pink)" id="tr-expenses">£0</div><div style="font-size:0.65rem;color:var(--muted)">Expenses</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.5rem;font-weight:800;color:var(--cyan)" id="tr-net">£0</div><div style="font-size:0.65rem;color:var(--muted)">Net Profit</div></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">By Venture</div></div>
+        <div id="tr-by-venture"><div class="loading">Loading…</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Cost Breakdown</div></div>
+        <div id="tr-cost-breakdown"><div class="loading">Loading…</div></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Subscriptions &amp; Fixed Costs</div></div>
+        <div id="tr-subscriptions"><div class="loading">Loading…</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">API Spend (Claude + OpenRouter)</div></div>
+        <div id="tr-api-costs"><div class="loading">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMMANDER -->
+  <div class="cc-section" id="cc-commander" style="display:none">
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="card glow-pink">
+        <div class="card-header">
+          <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,51,102,0.25),rgba(150,0,40,0.1))">⚡</div>
+          <div class="card-title">Kingdom Health</div>
+          <div class="card-action" id="commander-health-badge"></div>
+        </div>
+        <div id="commander-status-content"><div class="loading">Loading status…</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(0,150,200,0.1))">📋</div>
+          <div class="card-title">Morning Briefing</div>
+          <div class="card-action"><button class="btn btn-sm" onclick="loadCommanderBriefing()">↻</button></div>
+        </div>
+        <div id="commander-briefing-content"><div class="loading">Loading briefing…</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,51,102,0.2),rgba(150,0,40,0.1))">📡</div>
+        <div class="card-title">Latest Commander Report</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="runCommanderCycle()">▶ Run Oversight Cycle</button></div>
+      </div>
+      <div id="commander-report-content"><div class="loading">Loading report…</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,51,102,0.3),rgba(150,0,40,0.1))">💬</div>
+        <div class="card-title">Talk to the Commander</div>
+      </div>
+      <div id="commander-chat-messages" style="max-height:320px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px"></div>
+      <div style="display:flex;gap:8px">
+        <textarea id="commander-chat-input" class="input" rows="2" placeholder="Ask the Commander..." style="flex:1;resize:vertical"></textarea>
+        <button class="btn" style="background:rgba(255,51,102,0.2);border-color:rgba(255,51,102,0.4);color:#ff3366" onclick="sendCommanderChat()">SEND</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MARKETING -->
+  <div class="cc-section" id="cc-marketing" style="display:none">
+    <div class="card" style="margin-bottom:16px;border-color:rgba(0,255,136,0.2)">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(0,180,100,0.1))">📣</div>
+        <div class="card-title">Generate Content</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <select id="mk-venture" class="input"><option>Pitwall Classics</option><option>PulseBreak</option></select>
+        <input id="mk-product" class="input" placeholder="Product/topic (optional)"/>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-green" onclick="generateMarketing('instagram')">📷 Instagram</button>
+        <button class="btn btn-sm btn-green" onclick="generateMarketing('tiktok')">🎬 TikTok</button>
+        <button class="btn btn-sm btn-green" onclick="generateMarketing('email')">✉ Email</button>
+        <button class="btn btn-sm" onclick="runMarketingFactory()">⚙ Run Full Factory</button>
+      </div>
+      <div id="mk-generate-result" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Content Library</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="loadMarketingContent()">↻</button></div>
+      </div>
+      <div id="mk-content-list"><div class="loading">Loading content…</div></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
 <!-- ══════════════════════════ PAGE: TOOLS ══════════════════════════ -->
 <div class="page" id="page-tools">
 <div class="content-area">
@@ -1749,6 +1882,7 @@ function showTab(tab) {
   if (tab === 'opportunities') loadOpportunitiesTab();
   if (tab === 'livery') loadLiveryTab();
   if (tab === 'intelligence') loadIntelligenceTab();
+  if (tab === 'command') loadCommandTab();
   if (tab === 'tools') loadToolsTab();
 }
 
@@ -2858,6 +2992,228 @@ function conveneCouncil() {
         <div style="font-size:0.72rem;color:var(--muted);margin-top:3px">${v.key_concern}</div>
       </div>`).join('')}`;
   }).catch(err => { if(resultEl) resultEl.innerHTML=`<div style="color:var(--red)">Error: ${err}</div>`; });
+}
+
+/* ─── COMMAND CENTRE TAB ─── */
+function showCCSub(sub) {
+  document.querySelectorAll('.cc-section').forEach(s => s.style.display = 'none');
+  document.querySelectorAll('.cc-subtab').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('cc-' + sub);
+  if (el) el.style.display = '';
+  const btn = document.querySelector(`.cc-subtab[data-cc="${sub}"]`);
+  if (btn) btn.classList.add('active');
+  if (sub === 'rooms') loadRooms();
+  if (sub === 'treasury') loadTreasuryPeriod('1m');
+  if (sub === 'commander') loadCommanderPanel();
+  if (sub === 'marketing') loadMarketingContent();
+}
+
+function loadCommandTab() {
+  loadRooms();
+}
+
+async function loadRooms() {
+  const el = document.getElementById('rooms-grid');
+  const data = await fetchJSON('/rooms');
+  if (!data || !data.rooms) { el.innerHTML = '<div style="color:var(--muted)">Could not load rooms.</div>'; return; }
+  const statusColour = s => s === 'active' ? 'var(--green)' : s === 'stalled' ? 'var(--amber)' : s === 'error' ? 'var(--red)' : 'var(--muted)';
+  const statusDot = s => s === 'active' ? '●' : s === 'stalled' ? '◐' : s === 'error' ? '✕' : '○';
+  el.innerHTML = data.rooms.map(r => `
+    <div class="card" style="border-color:${r.colour}33">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,${r.colour}33,${r.colour}11);font-size:1.3rem">${r.icon}</div>
+        <div class="card-title">${r.name}</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="runAllInRoom('${r.id}')">▶ Run All</button></div>
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-bottom:10px">${r.description}</div>
+      <div style="display:flex;gap:10px;margin-bottom:10px;font-size:0.68rem">
+        <span style="color:var(--green)">● ${r.active_count} active</span>
+        <span style="color:var(--muted)">○ ${r.idle_count} idle</span>
+        ${r.error_count ? `<span style="color:var(--red)">✕ ${r.error_count} issues</span>` : ''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${r.agents.map(a => `
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.72rem;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.02)">
+            <span>${a.agent}</span>
+            <span style="color:${statusColour(a.status)}">${statusDot(a.status)} ${a.status}</span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+async function runAllInRoom(roomId) {
+  try {
+    const r = await fetch(`/rooms/${roomId}/run-all`, { method: 'POST' });
+    await r.json();
+    loadRooms();
+  } catch (e) {}
+}
+
+/* Treasury */
+async function loadTreasuryPeriod(period) {
+  document.querySelectorAll('.tp-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.querySelector(`.tp-btn[data-period="${period}"]`);
+  if (btn) btn.classList.add('active');
+
+  const days = {'1d':1,'7d':7,'1m':30,'3m':90,'6m':180,'1y':365,'all':365}[period] || 30;
+
+  const [pnl, breakdown, subs, apiCosts] = await Promise.all([
+    fetchJSON(`/treasury/pnl/${period}`),
+    fetchJSON(`/treasury/breakdown?days=${days}`),
+    fetchJSON('/treasury/subscriptions'),
+    fetchJSON(`/treasury/api-costs?days=${days}`),
+  ]);
+
+  if (pnl) {
+    document.getElementById('tr-income').textContent = fmtMoney(pnl.total_income);
+    document.getElementById('tr-expenses').textContent = fmtMoney(pnl.total_expenses);
+    document.getElementById('tr-net').textContent = fmtMoney(pnl.net_profit);
+    const byV = document.getElementById('tr-by-venture');
+    const entries = Object.entries(pnl.by_venture || {});
+    byV.innerHTML = entries.length ? entries.map(([v, d]) => `
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.78rem">
+        <span>${v}</span>
+        <span style="color:${d.net >= 0 ? 'var(--green)' : 'var(--red)'}">${fmtMoney(d.net)} <span style="color:var(--muted)">(£${d.income} in / £${d.expenses} out)</span></span>
+      </div>`).join('') : '<div style="color:var(--muted);font-size:0.75rem">No transactions yet.</div>';
+  }
+
+  if (breakdown) {
+    const c = breakdown.costs || {};
+    document.getElementById('tr-cost-breakdown').innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-size:0.78rem;padding:6px 0"><span>API costs</span><span>${fmtMoney(c.api_cost_gbp)} (${c.breakdown_pct?.api ?? 0}%)</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:0.78rem;padding:6px 0"><span>Subscriptions</span><span>${fmtMoney(c.subscription_cost_gbp)} (${c.breakdown_pct?.subscriptions ?? 0}%)</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:0.78rem;padding:6px 0;border-top:1px solid var(--border);margin-top:4px"><span>Production</span><span>${fmtMoney(c.production_cost_gbp)} (${c.breakdown_pct?.production ?? 0}%)</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:8px 0;font-weight:700;border-top:1px solid var(--border);margin-top:4px"><span>Total</span><span>${fmtMoney(c.total_cost_gbp)}</span></div>`;
+  }
+
+  if (subs) {
+    document.getElementById('tr-subscriptions').innerHTML = (subs.known_subscriptions || []).map(s => `
+      <div style="display:flex;justify-content:space-between;font-size:0.76rem;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span>${s.name}</span><span style="color:var(--muted)">${s.cost_gbp ? '£' + s.cost_gbp.toFixed(2) : '—'} / ${s.period}${s.note ? ' · ' + s.note : ''}</span>
+      </div>`).join('') + `<div style="font-size:0.75rem;margin-top:8px;color:var(--cyan)">Estimated monthly fixed: £${subs.estimated_monthly_fixed_cost_gbp}</div>`;
+  }
+
+  if (apiCosts) {
+    document.getElementById('tr-api-costs').innerHTML = `
+      <div style="font-size:1.3rem;font-weight:800;color:var(--cyan)">£${apiCosts.total_estimated_cost_gbp}</div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-bottom:8px">${apiCosts.total_tokens.toLocaleString()} tokens over ${apiCosts.period_days}d</div>
+      ${Object.entries(apiCosts.by_source_tokens || {}).map(([src, tok]) => `
+        <div style="display:flex;justify-content:space-between;font-size:0.74rem;padding:4px 0"><span style="text-transform:capitalize">${src}</span><span>${tok.toLocaleString()} tokens</span></div>`).join('')}`;
+  }
+}
+
+/* Commander */
+function loadCommanderPanel() {
+  loadCommanderStatus();
+  loadCommanderBriefing();
+  loadCommanderReport();
+}
+
+async function loadCommanderStatus() {
+  const data = await fetchJSON('/commander/status');
+  const badgeEl = document.getElementById('commander-health-badge');
+  const contentEl = document.getElementById('commander-status-content');
+  if (!data) { contentEl.innerHTML = '<div style="color:var(--muted)">Unavailable</div>'; return; }
+  badgeEl.innerHTML = badge(data.health);
+  contentEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:0.76rem;margin-bottom:8px">
+      <div>Runs (24h): <b>${data.total_runs_24h}</b></div>
+      <div>Stalled: <b style="color:${data.stalled_agents.length ? 'var(--amber)' : 'var(--green)'}">${data.stalled_agents.length}</b></div>
+      <div>Revenue today: <b>${fmtMoney(data.revenue_today_gbp)}</b></div>
+      <div>Revenue yesterday: <b>${fmtMoney(data.revenue_yesterday_gbp)}</b></div>
+      <div>Spend today: <b>£${data.agent_cost_today_gbp}</b></div>
+      <div>Active opps: <b>${data.active_opportunities_count}</b></div>
+    </div>
+    ${data.stalled_agents.length ? `<div style="font-size:0.72rem;color:var(--amber)">Stalled: ${data.stalled_agents.join(', ')}</div>` : ''}`;
+}
+
+async function loadCommanderBriefing() {
+  const data = await fetchJSON('/commander/briefing');
+  const el = document.getElementById('commander-briefing-content');
+  if (!data) { el.innerHTML = '<div style="color:var(--muted)">Unavailable</div>'; return; }
+  el.innerHTML = `
+    <div style="font-size:0.76rem;margin-bottom:8px">Overnight: ${data.overnight_runs} runs · ${fmtMoney(data.overnight_revenue_gbp)} revenue · £${data.overnight_cost_gbp} cost</div>
+    ${(data.needs_attention || []).map(n => `<div style="font-size:0.72rem;color:var(--amber);padding:4px 0">⚠ ${n}</div>`).join('')}`;
+}
+
+async function loadCommanderReport() {
+  const data = await fetchJSON('/commander/report');
+  const el = document.getElementById('commander-report-content');
+  if (!data) { el.innerHTML = '<div style="color:var(--muted)">Unavailable</div>'; return; }
+  el.innerHTML = `<div style="font-size:0.78rem;white-space:pre-wrap">${data.report}</div>${data.created_at ? `<div style="font-size:0.65rem;color:var(--muted);margin-top:8px">${new Date(data.created_at).toLocaleString()}</div>` : ''}`;
+}
+
+async function runCommanderCycle() {
+  const el = document.getElementById('commander-report-content');
+  el.innerHTML = '<div class="loading">Running oversight cycle…</div>';
+  try {
+    await fetch('/commander/run', { method: 'POST' });
+    loadCommanderPanel();
+  } catch (e) { el.innerHTML = '<div style="color:var(--red)">Error running cycle.</div>'; }
+}
+
+async function sendCommanderChat() {
+  const input = document.getElementById('commander-chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const msgsEl = document.getElementById('commander-chat-messages');
+  msgsEl.innerHTML += `<div style="align-self:flex-end;background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.2);border-radius:10px;padding:8px 12px;max-width:80%;font-size:0.78rem">${msg}</div>`;
+  input.value = '';
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+  try {
+    const r = await fetch('/commander/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg }),
+    });
+    const data = await r.json();
+    const actions = (data.recommended_actions || []).map(a => `<div style="font-size:0.68rem;color:var(--cyan);margin-top:4px">▸ ${a}</div>`).join('');
+    msgsEl.innerHTML += `<div style="align-self:flex-start;background:rgba(255,51,102,0.08);border:1px solid rgba(255,51,102,0.2);border-radius:10px;padding:8px 12px;max-width:85%;font-size:0.78rem">${data.reply || '(no response)'}${actions}</div>`;
+  } catch (e) {
+    msgsEl.innerHTML += `<div style="color:var(--red);font-size:0.75rem">Commander unreachable.</div>`;
+  }
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+/* Marketing Factory */
+async function generateMarketing(kind) {
+  const venture = document.getElementById('mk-venture').value;
+  const product = document.getElementById('mk-product').value;
+  const el = document.getElementById('mk-generate-result');
+  el.innerHTML = '<div class="loading">Generating…</div>';
+  const endpoints = {
+    instagram: { url: '/marketing/generate/instagram', body: { venture, product_title: product } },
+    tiktok: { url: '/marketing/generate/tiktok', body: { venture } },
+    email: { url: '/marketing/generate/email', body: { venture } },
+  };
+  const cfg = endpoints[kind];
+  try {
+    const r = await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg.body) });
+    if (!r.ok) { el.innerHTML = '<div style="color:var(--amber)">AI unavailable — check API keys.</div>'; return; }
+    const data = await r.json();
+    el.innerHTML = `<pre style="white-space:pre-wrap;font-size:0.74rem;background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.15);border-radius:8px;padding:12px">${JSON.stringify(data, null, 2)}</pre>`;
+    loadMarketingContent();
+  } catch (e) { el.innerHTML = '<div style="color:var(--red)">Error generating content.</div>'; }
+}
+
+async function runMarketingFactory() {
+  const el = document.getElementById('mk-generate-result');
+  el.innerHTML = '<div class="loading">Running full marketing factory…</div>';
+  try {
+    await fetch('/marketing/run', { method: 'POST' });
+    el.innerHTML = '<div style="color:var(--green);font-size:0.78rem">Factory run complete.</div>';
+    loadMarketingContent();
+  } catch (e) { el.innerHTML = '<div style="color:var(--red)">Error.</div>'; }
+}
+
+async function loadMarketingContent() {
+  const el = document.getElementById('mk-content-list');
+  const data = await fetchJSON('/marketing/content');
+  if (!data || !data.content || !data.content.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.75rem">No content generated yet.</div>'; return; }
+  el.innerHTML = data.content.map(c => `
+    <div style="border-bottom:1px solid var(--border);padding:8px 0;font-size:0.74rem">
+      <div style="white-space:pre-wrap">${c.lesson}</div>
+      <div style="font-size:0.62rem;color:var(--muted);margin-top:4px">${new Date(c.created_at).toLocaleString()}</div>
+    </div>`).join('');
 }
 
 /* ─── TOOLS TAB ─── */
