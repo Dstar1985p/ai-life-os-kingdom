@@ -107,6 +107,8 @@ def pipeline_status(db: Session = Depends(get_db)):
     etsy = get_etsy_status()
     openai_key = bool(os.getenv("OPENAI_API_KEY"))
     anthropic_key = bool(os.getenv("ANTHROPIC_API_KEY"))
+    from backend.services.openrouter import get_openrouter_status
+    openrouter = get_openrouter_status()
 
     # Count un-imaged print concepts
     all_print = db.query(Opportunity).filter(Opportunity.source == "print_forge_ai").all()
@@ -166,6 +168,11 @@ def pipeline_status(db: Session = Depends(get_db)):
             "step": "8. Revenue attribution",
             "status": "ok" if weight_count > 0 else "empty",
             "detail": f"{weight_count} category weights learned" if weight_count else "Will populate after first sales",
+        },
+        {
+            "step": "9. OpenRouter (cheap bulk models)",
+            "status": "ok" if openrouter.get("available") else "optional",
+            "detail": "Available — used for bulk/research tasks" if openrouter.get("available") else "Set OPENROUTER_API_KEY to offload bulk tasks from Claude",
         },
     ]
 
