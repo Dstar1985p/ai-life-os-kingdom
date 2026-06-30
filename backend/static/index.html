@@ -1079,6 +1079,14 @@ async function loadDashboard() {
   renderScheduler(schedulerStatus);
   const panels=[];
 
+  // Daily Mission panel — always first
+  const mission = await loadDailyMission();
+  panels.push(panel('DAILY MISSION','green',`<h2>&#x1F3AF; Daily Mission</h2><div id="mission-panel-content"><div style="color:var(--muted);font-size:0.78rem">${mission ? '' : 'Loading mission...'}</div></div>`));
+  if (mission) setTimeout(()=>renderMissionPanel(mission),0);
+
+  // Reminders panel (collapsed by default)
+  panels.push(panel('SMART REMINDERS','amber',`<h2>&#x1F514; Active Reminders</h2><div id="reminders-section"><div id="reminders-panel-content"><div style="color:var(--muted);font-size:0.78rem">Loading reminders...</div></div></div>`));
+
   if (brief) {
     const ks=brief.kingdom_health_status||'amber';
     const todayItems=(brief.do_today||[]).map(q=>`<div class="list-item">&#x25B8; ${q.title}</div>`).join('')||'<div class="list-item">No quests today</div>';
@@ -1514,5 +1522,28 @@ setInterval(()=>{
 },60000);
 setInterval(pollCharacterStates,30000);
 </script>
+
+<!-- Chat bubble -->
+<button id="chat-bubble" onclick="toggleChat()" title="Chat with agents">&#x1F4AC;</button>
+
+<!-- Chat drawer -->
+<div id="chat-drawer">
+  <div id="chat-drawer-header">
+    <select id="chat-agent-select">
+      <option value="vibes_ai">Vibes AI</option>
+      <option value="print_forge">Print Forge AI</option>
+      <option value="opportunity_scout">Opportunity Scout</option>
+      <option value="overseer">Overseer</option>
+    </select>
+    <button class="chat-close" onclick="toggleChat()">&#x2715;</button>
+  </div>
+  <div id="chat-messages">
+    <div class="chat-msg agent"><div class="msg-agent">OVERSEER</div><div>Kingdom is online. Which agent would you like to consult?</div></div>
+  </div>
+  <div id="chat-input-row">
+    <textarea id="chat-input" rows="2" placeholder="Ask an agent..."></textarea>
+    <button id="chat-send" onclick="sendChatMessage()">SEND</button>
+  </div>
+</div>
 </body>
 </html>

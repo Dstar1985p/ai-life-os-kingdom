@@ -39,6 +39,11 @@ from backend.api.routes_updater import router as updater_router
 from backend.api.routes_mission import router as mission_router
 from backend.api.routes_chat import router as chat_router
 from backend.api.routes_reminders import router as reminders_router
+from backend.api.routes_etsy_sync import router as etsy_sync_router
+from backend.api.routes_outcomes import router as outcomes_router
+from backend.api.routes_calendar import router as calendar_router
+from backend.api.routes_charts import router as charts_router
+from backend.api.routes_retro import router as retro_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -116,6 +121,11 @@ app.include_router(updater_router)
 app.include_router(mission_router)
 app.include_router(chat_router)
 app.include_router(reminders_router)
+app.include_router(etsy_sync_router)
+app.include_router(outcomes_router)
+app.include_router(calendar_router)
+app.include_router(charts_router)
+app.include_router(retro_router)
 
 
 @app.get("/", include_in_schema=False)
