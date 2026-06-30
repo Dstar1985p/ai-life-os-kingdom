@@ -239,13 +239,12 @@ def test_vibes_second_run_zero_new(db):
 
 def test_printify_second_run_zero_new(db):
     """Second run of PrintifyAgent with same concepts produces 0 new opportunities."""
-    import backend.agents.lead_forge as lf_mod
-    lf_mod._concept_index = 0  # reset to ensure same 4 concepts
     agent = PrintifyAgent()
+    agent._concept_index = 0  # reset to ensure same 4 concepts
     result_1 = agent.run(db)
     assert result_1.opportunities_created > 0
 
-    lf_mod._concept_index = 0  # reset again for same batch
+    agent._concept_index = 0  # reset again for same batch
     count_before = db.query(Opportunity).filter(Opportunity.source == "printify_pod").count()
     r2 = agent.run(db)
     count_after = db.query(Opportunity).filter(Opportunity.source == "printify_pod").count()

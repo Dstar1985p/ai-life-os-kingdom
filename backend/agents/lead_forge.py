@@ -36,16 +36,17 @@ _FALLBACK_CONCEPTS = [
      "seo_tags": ["F1 mug", "race morning gift", "motorsport coffee mug", "formula one gift", "racing fan mug"]},
 ]
 
-# Module-level index used by tests to reset concept rotation
-_concept_index = 0
+# Instance-level index for concept rotation (tests can set agent._concept_index = 0)
 
 
 class PrintifyAgent(BaseRevenueAgent):
     name = "Print Forge AI"
     mission = "Generate and push print-on-demand product concepts for Pitwall Classics via Printify + Etsy"
 
+    def __init__(self):
+        self._concept_index = 0
+
     def run(self, db: Session) -> AgentRunResult:
-        global _concept_index
         existing_opps = db.query(Opportunity).filter(Opportunity.source == "printify_pod").all()
         existing_titles = [o.title for o in existing_opps]
 
@@ -64,8 +65,8 @@ class PrintifyAgent(BaseRevenueAgent):
             # Use _concept_index for test-controllable rotation
             batch = []
             for _ in range(4):
-                batch.append(_FALLBACK_CONCEPTS[_concept_index % len(_FALLBACK_CONCEPTS)])
-                _concept_index += 1
+                batch.append(_FALLBACK_CONCEPTS[self._concept_index % len(_FALLBACK_CONCEPTS)])
+                self._concept_index += 1
             concepts = batch
 
         created = 0

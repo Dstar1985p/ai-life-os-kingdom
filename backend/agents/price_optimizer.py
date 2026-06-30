@@ -1,148 +1,207 @@
-"""
-Price Optimizer Agent — analyses revenue data to find optimal pricing for Pitwall Classics products.
-Recommends price increases/decreases per product type based on conversion and margin signals.
-Zero web scraping — uses internal RevenueEntry and Opportunity data only.
-"""
+"""Price Optimizer — analyses actual listing data to recommend price adjustments."""
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from backend.agents.base_agent import AgentRunResult, BaseRevenueAgent
-from backend.models.tables import Opportunity, RevenueEntry
+from backend.models.tables import Lesson, Opportunity
 
-_PRODUCT_TYPE_TARGETS = {
-    "wall_art": {"min_gbp": 14.99, "sweet_spot_gbp": 18.99, "max_gbp": 29.99, "margin_target_pct": 40},
-    "apparel": {"min_gbp": 19.99, "sweet_spot_gbp": 24.99, "max_gbp": 34.99, "margin_target_pct": 35},
-    "accessory": {"min_gbp": 12.99, "sweet_spot_gbp": 16.99, "max_gbp": 22.99, "margin_target_pct": 45},
-    "default": {"min_gbp": 14.99, "sweet_spot_gbp": 19.99, "max_gbp": 27.99, "margin_target_pct": 38},
+# ── Pricing strategy targets ─────────────────────────────────────────────────
+_TARGETS: dict[str, dict] = {
+    "wall_art": {
+        "sweet_spot_gbp": 18.99,
+        "min_gbp": 12.99,
+        "max_gbp": 34.99,
+        "min_margin_pct": 40,
+        "note": "Digital downloads have 100% margin — never go below £12.99",
+    },
+    "apparel": {
+        "sweet_spot_gbp": 26.99,
+        "min_gbp": 19.99,
+        "max_gbp": 39.99,
+        "min_margin_pct": 32,
+        "note": "POD apparel margin erodes below £19.99 — avoid racing to the bottom",
+    },
+    "accessory": {
+        "sweet_spot_gbp": 15.99,
+        "min_gbp": 11.99,
+        "max_gbp": 24.99,
+        "min_margin_pct": 42,
+        "note": "Mugs and accessories are impulse buys — £14.99–£16.99 is the sweet spot",
+    },
+    "bundle": {
+        "sweet_spot_gbp": 34.99,
+        "min_gbp": 24.99,
+        "max_gbp": 59.99,
+        "min_margin_pct": 45,
+        "note": "Bundles justify premium — buyers feel they are getting a deal at £34.99 vs 3×£14.99",
+    },
+    "music_track": {
+        "sweet_spot_gbp": 15.00,
+        "min_gbp": 8.00,
+        "max_gbp": 45.00,
+        "min_margin_pct": 70,
+        "note": "Sync licensing: personal £8–£15, commercial £25–£45, broadcast negotiated",
+    },
 }
 
+# Detect product type from category/title
+def _detect_type(opp: Opportunity) -> str:
+    text = ((opp.category or "") + " " + opp.title).lower()
+    if "bundle" in text or "3-pack" in text or "5-pack" in text:
+        return "bundle"
+    if "apparel" in text or "t-shirt" in text or "hoodie" in text or "tee" in text:
+        return "apparel"
+    if "mug" in text or "accessory" in text or "coaster" in text or "bottle" in text:
+        return "accessory"
+    if "music" in text or "dnb" in text or "track" in text or "licensing" in text:
+        return "music_track"
+    return "wall_art"
 
-def _get_product_revenue(db: Session, days: int = 30) -> dict[str, float]:
-    """Sum income by product category over recent period."""
-    since = datetime.utcnow() - timedelta(days=days)
-    entries = (
-        db.query(RevenueEntry)
-        .filter(
-            RevenueEntry.entry_type == "income",
-            RevenueEntry.venture == "Pitwall Classics",
-            RevenueEntry.recorded_at >= since,
-        )
-        .all()
-    )
-    by_cat: dict[str, float] = {}
-    for e in entries:
-        cat = (e.category or "default").lower()
-        by_cat[cat] = by_cat.get(cat, 0.0) + float(e.amount)
-    return by_cat
+
+def _parse_price(opp: Opportunity) -> float | None:
+    """Extract price from opportunity evidence JSON."""
+    if not opp.evidence:
+        return None
+    try:
+        ev = json.loads(opp.evidence)
+        for key in ("suggested_price_gbp", "price_gbp", "price", "estimated_price_gbp"):
+            if key in ev and ev[key]:
+                return float(ev[key])
+    except Exception:
+        pass
+    return None
+
+
+def _recommend(current_price: float | None, product_type: str, title: str) -> dict:
+    target = _TARGETS.get(product_type, _TARGETS["wall_art"])
+    sweet = target["sweet_spot_gbp"]
+    min_p = target["min_gbp"]
+
+    if current_price is None:
+        return {
+            "action": "set_price",
+            "suggested_gbp": sweet,
+            "reason": f"No price set — start at sweet-spot £{sweet} for {product_type.replace('_', ' ')}",
+            "tip": target["note"],
+        }
+
+    gap = sweet - current_price
+    if current_price < min_p:
+        return {
+            "action": "increase",
+            "current_gbp": current_price,
+            "suggested_gbp": min_p,
+            "reason": f"£{current_price:.2f} is below minimum viable margin. Increase to £{min_p}",
+            "tip": target["note"],
+        }
+    elif gap > 3.00:
+        return {
+            "action": "increase",
+            "current_gbp": current_price,
+            "suggested_gbp": sweet,
+            "reason": f"£{current_price:.2f} is £{gap:.2f} below the market sweet spot — increase to £{sweet}",
+            "tip": "Test a 10–15% price increase for 2 weeks. If conversion stays stable, keep it.",
+        }
+    elif gap < -5.00:
+        return {
+            "action": "test_lower",
+            "current_gbp": current_price,
+            "suggested_gbp": sweet,
+            "reason": f"£{current_price:.2f} may be too high — test at sweet spot £{sweet}",
+            "tip": "High prices reduce conversion volume. A/B test the sweet spot.",
+        }
+    else:
+        return {
+            "action": "hold",
+            "current_gbp": current_price,
+            "suggested_gbp": current_price,
+            "reason": f"£{current_price:.2f} is well-positioned within the sweet spot range",
+            "tip": "Focus on improving listing quality (images, SEO) rather than changing the price.",
+        }
 
 
 class PriceOptimizerAgent(BaseRevenueAgent):
     name = "Price Optimizer"
-    mission = "Analyse pricing data to find margin improvements and recommend optimal price points"
+    mission = "Analyse listing prices against market sweet spots and recommend adjustments"
 
     def run(self, db: Session) -> AgentRunResult:
-        ai_calls = 0
-        recs_created = 0
-        actions = []
-
-        revenue_by_cat = _get_product_revenue(db, days=30)
-        top_opps = (
+        opps = (
             db.query(Opportunity)
-            .filter(Opportunity.source == "printify_pod", Opportunity.status != "archived")
+            .filter(
+                Opportunity.source.in_(["print_forge_ai", "printify_pod", "vibes_ai", "music_licensing"]),
+                Opportunity.status != "archived",
+            )
             .order_by(Opportunity.kingdom_score.desc())
             .limit(20)
             .all()
         )
 
-        recommendations = []
-        for opp in top_opps:
-            evidence = {}
-            try:
-                evidence = json.loads(opp.evidence or "{}")
-            except Exception:
-                pass
+        recommendations: list[dict] = []
+        increases = holds = lower_tests = price_sets = 0
+        actions: list[str] = []
 
-            product_type = evidence.get("product_type", "default")
-            current_price = float(evidence.get("suggested_price_gbp", 0.0))
-            current_margin = float(evidence.get("estimated_margin_pct", 0.0))
-            targets = _PRODUCT_TYPE_TARGETS.get(product_type, _PRODUCT_TYPE_TARGETS["default"])
+        for opp in opps:
+            ptype = _detect_type(opp)
+            current_price = _parse_price(opp)
+            rec = _recommend(current_price, ptype, opp.title)
+            rec["opportunity_id"] = opp.id
+            rec["product_type"] = ptype
+            rec["title"] = opp.title[:60]
+            recommendations.append(rec)
 
-            if current_price <= 0:
-                continue
-
-            # Determine recommendation
-            if current_margin < targets["margin_target_pct"] - 5:
-                action = "increase"
-                new_price = min(targets["max_gbp"], round(current_price * 1.15, 2))
-                reason = f"Margin {current_margin:.0f}% below target {targets['margin_target_pct']}%"
-            elif current_price < targets["min_gbp"]:
-                action = "increase"
-                new_price = targets["sweet_spot_gbp"]
-                reason = f"Price £{current_price:.2f} below minimum £{targets['min_gbp']:.2f}"
-            elif current_price > targets["max_gbp"] and current_margin > targets["margin_target_pct"] + 10:
-                action = "test_lower"
-                new_price = targets["sweet_spot_gbp"]
-                reason = "Premium price may limit volume; test at sweet spot"
+            action = rec["action"]
+            if action == "increase":
+                increases += 1
+            elif action == "test_lower":
+                lower_tests += 1
+            elif action == "set_price":
+                price_sets += 1
             else:
-                action = "hold"
-                new_price = current_price
-                reason = "Price within optimal range"
+                holds += 1
 
-            recommendations.append({
-                "title": opp.title,
-                "product_type": product_type,
-                "current_price_gbp": current_price,
-                "recommended_price_gbp": new_price,
-                "action": action,
-                "reason": reason,
-                "current_margin_pct": current_margin,
-            })
+            summary = f"{opp.title[:40]}: {action} → £{rec['suggested_gbp']:.2f}"
+            actions.append(summary)
 
-        # AI enhancement
-        if recommendations:
+            # Update opportunity evidence with price recommendation
             try:
-                from backend.services.ai_brain import call_claude
-                prompt = (
-                    f"Review these {len(recommendations)} Pitwall Classics pricing recommendations.\n"
-                    f"Revenue last 30 days by category: {json.dumps(revenue_by_cat)}\n"
-                    f"Recommendations: {json.dumps(recommendations[:5], indent=2)}\n\n"
-                    f"Identify the top 2 pricing moves with highest revenue impact. Be concise."
-                )
-                ai_result = call_claude(prompt=prompt, feature="price_optimizer", db=db, max_tokens=300)
-                if ai_result:
-                    ai_calls = 1
-                    actions.append(f"AI review: {ai_result[:200]}")
+                ev = json.loads(opp.evidence or "{}")
+                ev["price_recommendation"] = rec
+                ev["price_analysed_at"] = datetime.utcnow().isoformat()
+                opp.evidence = json.dumps(ev)
             except Exception:
                 pass
 
-        # Persist recommendations as a lesson
-        if recommendations:
-            recs_summary = [r for r in recommendations if r["action"] != "hold"][:5]
-            recs_created = len(recs_summary)
-            lesson_text = (
-                f"Price Optimizer: {recs_created} pricing moves identified. "
-                f"Top action: {recs_summary[0]['action'].upper()} {recs_summary[0]['title'][:40]} → "
-                f"£{recs_summary[0]['recommended_price_gbp']:.2f}" if recs_summary else "All prices optimal."
-            )
-            lesson = __import__("backend.models.tables", fromlist=["Lesson"]).Lesson(
-                lesson=lesson_text,
-                source="price_optimizer",
-                confidence_score=75.0,
-                evidence=json.dumps({"recommendations": recommendations[:10], "revenue_by_cat": revenue_by_cat}),
-            )
-            db.add(lesson)
-            db.commit()
-            if not actions:
-                actions.append(lesson_text)
+        db.commit()
+
+        # Store as lesson for the feed
+        lesson_text = (
+            f"Price Optimizer: analysed {len(opps)} listings. "
+            f"{increases} should increase price, {lower_tests} should test lower, "
+            f"{price_sets} need a price set, {holds} are well-positioned. "
+            f"Top action: {actions[0] if actions else 'none'}."
+        )
+        db.add(Lesson(
+            lesson=lesson_text,
+            source="price_optimizer",
+            confidence_score=82.0,
+            evidence=json.dumps({
+                "recommendations": recommendations[:10],
+                "summary": {"increases": increases, "holds": holds, "test_lower": lower_tests, "set_price": price_sets},
+                "analysed_at": datetime.utcnow().isoformat(),
+            }),
+        ))
+        db.commit()
 
         result = AgentRunResult(
             status="ok",
-            ai_calls=ai_calls,
-            lessons=[f"Price Optimizer ran: {recs_created} pricing moves recommended"],
-            actions_taken=actions or ["No pricing moves needed — all products within optimal range"],
+            ai_calls=0,
+            opportunities_created=0,
+            opportunities_updated=len(opps),
+            lessons=[lesson_text],
+            actions_taken=actions[:8],
         )
         self._record_run(result, db)
         return result

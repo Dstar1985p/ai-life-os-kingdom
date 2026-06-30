@@ -1,115 +1,188 @@
-"""
-SEO Agent — generates optimised Etsy listing titles, tags, and descriptions.
-Uses Claude haiku + internal opportunity data. No web scraping.
-Stores output as Lesson (source="seo_brief") for founder to apply manually.
+"""SEO Agent — generates optimised Etsy titles, tags, and description hooks.
+Stores output as Lesson AND links back to actual Opportunity records.
+No web scraping. Data from our own listings only.
 """
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from backend.agents.base_agent import AgentRunResult, BaseRevenueAgent
 from backend.models.tables import Lesson, Opportunity
 
-_FALLBACK_SEO = [
+# ── Fallback SEO briefs ────────────────────────────────────────────────────────
+
+_FALLBACK: list[dict] = [
     {
         "product": "Motorsport Wall Art Print",
-        "optimised_title": "Vintage F1 Racing Poster — Retro Motorsport Art Print | Race Car Wall Decor Gift",
-        "tags": ["motorsport art", "F1 poster", "racing wall art", "vintage racing print",
-                 "car art gift", "formula one", "race car decor", "garage art", "F1 gift",
-                 "motorsport poster", "racing fan gift", "retro car art", "wall art print",
-                 "speed art", "classic racing"],
-        "description_hook": "Fuel your passion for speed with this stunning vintage motorsport art print. Perfect for any racing fan's home, office, or garage.",
-        "seo_tip": "Lead with the emotion ('Fuel your passion') and primary keyword in first 3 words of title.",
+        "optimised_title": "Vintage F1 Racing Poster | Retro Motorsport Art Print — Race Car Wall Decor Gift",
+        "tags": [
+            "motorsport art", "F1 poster", "racing wall art", "vintage racing print",
+            "car art gift", "formula one decor", "race car print", "garage art",
+            "motorsport poster", "racing fan gift", "retro car art", "wall art print",
+            "classic racing",
+        ],
+        "description_hook": "Fuel your passion for speed with this stunning vintage motorsport print. Printed on museum-quality paper — perfect for the home, office, or garage of any serious racing fan.",
+        "seo_tip": "Lead title with emotion + primary keyword ('Vintage F1 Racing Poster') — Etsy ranks the first 40 chars most heavily.",
+        "category": "Pitwall/F1 Classic",
     },
     {
-        "product": "Rally Legends Print",
-        "optimised_title": "Group B Rally Art Print — Audi Quattro Vintage Motorsport Poster | Classic Rally Gift",
-        "tags": ["rally art", "Group B poster", "Audi Quattro print", "rally legends",
-                 "1980s motorsport", "vintage rally", "forest stage art", "rally gift",
-                 "motorsport print", "classic rally", "WRC art", "rally fan gift",
-                 "garage wall art", "rally poster", "motorsport decor"],
-        "description_hook": "Relive the golden era of Group B with this iconic rally art print. From forest stages to hairpin bends — pure motorsport history.",
-        "seo_tip": "Use the car model name (Audi Quattro) as it has dedicated buyer communities searching for it.",
+        "product": "Group B Rally Print",
+        "optimised_title": "Group B Rally Art Print | Audi Quattro Vintage Motorsport Poster — Classic Rally Gift",
+        "tags": [
+            "rally art", "Group B poster", "Audi Quattro print", "rally legends",
+            "1980s motorsport", "vintage rally", "forest stage art", "rally gift",
+            "motorsport print", "classic rally", "WRC art", "rally fan gift",
+            "garage wall art", "rally decor", "motorsport gift",
+        ],
+        "description_hook": "Relive the golden era of Group B with this iconic rally art print. From forest stages to hairpin bends — pure motorsport history captured in one stunning print.",
+        "seo_tip": "Use the exact car model name (Audi Quattro) — collector communities search specifically for their favourite car.",
+        "category": "Pitwall/Rally/WRC",
+    },
+    {
+        "product": "Le Mans Circuit Map Print",
+        "optimised_title": "Le Mans Circuit Track Map Print | Motorsport Blueprint Art — Endurance Racing Gift",
+        "tags": [
+            "Le Mans print", "circuit map art", "track map poster", "endurance racing",
+            "motorsport gift", "racing blueprint", "Le Mans 24h", "race track art",
+            "F1 circuit print", "garage art", "racing wall decor", "motorsport lover gift",
+            "car enthusiast print",
+        ],
+        "description_hook": "The circuit that defines endurance. This minimalist blueprint celebrates the iconic Circuit de la Sarthe — where legends are made over 24 hours.",
+        "seo_tip": "Blueprint/technical art style descriptions convert well with engineer/tech buyers — mention the style explicitly in your description.",
+        "category": "Pitwall/Le Mans",
+    },
+    {
+        "product": "Motorsport Gift Bundle",
+        "optimised_title": "Motorsport Art Print Set | 3 Racing Prints — F1 Rally Le Mans Wall Art Gift Bundle",
+        "tags": [
+            "motorsport art set", "racing prints bundle", "F1 gift set", "race wall art trio",
+            "motorsport lover gift", "racing fan decor", "car gift bundle",
+            "motorsport wall art", "F1 poster set", "rally art bundle",
+            "garage art set", "racing prints gift", "car art collection",
+        ],
+        "description_hook": "Give the gift of speed — three stunning motorsport prints in one bundle. Perfectly curated for the racing fan who has everything except wall space for their passion.",
+        "seo_tip": "Bundle listings get higher average order value AND appear in Etsy gift searches. Create a 3-pack and 5-pack variant.",
+        "category": "Pitwall/Bundles",
     },
 ]
 
 
 class SEOAgent(BaseRevenueAgent):
     name = "SEO Agent"
-    mission = "Generate optimised Etsy titles, tags, and descriptions for Pitwall Classics listings"
+    mission = "Generate Etsy-optimised titles, tags, and descriptions — link directly to listing opportunities"
 
     def run(self, db: Session) -> AgentRunResult:
-        ai_calls = 0
-        briefs_created = 0
-        actions = []
-
-        # Get top opportunities that need SEO
-        top_opps = (
+        # Get current Pitwall Classics opportunities to optimise
+        opps = (
             db.query(Opportunity)
             .filter(
-                Opportunity.source == "printify_pod",
-                Opportunity.status == "discovered",
+                Opportunity.source.in_(["print_forge_ai", "printify_pod"]),
+                Opportunity.status != "archived",
             )
             .order_by(Opportunity.kingdom_score.desc())
-            .limit(5)
+            .limit(8)
             .all()
         )
 
-        seo_briefs = []
+        ai_calls = 0
+        briefs: list[dict] = []
 
-        if top_opps:
+        # Try Claude for real SEO briefs based on actual listings
+        if opps:
             try:
-                from backend.services.ai_brain import call_claude
-                opp_list = [{"title": o.title, "category": o.category} for o in top_opps]
-                prompt = (
-                    f"Generate Etsy SEO briefs for these Pitwall Classics motorsport art products.\n"
-                    f"Products: {json.dumps(opp_list, indent=2)}\n\n"
-                    f"For each product return JSON array:\n"
-                    f'[{{"product": "...", "optimised_title": "...", '
-                    f'"tags": ["tag1", ...15 tags max...], '
-                    f'"description_hook": "...", "seo_tip": "..."}}]'
-                )
-                result = call_claude(
-                    prompt=prompt,
-                    system=(
-                        "You are an expert Etsy SEO specialist for motorsport art and print-on-demand products. "
-                        "Etsy titles max 140 chars. Tags max 20 chars each. "
-                        "Output valid JSON array only."
-                    ),
-                    feature="seo",
-                    db=db,
-                    max_tokens=800,
-                )
-                if result:
+                from backend.services.ai_brain import generate_seo_briefs, get_kingdom_context
+                context = get_kingdom_context(db)
+                listing_summaries = [{"title": o.title, "category": o.category} for o in opps]
+                ai_briefs = generate_seo_briefs(context, listing_summaries, db)
+                if ai_briefs:
+                    briefs = ai_briefs
                     ai_calls = 1
-                    import re
-                    json_match = re.search(r"\[.*\]", result, re.DOTALL)
-                    if json_match:
-                        seo_briefs = json.loads(json_match.group())[:5]
             except Exception:
                 pass
 
-        if not seo_briefs:
-            seo_briefs = _FALLBACK_SEO
+        if not briefs:
+            briefs = _FALLBACK
 
-        for brief in seo_briefs:
-            lesson = Lesson(
-                lesson=f"SEO Brief: {brief['product']} — Title: {brief['optimised_title'][:80]}",
+        created_lessons = 0
+        actions: list[str] = []
+
+        # Check which SEO briefs we've already stored (avoid duplicate lessons)
+        existing_seo = (
+            db.query(Lesson)
+            .filter(Lesson.source == "seo_brief")
+            .order_by(Lesson.created_at.desc())
+            .limit(30)
+            .all()
+        )
+        existing_products = {lesson.lesson[:40].lower() for lesson in existing_seo}
+
+        for brief in briefs:
+            product = brief.get("product", "Product")
+            title = brief.get("optimised_title", "")
+            tags = brief.get("tags", [])
+            hook = brief.get("description_hook", "")
+            tip = brief.get("seo_tip", "")
+
+            # Skip if we've already produced this brief recently
+            lesson_key = f"SEO: {product}"[:40].lower()
+            if lesson_key in existing_products:
+                continue
+
+            # Enforce Etsy limits
+            if len(title) > 140:
+                title = title[:137] + "..."
+            tags = [t[:20] for t in tags[:13]]  # max 13 tags, 20 chars each
+
+            lesson_text = json.dumps({
+                "product": product,
+                "optimised_title": title,
+                "tags": tags,
+                "description_hook": hook,
+                "seo_tip": tip,
+                "generated_at": datetime.utcnow().isoformat(),
+                "source": "ai" if ai_calls > 0 else "template",
+            }, ensure_ascii=False)
+
+            lesson_obj = Lesson(
+                lesson=f"SEO: {product} — {title[:60]}",
                 source="seo_brief",
-                confidence_score=78.0,
-                evidence=json.dumps(brief),
+                confidence_score=80.0,
+                evidence=lesson_text,
             )
-            db.add(lesson)
-            briefs_created += 1
+            db.add(lesson_obj)
+            created_lessons += 1
+            actions.append(f"SEO brief: {product} ({len(tags)} tags)")
+
+            # Update the matching opportunity's evidence with SEO data
+            cat = brief.get("category", "")
+            if cat:
+                match = next((o for o in opps if o.category == cat), None)
+                if match:
+                    try:
+                        ev = json.loads(match.evidence or "{}")
+                    except Exception:
+                        ev = {}
+                    ev["seo_title"] = title
+                    ev["seo_tags"] = tags
+                    ev["seo_hook"] = hook
+                    match.evidence = json.dumps(ev)
 
         db.commit()
 
-        actions.append(f"Generated {briefs_created} SEO briefs for Etsy listings via {'Claude AI' if ai_calls else 'templates'}")
+        source = "Claude AI" if ai_calls > 0 else "templates"
+        lesson_summary = (
+            f"SEO Agent ({source}): {created_lessons} SEO briefs generated for Etsy listings. "
+            f"Covered products: {', '.join(b.get('product','?') for b in briefs[:3])}."
+        )
+
         result = AgentRunResult(
             status="ok",
             ai_calls=ai_calls,
-            lessons=[f"SEO Agent: {briefs_created} optimised listing briefs created"],
+            opportunities_created=0,
+            opportunities_updated=created_lessons,
+            lessons=[lesson_summary],
             actions_taken=actions,
         )
         self._record_run(result, db)

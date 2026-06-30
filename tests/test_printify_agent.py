@@ -136,9 +136,8 @@ def test_printify_no_bvs_motors_in_category(db):
 
 
 def test_printify_generates_4_concepts_per_run(db):
-    import backend.agents.lead_forge as lf
-    lf._concept_index = 0
     agent = PrintifyAgent()
+    agent._concept_index = 0
     result = agent.run(db)
     assert result.opportunities_created == 4
 

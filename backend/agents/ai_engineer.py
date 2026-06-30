@@ -1,361 +1,306 @@
-"""
-AI Engineer Agent — self-healing, self-improving system guardian.
+"""AI Engineer — self-healing system guardian.
 
-Continuously learns from:
-  - AgentRun error patterns
-  - CI failure logs stored in Lesson table
-  - Outcome feedback (negative outcomes → root cause analysis)
-  - Token budget warnings
-  - Kingdom health degradation signals
-
-Produces:
-  - Patch proposals stored as Lesson (source="engineer_patch")
-  - Auto-applies safe patches (config/prompt tweaks) without code changes
-  - Escalates code fixes to Lesson (source="engineer_fix_required") for human review
-  - Updates LearningWeight table to prevent repeat failures
+Scans recent agent runs and lessons for error patterns, classifies root causes,
+auto-applies safe fixes (LearningWeight updates), and proposes deeper patches for review.
+Runs every 12 hours. Gets smarter via LearningWeight feedback loop.
 """
 from __future__ import annotations
 
 import json
 import re
 from datetime import datetime, timedelta
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.agents.base_agent import AgentRunResult, BaseRevenueAgent
-from backend.models.tables import AgentRun, Lesson, LearningWeight
+from backend.models.tables import AgentRun, Lesson
 
+# ── Error classification ───────────────────────────────────────────────────────
 
-# Error pattern signatures → fix strategies
-_ERROR_SIGNATURES = [
+_SIGNATURES: list[dict] = [
     {
-        "pattern": r"KeyError|key.*not found|missing.*key",
-        "category": "missing_key",
-        "fix": "Add defensive .get() with default value. Check API response schema versioning.",
-        "safe_auto_apply": False,
+        "id": "rate_limit",
+        "patterns": ["rate limit", "429", "too many requests", "ratelimit"],
+        "severity": "medium",
+        "auto_fix": "back_off",
+        "description": "API rate limit hit — agent is calling too frequently",
+        "recommendation": "Increase interval between runs or switch to Haiku for high-frequency calls",
     },
     {
-        "pattern": r"Connection.*refused|timeout|connect.*error|httpx|requests\.exceptions",
-        "category": "network_error",
-        "fix": "Add retry with exponential backoff. Wrap in try/except with graceful fallback.",
-        "safe_auto_apply": False,
+        "id": "token_budget",
+        "patterns": ["token budget", "budget exceeded", "weekly budget", "token limit"],
+        "severity": "medium",
+        "auto_fix": "reduce_tokens",
+        "description": "Token budget approaching or exceeded",
+        "recommendation": "Use Claude Haiku for all non-critical tasks, reserve Sonnet for council/engineer",
     },
     {
-        "pattern": r"token.*budget|budget.*exhausted|50.000|weekly.*limit",
-        "category": "token_budget",
-        "fix": "Switch to haiku model for this agent. Reduce prompt length. Increase caching.",
-        "safe_auto_apply": True,
-        "auto_action": "reduce_token_usage",
+        "id": "network_error",
+        "patterns": ["connection error", "timeout", "urlerror", "connectionrefused", "httperror", "ssl"],
+        "severity": "low",
+        "auto_fix": None,
+        "description": "Network connectivity issue — transient, usually self-resolving",
+        "recommendation": "Ensure Railway service has outbound access. Add retry logic with exponential back-off.",
     },
     {
-        "pattern": r"NoneType.*has no attribute|AttributeError.*None",
-        "category": "null_reference",
-        "fix": "Add None guard before attribute access. Defensive query with .first() check.",
-        "safe_auto_apply": False,
+        "id": "auth_error",
+        "patterns": ["401", "403", "unauthorized", "forbidden", "invalid token", "expired token", "api key"],
+        "severity": "high",
+        "auto_fix": None,
+        "description": "Authentication failure — API key or OAuth token invalid or expired",
+        "recommendation": "Check ETSY_OAUTH_TOKEN / PRINTIFY_API_TOKEN / ANTHROPIC_API_KEY in Railway env vars",
     },
     {
-        "pattern": r"IntegrityError|UNIQUE constraint|duplicate.*key",
-        "category": "db_integrity",
-        "fix": "Use upsert pattern instead of insert. Check existing record before creating.",
-        "safe_auto_apply": False,
+        "id": "missing_key",
+        "patterns": ["keyerror", "missing key", "not found in", "attributeerror", "nonetype"],
+        "severity": "medium",
+        "auto_fix": None,
+        "description": "Code accessing a missing key or attribute in response data",
+        "recommendation": "Add defensive .get() checks and None guards around external API response parsing",
     },
     {
-        "pattern": r"ImportError|ModuleNotFoundError|cannot import",
-        "category": "import_error",
-        "fix": "Check requirements.txt. Guard import in try/except. Lazy import pattern.",
-        "safe_auto_apply": False,
+        "id": "db_integrity",
+        "patterns": ["integrity error", "unique constraint", "foreign key", "database error", "sqlalchemy"],
+        "severity": "high",
+        "auto_fix": None,
+        "description": "Database integrity violation — likely duplicate or orphaned record",
+        "recommendation": "Check upsert logic. Ensure commit() is called after all DB writes.",
     },
     {
-        "pattern": r"401|403|Unauthorized|Forbidden|invalid.*token|token.*expired",
-        "category": "auth_error",
-        "fix": "Check API key configuration. Token may be expired — re-auth flow needed.",
-        "safe_auto_apply": False,
+        "id": "import_error",
+        "patterns": ["importerror", "modulenotfounderror", "cannot import", "no module named"],
+        "severity": "critical",
+        "auto_fix": None,
+        "description": "Python import failure — missing dependency or circular import",
+        "recommendation": "Check requirements.txt. Verify all new modules are committed and deployed.",
     },
     {
-        "pattern": r"rate.*limit|429|too many requests",
-        "category": "rate_limit",
-        "fix": "Add sleep/backoff between API calls. Implement request queue with rate limiter.",
-        "safe_auto_apply": True,
-        "auto_action": "flag_rate_limit",
+        "id": "null_reference",
+        "patterns": ["nonetype has no attribute", "'nonetype'", "object has no attribute", "attributeerror"],
+        "severity": "medium",
+        "auto_fix": None,
+        "description": "Null reference — variable expected to have data is None",
+        "recommendation": "Add None checks before attribute access, especially after DB queries.",
     },
 ]
 
-_IMPROVEMENT_PROMPTS = [
-    "Which agent has the lowest ROI and what specific changes would double its output?",
-    "What revenue opportunities are we consistently missing based on outcome history?",
-    "Which system components have the most error patterns and what is the root cause?",
-    "What Kingdom health signals indicate we should shift agent priorities this week?",
-    "Based on learning weights, which agent behaviors have been reinforced positively?",
-]
 
-
-def _classify_error(text: str) -> dict | None:
-    """Match error text against known patterns."""
-    lower = text.lower()
-    for sig in _ERROR_SIGNATURES:
-        if re.search(sig["pattern"], lower, re.IGNORECASE):
+def _classify(error_text: str) -> dict | None:
+    el = error_text.lower()
+    for sig in _SIGNATURES:
+        if any(p in el for p in sig["patterns"]):
             return sig
     return None
 
 
 def _get_recent_errors(db: Session, hours: int = 72) -> list[dict]:
-    """Collect error patterns from AgentRun and Lesson tables."""
-    since = datetime.utcnow() - timedelta(hours=hours)
-    errors = []
-
-    # AgentRun failures (non-zero error field or zero-result runs)
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
     runs = (
         db.query(AgentRun)
-        .filter(AgentRun.run_at >= since)
-        .order_by(AgentRun.run_at.desc())
-        .limit(50)
+        .filter(AgentRun.ran_at >= cutoff)
+        .order_by(AgentRun.ran_at.desc())
+        .limit(200)
         .all()
     )
-    for run in runs:
-        # Flag runs with suspiciously low output (no opportunities, no revenue)
-        if run.ai_calls == 0 and run.opportunities_created == 0 and run.revenue_generated_gbp == 0:
-            errors.append({
-                "source": f"agent:{run.agent_name}",
-                "type": "zero_output",
-                "text": f"Agent {run.agent_name} produced zero output on run at {run.run_at}",
-                "timestamp": run.run_at.isoformat(),
-            })
-
-    # Lessons with error indicators
-    error_lessons = (
+    lessons = (
         db.query(Lesson)
         .filter(
-            Lesson.created_at >= since,
-            Lesson.source.in_(["crisis_scan", "agent:Overseer"]),
+            Lesson.created_at >= cutoff,
+            Lesson.lesson.ilike("%error%") | Lesson.lesson.ilike("%failed%") | Lesson.lesson.ilike("%exception%"),
         )
-        .order_by(Lesson.created_at.desc())
-        .limit(20)
+        .limit(100)
         .all()
     )
-    for lesson in error_lessons:
-        if any(kw in (lesson.lesson or "").lower() for kw in ["error", "fail", "critical", "exception"]):
-            errors.append({
-                "source": lesson.source,
-                "type": "lesson_error",
-                "text": lesson.lesson,
-                "timestamp": lesson.created_at.isoformat(),
-            })
 
+    errors: list[dict] = []
+    for run in runs:
+        if run.status == "error":
+            errors.append({
+                "source": f"agent:{run.agent_name}",
+                "text": f"Agent {run.agent_name} run failed",
+                "at": run.ran_at.isoformat(),
+                "type": "agent_run",
+            })
+    for lesson in lessons:
+        errors.append({
+            "source": lesson.source,
+            "text": lesson.lesson,
+            "at": lesson.created_at.isoformat() if lesson.created_at else "",
+            "type": "lesson",
+        })
     return errors
 
 
-def _get_performance_insights(db: Session) -> list[dict]:
-    """Analyse agent performance trends to find improvement opportunities."""
-    insights = []
-
-    # Agent ROI league table
-    agents = db.query(AgentRun.agent_name).distinct().all()
-    for (agent_name,) in agents:
-        recent_runs = (
-            db.query(AgentRun)
-            .filter(
-                AgentRun.agent_name == agent_name,
-                AgentRun.run_at >= datetime.utcnow() - timedelta(days=30),
-            )
-            .all()
-        )
-        if not recent_runs:
-            continue
-        total_cost = sum(r.estimated_cost_gbp for r in recent_runs)
-        total_rev = sum(r.revenue_generated_gbp for r in recent_runs)
-        avg_opps = sum(getattr(r, "opportunities_created", 0) for r in recent_runs) / len(recent_runs)
-        roi = (total_rev / total_cost) if total_cost > 0 else 0.0
-
-        if roi < 0.5 and len(recent_runs) >= 3:
-            insights.append({
-                "type": "low_roi_agent",
-                "agent": agent_name,
-                "roi": round(roi, 2),
-                "runs": len(recent_runs),
-                "avg_opps_per_run": round(avg_opps, 1),
-                "recommendation": f"Review {agent_name} strategy — ROI {roi:.2f}x below 0.5x threshold",
-            })
-
-    # Learning weight analysis
-    weights = db.query(LearningWeight).order_by(LearningWeight.weight.asc()).limit(5).all()
-    for w in weights:
-        if w.weight < 0.4:
-            insights.append({
-                "type": "weak_learning_signal",
-                "feature": w.feature,
-                "weight": float(w.weight),
-                "recommendation": f"Feature '{w.feature}' has low confidence weight {w.weight:.2f} — needs more outcome data",
-            })
-
-    return insights
-
-
-def _try_ai_improvement(errors: list[dict], insights: list[dict], db: Session) -> str | None:
-    """Use Claude to generate improvement recommendations."""
+def _get_performance_insights(db: Session) -> dict:
+    """Summarise agent performance over 7 days."""
+    cutoff = datetime.utcnow() - timedelta(days=7)
     try:
-        from backend.services.ai_brain import call_claude, get_kingdom_context
-        ctx = get_kingdom_context(db)
-        error_summary = json.dumps(errors[:5], indent=2)
-        insight_summary = json.dumps(insights[:5], indent=2)
-        prompt = (
-            f"You are the AI Engineer for an autonomous Kingdom OS. "
-            f"Analyse these system signals and produce 3 specific, actionable improvement patches.\n\n"
-            f"KINGDOM CONTEXT:\n{json.dumps(ctx, indent=2)}\n\n"
-            f"RECENT ERRORS:\n{error_summary}\n\n"
-            f"PERFORMANCE INSIGHTS:\n{insight_summary}\n\n"
-            f"For each patch, respond with JSON array:\n"
-            f'[{{"title": "...", "priority": "high|medium|low", "category": "...", '
-            f'"fix": "...", "auto_applicable": true|false, "estimated_impact": "..."}}]'
-        )
-        result = call_claude(
-            prompt=prompt,
-            system=(
-                "You are a senior software engineer and AI systems architect. "
-                "You specialise in autonomous agent systems, Python/FastAPI backends, and revenue optimisation. "
-                "Be specific, practical, and prioritise fixes that prevent downtime or revenue loss. "
-                "Always output valid JSON array only."
-            ),
-            feature="engineer",
-            db=db,
-            max_tokens=800,
-        )
-        return result
+        rows = db.execute(text("""
+            SELECT agent_name,
+                   COUNT(*) total_runs,
+                   SUM(CASE WHEN status='error' THEN 1 ELSE 0 END) errors,
+                   SUM(opportunities_created) opps,
+                   AVG(estimated_cost_gbp) avg_cost
+            FROM agent_runs
+            WHERE ran_at >= :cutoff
+            GROUP BY agent_name
+        """), {"cutoff": cutoff.isoformat()}).fetchall()
+
+        agents = []
+        for r in rows:
+            error_rate = round(r[2] / r[1] * 100, 1) if r[1] else 0
+            health = "green" if error_rate < 10 else ("amber" if error_rate < 30 else "red")
+            agents.append({
+                "agent": r[0], "runs": r[1], "errors": r[2],
+                "error_rate_pct": error_rate, "opps_created": r[3] or 0,
+                "avg_cost_gbp": round(float(r[4] or 0), 5), "health": health,
+            })
+        return {"agents": agents, "period_days": 7}
     except Exception:
-        return None
+        return {"agents": [], "period_days": 7}
 
 
 class AIEngineerAgent(BaseRevenueAgent):
     name = "AI Engineer"
-    mission = "Self-healing system guardian — diagnoses errors, learns from failures, proposes targeted patches"
+    mission = "Self-healing system guardian — scan, classify, learn, and fix agent errors"
 
     def run(self, db: Session) -> AgentRunResult:
-        ai_calls = 0
-        patches_proposed = 0
-        auto_applied = 0
-        lessons_out = []
-        actions = []
-
-        # 1. Collect error signals
         errors = _get_recent_errors(db, hours=72)
-        insights = _get_performance_insights(db)
+        performance = _get_performance_insights(db)
+        ai_calls = 0
 
-        # 2. Rule-based error classification
-        fix_proposals = []
+        # Classify all errors
+        classified: dict[str, list] = {}
         for err in errors:
-            sig = _classify_error(err["text"])
+            sig = _classify(err["text"])
             if sig:
-                fix_proposals.append({
-                    "title": f"Fix {sig['category']} in {err['source']}",
-                    "category": sig["category"],
-                    "fix": sig["fix"],
-                    "auto_applicable": sig.get("safe_auto_apply", False),
-                    "auto_action": sig.get("auto_action"),
-                    "error_source": err["source"],
-                    "priority": "high" if sig["category"] in ("null_reference", "db_integrity") else "medium",
-                    "estimated_impact": "Prevents recurrence of this error type",
-                })
+                key = sig["id"]
+                if key not in classified:
+                    classified[key] = []
+                classified[key].append({**err, "signature": sig})
 
-        # 3. AI-powered improvements
-        if errors or insights:
-            ai_result = _try_ai_improvement(errors, insights, db)
-            if ai_result:
-                ai_calls = 1
+        # Auto-apply safe fixes
+        auto_fixed: list[str] = []
+        for error_type, instances in classified.items():
+            sig = instances[0]["signature"]
+            if sig["auto_fix"] == "back_off" and len(instances) >= 2:
                 try:
-                    # Extract JSON from response
-                    json_match = re.search(r"\[.*\]", ai_result, re.DOTALL)
-                    if json_match:
-                        ai_patches = json.loads(json_match.group())
-                        fix_proposals.extend(ai_patches[:3])
+                    from backend.models.tables import LearningWeight
+                    lw = db.query(LearningWeight).filter_by(feature="api_call_frequency").first()
+                    if lw:
+                        lw.weight = max(0.3, lw.weight * 0.85)
+                        lw.updated_at = datetime.utcnow()
+                        auto_fixed.append(f"Reduced api_call_frequency weight (rate limit × {len(instances)})")
+                except Exception:
+                    pass
+            elif sig["auto_fix"] == "reduce_tokens" and len(instances) >= 1:
+                try:
+                    from backend.models.tables import LearningWeight
+                    lw = db.query(LearningWeight).filter_by(feature="token_budget_usage").first()
+                    if lw:
+                        lw.weight = max(0.2, lw.weight * 0.90)
+                        lw.updated_at = datetime.utcnow()
+                        auto_fixed.append(f"Reduced token_budget_usage weight (budget × {len(instances)})")
                 except Exception:
                     pass
 
-        # Deduplicate proposals by category
-        seen_cats = set()
-        unique_proposals = []
-        for p in fix_proposals:
-            cat = p.get("category", p.get("title", "unknown"))
-            if cat not in seen_cats:
-                seen_cats.add(cat)
-                unique_proposals.append(p)
-
-        # 4. Persist proposals as lessons
-        for proposal in unique_proposals[:6]:
-            patches_proposed += 1
-            priority = proposal.get("priority", "medium")
-            source = "engineer_patch" if not proposal.get("auto_applicable") else "engineer_auto"
-
-            lesson = Lesson(
-                lesson=f"[AI Engineer] {proposal.get('title', 'Patch')}: {proposal.get('fix', '')}",
-                source=source,
-                confidence_score=80.0 if priority == "high" else 65.0,
-                evidence=json.dumps({
-                    "proposal": proposal,
-                    "generated_at": datetime.utcnow().isoformat(),
-                    "error_count": len(errors),
-                    "insight_count": len(insights),
-                }),
-            )
-            db.add(lesson)
-
-            # Auto-apply safe patches (update learning weights, flag config issues)
-            if proposal.get("auto_applicable") and proposal.get("auto_action"):
-                action = proposal["auto_action"]
-                if action == "reduce_token_usage":
-                    # Flag token pressure in learning weights
-                    w = db.query(LearningWeight).filter(LearningWeight.feature == "token_economy").first()
-                    if not w:
-                        w = LearningWeight(feature="token_economy", weight=0.5, sample_count=1)
-                        db.add(w)
-                    else:
-                        w.weight = max(0.1, float(w.weight) - 0.1)
-                        w.sample_count = (w.sample_count or 0) + 1
-                    auto_applied += 1
-                    actions.append(f"Auto-applied: {action}")
-                elif action == "flag_rate_limit":
-                    w = db.query(LearningWeight).filter(LearningWeight.feature == "rate_limit_risk").first()
-                    if not w:
-                        w = LearningWeight(feature="rate_limit_risk", weight=0.3, sample_count=1)
-                        db.add(w)
-                    else:
-                        w.weight = max(0.1, float(w.weight) - 0.15)
-                        w.sample_count = (w.sample_count or 0) + 1
-                    auto_applied += 1
-                    actions.append(f"Auto-applied: {action}")
-
-        # 5. Performance insight lessons
-        for insight in insights[:3]:
-            lesson = Lesson(
-                lesson=f"[AI Engineer] Performance: {insight['recommendation']}",
-                source="engineer_insight",
-                confidence_score=72.0,
-                evidence=json.dumps(insight),
-            )
-            db.add(lesson)
-
-        # 6. Self-improvement: log this run's own effectiveness
-        if not errors and not insights:
-            lesson = Lesson(
-                lesson="[AI Engineer] System scan clean — no errors or low-ROI patterns detected in 72h window.",
-                source="engineer_insight",
-                confidence_score=90.0,
-                evidence=json.dumps({"scan_at": datetime.utcnow().isoformat(), "window_hours": 72}),
-            )
-            db.add(lesson)
-
         db.commit()
 
-        summary = (
-            f"AI Engineer ran: {len(errors)} errors analysed, "
-            f"{patches_proposed} patches proposed, {auto_applied} auto-applied, "
-            f"{len(insights)} performance insights."
+        # Build patch proposals for non-auto-fixable issues
+        proposals: list[dict] = []
+        for error_type, instances in classified.items():
+            sig = instances[0]["signature"]
+            if not sig["auto_fix"] and len(instances) >= 1:
+                agents_affected = list({i["source"] for i in instances})
+                proposals.append({
+                    "error_type": error_type,
+                    "severity": sig["severity"],
+                    "description": sig["description"],
+                    "recommendation": sig["recommendation"],
+                    "instances": len(instances),
+                    "agents_affected": agents_affected,
+                    "first_seen": instances[-1]["at"],
+                    "last_seen": instances[0]["at"],
+                })
+
+        # High-severity issues get a Claude deep-dive
+        high_sev = [p for p in proposals if p["severity"] in ("high", "critical")]
+        claude_analysis = ""
+        if high_sev or (len(classified) >= 3):
+            try:
+                from backend.services.ai_brain import call_claude
+                error_summary = json.dumps({
+                    "error_types": list(classified.keys()),
+                    "high_severity": high_sev[:3],
+                    "performance": performance,
+                    "auto_fixed": auto_fixed,
+                }, indent=2)
+                prompt = (
+                    f"You are the AI Engineer for the Kingdom system. "
+                    f"Here is a 72-hour error report:\n{error_summary}\n\n"
+                    f"Give 3 specific, actionable fixes the founder can apply. "
+                    f"Be concrete — name the file, the function, and what to change. "
+                    f"Focus on the highest-severity issues first. Format as a numbered list."
+                )
+                claude_analysis = call_claude(prompt, db=db, purpose="ai_engineer")
+                ai_calls = 1
+            except Exception:
+                pass
+
+        # Identify underperforming agents (high error rate, low opportunity output)
+        struggling = [
+            a for a in performance.get("agents", [])
+            if a["error_rate_pct"] > 25 or (a["runs"] > 3 and a["opps_created"] == 0)
+        ]
+
+        # Store proposals as lesson for review
+        summary_parts = []
+        if classified:
+            summary_parts.append(f"Error types: {', '.join(classified.keys())}")
+        if auto_fixed:
+            summary_parts.append(f"Auto-fixed: {len(auto_fixed)}")
+        if proposals:
+            summary_parts.append(f"Proposals: {len(proposals)}")
+        if struggling:
+            summary_parts.append(f"Struggling agents: {', '.join(a['agent'] for a in struggling)}")
+
+        lesson_text = (
+            f"AI Engineer scan (72h): {len(errors)} signals, {len(classified)} error patterns. "
+            + ("; ".join(summary_parts) or "System healthy — no issues found.")
         )
-        lessons_out.append(summary)
+
+        evidence = json.dumps({
+            "error_patterns": classified,
+            "proposals": proposals,
+            "auto_fixed": auto_fixed,
+            "struggling_agents": struggling,
+            "claude_analysis": claude_analysis,
+            "performance": performance,
+            "scanned_at": datetime.utcnow().isoformat(),
+        })
+
+        db.add(Lesson(
+            lesson=lesson_text,
+            source="engineer_patch" if proposals else "engineer_scan",
+            confidence_score=95.0,
+            evidence=evidence,
+        ))
+        db.commit()
+
+        actions: list[str] = (
+            [f"Auto-fixed: {f}" for f in auto_fixed]
+            + [f"[{p['severity'].upper()}] {p['error_type']}: {p['description'][:60]}" for p in proposals[:5]]
+            + [f"Struggling: {a['agent']} ({a['error_rate_pct']}% error rate)" for a in struggling]
+        )
         if not actions:
-            actions.append(f"Analysed {len(errors)} errors + {len(insights)} insights → {patches_proposed} patches")
+            actions = ["System healthy — no critical errors detected"]
 
         result = AgentRunResult(
             status="ok",
             ai_calls=ai_calls,
-            lessons=lessons_out,
+            opportunities_created=0,
+            opportunities_updated=len(auto_fixed),
+            lessons=[lesson_text],
             actions_taken=actions,
         )
         self._record_run(result, db)
