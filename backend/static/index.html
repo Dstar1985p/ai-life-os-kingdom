@@ -76,6 +76,24 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 .score-bar { height: 4px; background: var(--border); border-radius: 2px; margin: 4px 0; overflow: hidden; }
 .score-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
 
+/* ===== UPDATE BANNER ===== */
+#update-banner { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+  background: linear-gradient(90deg, #1a1000, #2a1800, #1a1000);
+  border-bottom: 2px solid var(--amber); padding: 8px 20px;
+  align-items: center; gap: 12px; font-size: 0.78rem; letter-spacing: 1px; }
+#update-banner.show { display: flex; }
+#update-banner .upd-icon { font-size: 1.1rem; }
+#update-banner .upd-text { flex: 1; color: var(--amber); }
+#update-banner .upd-text span { color: var(--text); }
+#update-banner .upd-btn { background: var(--amber); color: #000; border: none;
+  padding: 5px 14px; font-family: 'Courier New', monospace; font-size: 0.72rem;
+  font-weight: bold; letter-spacing: 1px; cursor: pointer; border-radius: 3px; }
+#update-banner .upd-btn:hover { opacity: 0.85; }
+#update-banner .upd-dismiss { background: none; border: 1px solid var(--amber); color: var(--amber);
+  padding: 5px 10px; font-family: 'Courier New', monospace; font-size: 0.72rem;
+  cursor: pointer; border-radius: 3px; margin-left: 6px; }
+#update-banner .upd-dismiss:hover { background: rgba(255,170,0,0.1); }
+
 /* ===== EXISTING LAYOUT ===== */
 .main-layout { display: grid; grid-template-columns: 1fr 280px; min-height: calc(100vh - 120px); }
 .kingdom-map-section { padding: 20px; border-right: 1px solid var(--border); }
@@ -187,6 +205,14 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 </style>
 </head>
 <body>
+
+<!-- Auto-update banner (hidden until an update is found) -->
+<div id="update-banner">
+  <span class="upd-icon">&#x1F504;</span>
+  <span class="upd-text">Kingdom update available — <span id="upd-version"></span></span>
+  <button class="upd-btn" onclick="applyUpdate()">UPDATE NOW</button>
+  <button class="upd-dismiss" onclick="document.getElementById('update-banner').classList.remove('show')">Later</button>
+</div>
 
 <header>
   <h1>&#x2694; KINGDOM</h1>
@@ -1254,6 +1280,33 @@ async function generateLicensingConcepts() {
     loadLicensingConcepts();loadLicensingRevenue();
   }catch(e){alert('Failed to generate concepts');}
 }
+
+/* ── AUTO-UPDATE ── */
+async function checkForUpdate() {
+  try {
+    const data = await fetchJSON('/update/status');
+    if (data && data.update_available) {
+      document.getElementById('upd-version').textContent =
+        'v' + data.latest_version + ' ready (you have v' + data.current_version + ')';
+      document.getElementById('update-banner').classList.add('show');
+    }
+  } catch(e) { /* non-fatal */ }
+}
+async function applyUpdate() {
+  const btn = document.querySelector('#update-banner .upd-btn');
+  btn.textContent = 'DOWNLOADING...';
+  btn.disabled = true;
+  try {
+    await fetch('/update/apply', { method: 'POST' });
+    btn.textContent = 'RESTARTING...';
+    setTimeout(() => location.reload(), 4000);
+  } catch(e) {
+    btn.textContent = 'FAILED — retry';
+    btn.disabled = false;
+  }
+}
+// Check for updates 5 s after boot (server needs to finish its async check)
+setTimeout(checkForUpdate, 5000);
 
 /* ── BOOT ── */
 loadDashboard();
