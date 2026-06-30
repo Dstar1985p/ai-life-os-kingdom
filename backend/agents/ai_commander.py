@@ -109,6 +109,46 @@ def _gather_kingdom_status(db: Session) -> dict:
     }
 
 
+# Self-funding throttle: an agent must cover its own token cost within this window,
+# otherwise the Commander pauses its scheduled runs until the founder reviews it.
+_THROTTLE_WINDOW_DAYS = 7
+_THROTTLE_MIN_COST_GBP = 1.0  # ignore agents that have barely spent anything yet
+
+
+def _throttle_unprofitable_agents(db: Session) -> list[str]:
+    """Pause agents that are spending more than they earn; auto-resume ones that
+    were Commander-paused but have since turned profitable. Returns actions taken."""
+    from backend.services.agent_control import get_all_controls, set_paused
+
+    actions: list[str] = []
+    cutoff = datetime.utcnow() - timedelta(days=_THROTTLE_WINDOW_DAYS)
+    controls = get_all_controls(db)
+
+    for agent_name in _MONITORED_AGENTS:
+        runs = (
+            db.query(AgentRun)
+            .filter(AgentRun.agent_name == agent_name, AgentRun.run_at >= cutoff)
+            .all()
+        )
+        cost = sum(r.estimated_cost_gbp for r in runs)
+        revenue = sum(r.revenue_generated_gbp for r in runs)
+        currently_paused = controls.get(agent_name, {}).get("paused", False)
+        paused_by_commander = controls.get(agent_name, {}).get("paused_by") == "ai_commander"
+
+        if cost > _THROTTLE_MIN_COST_GBP and cost > revenue and not currently_paused:
+            set_paused(
+                agent_name, True, db,
+                reason=f"Spent £{cost:.2f} vs £{revenue:.2f} revenue over {_THROTTLE_WINDOW_DAYS}d — auto-paused to stop the bleed.",
+                by="ai_commander",
+            )
+            actions.append(f"Throttled {agent_name}: cost £{cost:.2f} > revenue £{revenue:.2f} ({_THROTTLE_WINDOW_DAYS}d)")
+        elif currently_paused and paused_by_commander and (cost <= revenue or cost <= _THROTTLE_MIN_COST_GBP):
+            set_paused(agent_name, False, db, by="ai_commander")
+            actions.append(f"Resumed {agent_name}: now within budget")
+
+    return actions
+
+
 class AICommanderAgent(BaseRevenueAgent):
     name = "AI Commander"
     mission = "Run the Kingdom autonomously — coordinate agents, manage costs, surface critical decisions"
@@ -116,6 +156,13 @@ class AICommanderAgent(BaseRevenueAgent):
     def run(self, db: Session) -> AgentRunResult:
         result = AgentRunResult()
         status = _gather_kingdom_status(db)
+
+        # Self-funding throttle — pause agents that aren't covering their token cost
+        try:
+            throttle_actions = _throttle_unprofitable_agents(db)
+            result.actions_taken.extend(throttle_actions)
+        except Exception as exc:
+            logger.warning("Commander throttle check failed: %s", exc)
 
         # Auto-trigger stalled agents
         triggered = []
@@ -206,8 +253,31 @@ class AICommanderAgent(BaseRevenueAgent):
                 result.opportunities_updated += 1
             result.actions_taken.append("Raised Commander Alert opportunity for founder review")
 
+            self._send_alert_email(db, critical_issues, report_text)
+
         db.commit()
         return self._record_run(result, db)
+
+    def _send_alert_email(self, db: Session, critical_issues: list[str], report_text: str) -> None:
+        """Send an immediate alert email — debounced to at most once per 4h."""
+        recent = (
+            db.query(Lesson)
+            .filter(Lesson.source == "ai_commander_email")
+            .order_by(Lesson.created_at.desc())
+            .first()
+        )
+        if recent and (datetime.utcnow() - recent.created_at) < timedelta(hours=4):
+            return
+        try:
+            from backend.services.email_notifier import send_commander_alert_email
+            outcome = send_commander_alert_email(critical_issues, report_text)
+            db.add(Lesson(
+                lesson=f"Commander Alert email: {'sent' if outcome.get('sent') else outcome.get('reason')}",
+                source="ai_commander_email",
+                confidence_score=70.0,
+            ))
+        except Exception as exc:
+            logger.warning("Commander alert email failed: %s", exc)
 
 
 def get_commander_status(db: Session) -> dict:

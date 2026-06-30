@@ -338,3 +338,16 @@ class VideoPerformance(Base):
     # Days since upload at snapshot time
     days_live: Mapped[int] = mapped_column(Integer, default=0)
     snapshotted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AgentControl(Base):
+    """Per-agent operational state — pause/resume, set by founder or AI Commander auto-throttle."""
+    __tablename__ = "agent_controls"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    agent_name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    paused: Mapped[bool] = mapped_column(Boolean, default=False)
+    paused_reason: Mapped[str] = mapped_column(Text, default="")
+    paused_by: Mapped[str] = mapped_column(String(50), default="")  # "founder" or "ai_commander"
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
