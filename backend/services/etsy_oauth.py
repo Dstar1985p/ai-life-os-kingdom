@@ -4,6 +4,7 @@ One-time setup: python scripts/etsy_setup.py
 Token stored at .etsy_token.json (gitignored).
 """
 import json
+import time
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -163,7 +164,15 @@ def create_draft_listing(
         payload["materials"] = materials[:13]
 
     url = f"{ETSY_API_BASE}/application/shops/{shop_id}/listings"
-    resp = requests.post(url, headers=headers, json=payload, timeout=15)
+
+    # Retry up to 3 times on rate-limit (429)
+    for attempt in range(3):
+        resp = requests.post(url, headers=headers, json=payload, timeout=15)
+        if resp.status_code == 429:
+            retry_after = int(resp.headers.get("Retry-After", 2 ** attempt * 2))
+            time.sleep(retry_after)
+            continue
+        break
 
     if resp.status_code in (200, 201):
         data = resp.json()

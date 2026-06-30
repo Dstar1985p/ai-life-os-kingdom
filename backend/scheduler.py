@@ -141,6 +141,19 @@ def _run_youtube_analytics() -> None:
         db.close()
 
 
+def _run_revenue_attribution() -> None:
+    """Match recent Etsy orders to opportunities and update learning weights."""
+    from backend.services.revenue_attribution import attribute_recent_orders
+    db = SessionLocal()
+    try:
+        result = attribute_recent_orders(db)
+        logger.info("Revenue attribution: %s", result)
+    except Exception:
+        logger.exception("Revenue attribution failed")
+    finally:
+        db.close()
+
+
 def _run_crisis_scan_job() -> None:
     from backend.services.crisis_engine import run_crisis_scan, save_crisis_scan
     db = SessionLocal()
@@ -214,6 +227,14 @@ def start_scheduler() -> BackgroundScheduler:
         _run_youtube_analytics,
         trigger=IntervalTrigger(hours=24),
         id="youtube_analytics",
+        replace_existing=True,
+    )
+
+    # Revenue attribution — every 6h (matches Etsy order cadence)
+    _scheduler.add_job(
+        _run_revenue_attribution,
+        trigger=IntervalTrigger(hours=6),
+        id="revenue_attribution",
         replace_existing=True,
     )
 

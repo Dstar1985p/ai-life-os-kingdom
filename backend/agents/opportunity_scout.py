@@ -96,13 +96,21 @@ class OpportunityScoutAgent(BaseRevenueAgent):
             .all()
         )
 
+        # Read attribution weights — what categories are actually selling?
+        from backend.models.tables import LearningWeight
+        attribution_weights = {
+            w.key.replace("category:", "").replace(":", "/").replace("_", " ").title(): round(w.weight, 2)
+            for w in db.query(LearningWeight).filter(LearningWeight.key.like("category:%")).all()
+        }
+
         # Try Claude first
         opportunities = None
         ai_calls = 0
         try:
             from backend.services.ai_brain import generate_scout_opportunities, get_kingdom_context
             context = get_kingdom_context(db)
-            context["recent_lessons"] = [lesson.lesson for lesson in recent_lessons]
+            context["recent_lessons"] = [lesson.lesson for lesson in recent_lessons[:8]]
+            context["winning_categories"] = attribution_weights
             opportunities = generate_scout_opportunities(context, list(existing_titles_norm), db)
             if opportunities:
                 ai_calls = 1

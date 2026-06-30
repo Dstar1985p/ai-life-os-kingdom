@@ -228,7 +228,7 @@ class AIEngineerAgent(BaseRevenueAgent):
         claude_analysis = ""
         if high_sev or (len(classified) >= 3):
             try:
-                from backend.services.ai_brain import call_claude
+                from backend.services.ai_brain import call_claude, HAIKU_MODEL
                 error_summary = json.dumps({
                     "error_types": list(classified.keys()),
                     "high_severity": high_sev[:3],
@@ -236,16 +236,19 @@ class AIEngineerAgent(BaseRevenueAgent):
                     "auto_fixed": auto_fixed,
                 }, indent=2)
                 prompt = (
-                    f"You are the AI Engineer for the Kingdom system. "
-                    f"Here is a 72-hour error report:\n{error_summary}\n\n"
-                    f"Give 3 specific, actionable fixes the founder can apply. "
-                    f"Be concrete — name the file, the function, and what to change. "
-                    f"Focus on the highest-severity issues first. Format as a numbered list."
+                    f"Here is a 72-hour error report for the Kingdom AI system:\n{error_summary}\n\n"
+                    f"Give 3 specific, actionable fixes. Name the file, the function, and what to change. "
+                    f"Focus on highest-severity issues first. Format as a numbered list."
                 )
-                claude_analysis = call_claude(prompt, db=db, purpose="ai_engineer")
-                ai_calls = 1
+                system = (
+                    "You are the AI Engineer for an autonomous revenue system. "
+                    "You diagnose errors and recommend precise code fixes. Be concrete and brief."
+                )
+                claude_analysis = call_claude(prompt, system, "ai_engineer", db, model=HAIKU_MODEL, max_tokens=600) or ""
+                if claude_analysis:
+                    ai_calls = 1
             except Exception:
-                pass
+                claude_analysis = ""
 
         # Identify underperforming agents (high error rate, low opportunity output)
         struggling = [

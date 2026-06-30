@@ -88,13 +88,29 @@ def call_claude(
         return None
 
 
-def get_kingdom_context(db) -> str:
-    """Return compressed kingdom context string for injection into prompts."""
+def get_kingdom_context(db) -> dict:
+    """Return kingdom context dict for agent prompt enrichment.
+    Always returns a dict so agents can add keys: context["my_key"] = value.
+    The "text" key holds the compressed state string for Claude prompts.
+    """
     try:
         from backend.services.learning_engine import compress_kingdom_context
-        return compress_kingdom_context(db)
+        text = compress_kingdom_context(db)
     except Exception:
-        return "Kingdom: Pitwall Classics (motorsport art, Etsy/Printify POD), PulseBreak (DnB music, stock licensing)."
+        text = "Kingdom: Pitwall Classics (motorsport art, Etsy/Printify POD), PulseBreak (DnB music, stock licensing)."
+    return {"text": text}
+
+
+def _context_to_prompt(context: dict | str) -> str:
+    """Convert a context dict (or plain string) into a prompt string."""
+    if isinstance(context, str):
+        return context
+    text = context.pop("text", "")
+    extra = context  # remaining keys are agent-specific additions
+    if extra:
+        import json as _json
+        return text + "\n\nAgent context: " + _json.dumps(extra, default=str)
+    return text
 
 
 # ── Agent-specific helpers ────────────────────────────────────────────────────
@@ -139,10 +155,11 @@ Output must be JSON only, no markdown fences. Return an object with key "council
 Also include "summary" (1 sentence overall recommendation) and "recommended_action" (string)."""
 
 
-def generate_vibes_concepts(context: str, existing_titles: list[str], db) -> Optional[list[dict]]:
+def generate_vibes_concepts(context: "dict | str", existing_titles: list[str], db) -> Optional[list[dict]]:
     existing_str = ", ".join(existing_titles[:10]) if existing_titles else "none yet"
+    ctx_str = _context_to_prompt(context) if isinstance(context, dict) else context
     prompt = (
-        f"Kingdom context: {context}\n\n"
+        f"Kingdom context: {ctx_str}\n\n"
         f"Existing track concepts already created (avoid duplicating): {existing_str}\n\n"
         f"Generate 5 new DnB track concepts for PulseBreak. "
         f"Vary the sub-genres across: Liquid DnB, Neurofunk, Jump Up, Dancefloor DnB, Atmospheric DnB. "
@@ -158,10 +175,11 @@ def generate_vibes_concepts(context: str, existing_titles: list[str], db) -> Opt
         return None
 
 
-def generate_printforge_concepts(context: str, existing_titles: list[str], db) -> Optional[list[dict]]:
+def generate_printforge_concepts(context: "dict | str", existing_titles: list[str], db) -> Optional[list[dict]]:
     existing_str = ", ".join(existing_titles[:10]) if existing_titles else "none yet"
+    ctx_str = _context_to_prompt(context) if isinstance(context, dict) else context
     prompt = (
-        f"Kingdom context: {context}\n\n"
+        f"Kingdom context: {ctx_str}\n\n"
         f"Existing product concepts already created (avoid duplicating): {existing_str}\n\n"
         f"Generate 5 new print-on-demand product concepts for Pitwall Classics. "
         f"Mix product types: wall art, apparel, accessories, stationery. "
@@ -177,15 +195,66 @@ def generate_printforge_concepts(context: str, existing_titles: list[str], db) -
         return None
 
 
-def generate_scout_opportunities(context: str, existing_titles: list[str], db) -> Optional[list[dict]]:
+def generate_scout_opportunities(context: "dict | str", existing_titles: list[str], db) -> Optional[list[dict]]:
     existing_str = ", ".join(existing_titles[:8]) if existing_titles else "none yet"
+    ctx_str = _context_to_prompt(context) if isinstance(context, dict) else context
     prompt = (
-        f"Kingdom context: {context}\n\n"
+        f"Kingdom context: {ctx_str}\n\n"
         f"Opportunities already identified (avoid duplicating): {existing_str}\n\n"
         f"Generate 5 new revenue opportunities. Prioritise passive income, automation, "
         f"and opportunities that complement both ventures. Think beyond the obvious."
     )
     raw = call_claude(prompt, SCOUT_SYSTEM, "opportunity_scout", db, model=HAIKU_MODEL, max_tokens=1200)
+    if not raw:
+        return None
+    try:
+        import json
+        return json.loads(raw)
+    except Exception:
+        return None
+
+
+SEO_SYSTEM = """You are the SEO Agent for Pitwall Classics, a motorsport art brand on Etsy.
+Generate Etsy-optimised titles, tags, and description hooks for the given listings.
+Output must be JSON only, no markdown fences. Return a JSON array of objects with keys:
+product (string), optimised_title (max 140 chars), tags (array of 13 strings, max 20 chars each),
+description_hook (2 sentences), seo_tip (1 tip), category (string matching input category).
+Focus on discoverability: lead with the primary keyword, include car/event names, add gift/decor terms."""
+
+CONTENT_SYSTEM = """You are the Content Agent for Pitwall Classics and PulseBreak.
+Generate social media post briefs that are platform-optimised and on-brand.
+Output must be JSON only, no markdown fences. Return a JSON array of up to 6 objects with keys:
+platform (Instagram/Pinterest/TikTok), type (string), venture (Pitwall Classics/PulseBreak),
+content (the actual post text, max 280 chars), scheduled_for (YYYY-MM-DD), hashtags (string).
+Posts should feel authentic, not promotional. Include real product/track names where provided."""
+
+
+def generate_seo_briefs(context: "dict | str", listings: list[dict], db) -> Optional[list[dict]]:
+    ctx_str = _context_to_prompt(context) if isinstance(context, dict) else context
+    listings_str = "\n".join(f"- {l['title']} ({l['category']})" for l in listings[:8])
+    prompt = (
+        f"Kingdom context: {ctx_str}\n\n"
+        f"Current Etsy listings that need SEO optimisation:\n{listings_str}\n\n"
+        f"Generate one SEO brief per listing. Vary the style (technical, emotional, gift-focused) across briefs."
+    )
+    raw = call_claude(prompt, SEO_SYSTEM, "seo_agent", db, model=HAIKU_MODEL, max_tokens=1500)
+    if not raw:
+        return None
+    try:
+        import json
+        return json.loads(raw)
+    except Exception:
+        return None
+
+
+def generate_content_briefs(context: "dict | str", db) -> Optional[list[dict]]:
+    ctx_str = _context_to_prompt(context) if isinstance(context, dict) else context
+    prompt = (
+        f"Kingdom context: {ctx_str}\n\n"
+        f"Generate 6 social media posts for this week — mix of Pitwall Classics (Instagram, Pinterest) "
+        f"and PulseBreak (Instagram, TikTok). Include at least 2 product/track showcases and 1 educational post."
+    )
+    raw = call_claude(prompt, CONTENT_SYSTEM, "content_agent", db, model=HAIKU_MODEL, max_tokens=1200)
     if not raw:
         return None
     try:

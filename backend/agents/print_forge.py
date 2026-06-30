@@ -138,6 +138,16 @@ class PrintForgeAgent(BaseRevenueAgent):
         )
         lesson_texts = [lesson.lesson for lesson in lessons_raw]
 
+        # Add revenue-attribution lessons — most important signal
+        attribution_lessons = (
+            db.query(Lesson)
+            .filter(Lesson.source == "revenue_attribution")
+            .order_by(Lesson.created_at.desc())
+            .limit(5)
+            .all()
+        )
+        lesson_texts = [l.lesson for l in attribution_lessons] + lesson_texts
+
         concepts = _make_concepts(existing_norm, lesson_texts)
         created = updated = etsy_drafts = 0
         new_concepts: list[dict] = []
