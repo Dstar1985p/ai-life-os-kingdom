@@ -1,4 +1,4 @@
-"""Vibes AI — PulseBreak DnB concept generator with sub-genre rotation and scheduling."""
+"""Vibes AI — PulseBreak DnB concept generator with sub-genre rotation, scheduling, and performance learning."""
 from __future__ import annotations
 
 import json
@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from backend.agents.base_agent import AgentRunResult, BaseRevenueAgent
-from backend.models.tables import Opportunity
+from backend.models.tables import Lesson, Opportunity
 
 # Full catalogue of DnB sub-genres and their fallback concepts
 _CONCEPTS: list[dict] = [
@@ -79,6 +79,37 @@ _CONCEPTS: list[dict] = [
 _SUB_GENRES = [c["sub_genre"] for c in _CONCEPTS]
 
 
+def _get_performance_weights(db: Session) -> dict[str, float]:
+    """
+    Load YouTube engagement weights per sub-genre.
+    Returns {sub_genre: weight} where >1.0 = do more, <1.0 = do less.
+    Returns empty dict if no performance data yet.
+    """
+    try:
+        from backend.services.youtube_analytics import get_genre_weights
+        return get_genre_weights(db)
+    except Exception:
+        return {}
+
+
+def _weighted_pool(concepts: list[dict], weights: dict[str, float]) -> list[dict]:
+    """
+    Sort concepts by their performance weight × licensing potential.
+    Higher weight = appears earlier in the pool = more likely to be picked.
+    """
+    if not weights:
+        return concepts
+
+    pot_base = {"high": 1.5, "medium": 1.0, "low": 0.6}
+
+    def score(c: dict) -> float:
+        perf_w = weights.get(c["sub_genre"], 1.0)
+        pot_w = pot_base.get(c.get("licensing_potential", "medium"), 1.0)
+        return perf_w * pot_w
+
+    return sorted(concepts, key=score, reverse=True)
+
+
 class VibesAIAgent(BaseRevenueAgent):
     name = "Vibes AI"
     mission = "Generate DnB track concepts and release schedules for stock music licensing"
@@ -99,13 +130,22 @@ class VibesAIAgent(BaseRevenueAgent):
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        # Try Claude AI first
+        # Load YouTube performance data to weight sub-genre selection
+        perf_weights = _get_performance_weights(db)
+        has_performance_data = bool(perf_weights)
+
+        # Deprioritised sub-genres (weight < 0.5) are skipped in the unused pool
+        deprioritised = {sg for sg, w in perf_weights.items() if w < 0.5}
+
+        # Try Claude AI first — pass performance context so it makes informed suggestions
         concepts = None
         ai_calls = 0
         try:
             from backend.services.ai_brain import generate_vibes_concepts, get_kingdom_context
             context = get_kingdom_context(db)
             context["used_sub_genres"] = list(used_sub_genres)
+            context["performance_weights"] = perf_weights
+            context["deprioritised_sub_genres"] = list(deprioritised)
             concepts = generate_vibes_concepts(context, list(existing_titles), db)
             if concepts:
                 ai_calls = 1
@@ -113,19 +153,29 @@ class VibesAIAgent(BaseRevenueAgent):
             pass
 
         if not concepts:
-            # Rotate through sub-genres — always pick unused ones first
-            unused = [c for c in _CONCEPTS if c["sub_genre"] not in used_sub_genres]
-            pool = unused if unused else _CONCEPTS
+            # Unused sub-genres first, excluding deprioritised ones
+            unused = [
+                c for c in _CONCEPTS
+                if c["sub_genre"] not in used_sub_genres
+                and c["sub_genre"] not in deprioritised
+            ]
+            # If all are used or deprioritised, fall back to full list (performance-weighted)
+            if not unused:
+                unused = [c for c in _CONCEPTS if c["sub_genre"] not in deprioritised]
+            if not unused:
+                unused = list(_CONCEPTS)  # last resort: everything
+            # Sort by performance weight so best performers come first
+            pool = _weighted_pool(unused, perf_weights)
             concepts = pool[:3]
 
         created = updated = 0
         now = datetime.utcnow()
+        actions: list[str] = []
 
         for i, concept in enumerate(concepts[:4]):
             # Assign a unique release week
             release_dt = now + timedelta(weeks=i + 1)
             release_week = f"{release_dt.isocalendar()[0]}-W{release_dt.isocalendar()[1]:02d}"
-            # Skip if week already scheduled
             if release_week in scheduled_weeks:
                 continue
 
@@ -140,7 +190,11 @@ class VibesAIAgent(BaseRevenueAgent):
 
             monthly_gbp = float(concept.get("estimated_monthly_gbp", 30.0))
             pot = concept.get("licensing_potential", "medium")
-            pot_score = {"high": 82.0, "medium": 62.0, "low": 40.0}.get(pot, 62.0)
+            perf_weight = perf_weights.get(sub_genre, 1.0)
+
+            # Kingdom score: composite of licensing potential + actual performance weight
+            pot_base_score = {"high": 80.0, "medium": 60.0, "low": 40.0}.get(pot, 60.0)
+            kingdom_score = round(min(95.0, pot_base_score * perf_weight), 1)
 
             scores = {
                 "revenue_score": min(95.0, monthly_gbp * 1.6),
@@ -149,7 +203,7 @@ class VibesAIAgent(BaseRevenueAgent):
                 "risk_score": 18.0,
                 "complexity_score": 28.0,
                 "strategic_alignment_score": 78.0,
-                "kingdom_score": pot_score,
+                "kingdom_score": kingdom_score,
             }
             evidence = json.dumps({
                 "sub_genre": sub_genre,
@@ -163,6 +217,8 @@ class VibesAIAgent(BaseRevenueAgent):
                 "release_week": release_week,
                 "release_date": release_dt.strftime("%Y-%m-%d"),
                 "ai_generated": ai_calls > 0,
+                "performance_weight": perf_weight,
+                "performance_data_available": has_performance_data,
             })
             _opp, is_new = self._upsert_opportunity(
                 db, title, "Music/DnB", "vibes_ai", scores, {"evidence": evidence}
@@ -171,23 +227,47 @@ class VibesAIAgent(BaseRevenueAgent):
                 created += 1
                 scheduled_weeks.add(release_week)
                 used_sub_genres.add(sub_genre)
+                perf_note = f" (perf weight: {perf_weight:.1f}x)" if has_performance_data else ""
+                actions.append(f"Scheduled: {title} [{sub_genre}]{perf_note}")
             else:
                 updated += 1
 
         db.commit()
 
         source = "Claude AI" if ai_calls > 0 else "sub-genre rotation"
+        perf_note = ""
+        if has_performance_data:
+            top = sorted(perf_weights.items(), key=lambda x: x[1], reverse=True)
+            if top and top[0][1] > 1.0:
+                perf_note = f" Performance learning active — boosting {top[0][0]} ({top[0][1]:.1f}x weight)."
+
         lesson = (
-            f"Vibes AI ({source}): {created} new DnB track concepts scheduled. "
-            f"Sub-genres covered: {', '.join(list(used_sub_genres)[:4])}."
+            f"Vibes AI ({source}): {created} new DnB concepts scheduled. "
+            f"Sub-genres: {', '.join(list(used_sub_genres)[:4])}."
+            f"{perf_note}"
         )
+        db.add(Lesson(
+            lesson=lesson,
+            source="vibes_ai",
+            confidence_score=80.0,
+            evidence=json.dumps({
+                "created": created,
+                "updated": updated,
+                "sub_genres_scheduled": list(used_sub_genres),
+                "performance_weights": perf_weights,
+                "source": source,
+                "ran_at": now.isoformat(),
+            }),
+        ))
+        db.commit()
+
         result = AgentRunResult(
             status="ok",
             ai_calls=ai_calls,
             opportunities_created=created,
             opportunities_updated=updated,
             lessons=[lesson],
-            actions_taken=[f"Scheduled {created} new DnB concepts via {source}"],
+            actions_taken=actions or [f"Scheduled {created} new DnB concepts via {source}"],
         )
         self._record_run(result, db)
         return result

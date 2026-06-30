@@ -251,3 +251,60 @@ class KingdomGoal(Base):
     label: Mapped[str] = mapped_column(String(255), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TrackRelease(Base):
+    """Every PulseBreak track that passes quality gate — pending founder approval."""
+    __tablename__ = "track_releases"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    track_name: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    file_name: Mapped[str] = mapped_column(String(255))
+    # Paths
+    audio_path: Mapped[str] = mapped_column(Text, default="")
+    video_youtube_path: Mapped[str] = mapped_column(Text, default="")
+    video_tiktok_path: Mapped[str] = mapped_column(Text, default="")
+    # Quality gate
+    quality_score: Mapped[int] = mapped_column(Integer, default=0)
+    quality_verdict: Mapped[str] = mapped_column(String(20), default="review")  # pass/review/fail
+    quality_report: Mapped[str] = mapped_column(Text, default="{}")  # full JSON report
+    # Metadata from Vibes AI concept
+    sub_genre: Mapped[str] = mapped_column(String(120), default="")
+    bpm: Mapped[int] = mapped_column(Integer, default=0)
+    mood_tags: Mapped[str] = mapped_column(Text, default="[]")  # JSON list
+    use_case_tags: Mapped[str] = mapped_column(Text, default="[]")
+    suno_prompt: Mapped[str] = mapped_column(Text, default="")
+    # Approval workflow
+    status: Mapped[str] = mapped_column(String(50), default="pending_review")
+    # pending_review | approved | rejected | uploaded_youtube | uploaded_tiktok | live
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    rejection_reason: Mapped[str] = mapped_column(Text, default="")
+    founder_notes: Mapped[str] = mapped_column(Text, default="")
+    # YouTube
+    youtube_video_id: Mapped[str] = mapped_column(String(50), default="")
+    youtube_url: Mapped[str] = mapped_column(Text, default="")
+    youtube_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class VideoPerformance(Base):
+    """YouTube performance snapshots — polled every 24h per uploaded track."""
+    __tablename__ = "video_performance"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    track_release_id: Mapped[int] = mapped_column(Integer, index=True)
+    youtube_video_id: Mapped[str] = mapped_column(String(50), index=True)
+    track_name: Mapped[str] = mapped_column(String(255))
+    sub_genre: Mapped[str] = mapped_column(String(120), default="")
+    # YouTube metrics at snapshot time
+    views: Mapped[int] = mapped_column(Integer, default=0)
+    likes: Mapped[int] = mapped_column(Integer, default=0)
+    comments: Mapped[int] = mapped_column(Integer, default=0)
+    watch_time_minutes: Mapped[float] = mapped_column(Float, default=0.0)
+    # Computed engagement score (0-100)
+    engagement_score: Mapped[float] = mapped_column(Float, default=0.0)
+    # Days since upload at snapshot time
+    days_live: Mapped[int] = mapped_column(Integer, default=0)
+    snapshotted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

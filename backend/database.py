@@ -88,6 +88,49 @@ def _apply_migrations(eng) -> None:
                     updated_at DATETIME
                 )
             """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS track_releases (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    track_name VARCHAR(255) UNIQUE NOT NULL,
+                    file_name VARCHAR(255) NOT NULL,
+                    audio_path TEXT DEFAULT '',
+                    video_youtube_path TEXT DEFAULT '',
+                    video_tiktok_path TEXT DEFAULT '',
+                    quality_score INTEGER DEFAULT 0,
+                    quality_verdict VARCHAR(20) DEFAULT 'review',
+                    quality_report TEXT DEFAULT '{}',
+                    sub_genre VARCHAR(120) DEFAULT '',
+                    bpm INTEGER DEFAULT 0,
+                    mood_tags TEXT DEFAULT '[]',
+                    use_case_tags TEXT DEFAULT '[]',
+                    suno_prompt TEXT DEFAULT '',
+                    status VARCHAR(50) DEFAULT 'pending_review',
+                    approved_at DATETIME,
+                    rejection_reason TEXT DEFAULT '',
+                    founder_notes TEXT DEFAULT '',
+                    youtube_video_id VARCHAR(50) DEFAULT '',
+                    youtube_url TEXT DEFAULT '',
+                    youtube_uploaded_at DATETIME,
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS video_performance (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    track_release_id INTEGER NOT NULL,
+                    youtube_video_id VARCHAR(50) NOT NULL,
+                    track_name VARCHAR(255) NOT NULL,
+                    sub_genre VARCHAR(120) DEFAULT '',
+                    views INTEGER DEFAULT 0,
+                    likes INTEGER DEFAULT 0,
+                    comments INTEGER DEFAULT 0,
+                    watch_time_minutes FLOAT DEFAULT 0,
+                    engagement_score FLOAT DEFAULT 0,
+                    days_live INTEGER DEFAULT 0,
+                    snapshotted_at DATETIME
+                )
+            """))
             conn.commit()
     except Exception:
         logger.exception("Migration step failed (non-fatal)")

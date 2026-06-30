@@ -2,11 +2,18 @@
 PulseBreak Track Quality Gate.
 
 Analyses audio files and returns a QualityReport with a score 0-100.
-Tracks below AUTO_FAIL_THRESHOLD are rejected outright.
-Tracks between AUTO_FAIL and REVIEW_THRESHOLD are quarantined for founder review.
-Tracks at or above REVIEW_THRESHOLD are cleared for release.
 
-No external dependencies beyond numpy (which visualiser already requires).
+MANUAL_APPROVAL_MODE = True (default): ALL tracks require founder approval.
+  - Score < AUTO_FAIL_SCORE  → "fail"   — technical disaster, auto-rejected
+  - Everything else          → "review" — queued for founder to listen and decide
+
+MANUAL_APPROVAL_MODE = False: auto-pass high-scoring tracks (future option).
+  - Score >= AUTO_PASS_SCORE → "pass"   — auto-cleared
+  - Score >= REVIEW_SCORE    → "review" — founder review
+  - Score < REVIEW_SCORE     → "fail"
+
+Set MANUAL_APPROVAL_MODE = False only when you trust the output quality
+and have consistent performance data to back up auto-release decisions.
 """
 from __future__ import annotations
 
@@ -16,7 +23,12 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Literal
 
-# Thresholds
+# ── Mode control ──────────────────────────────────────────────────────────────
+# True = every track goes to review queue regardless of score.
+# False = high-scoring tracks auto-pass (only enable when you're happy with quality).
+MANUAL_APPROVAL_MODE = True
+
+# Thresholds (only used when MANUAL_APPROVAL_MODE = False)
 AUTO_PASS_SCORE = 72     # auto-cleared for release
 REVIEW_SCORE = 45        # below this → quarantine for human review
 AUTO_FAIL_SCORE = 25     # below this → rejected outright (technical disaster)
@@ -381,12 +393,19 @@ def analyse_track(audio_path: str | Path) -> QualityReport:
     report.score = score
     report.checks = checks
 
-    if score >= AUTO_PASS_SCORE:
-        report.verdict = "pass"
-    elif score >= REVIEW_SCORE:
-        report.verdict = "review"
+    if MANUAL_APPROVAL_MODE:
+        # Every track goes to review unless it's a technical disaster
+        if score < AUTO_FAIL_SCORE:
+            report.verdict = "fail"
+        else:
+            report.verdict = "review"
     else:
-        report.verdict = "fail"
+        if score >= AUTO_PASS_SCORE:
+            report.verdict = "pass"
+        elif score >= REVIEW_SCORE:
+            report.verdict = "review"
+        else:
+            report.verdict = "fail"
 
     # Human-readable summary
     fails = [c for c in checks if c.severity in ("critical", "fail") and not c.passed]
@@ -398,15 +417,16 @@ def analyse_track(audio_path: str | Path) -> QualityReport:
             + (f"Minor notes: {'; '.join(w.name for w in warnings)}." if warnings else "No issues.")
         )
     elif report.verdict == "review":
-        issues = "; ".join(f.name for f in fails + warnings)
+        issues = "; ".join(f.name for f in fails + warnings) if (fails or warnings) else "none"
+        approval_note = " Manual approval required." if MANUAL_APPROVAL_MODE else ""
         report.summary = (
-            f"Track needs your review (score {score}/100). "
-            f"Issues found: {issues}. Listen and decide."
+            f"Track queued for your review (score {score}/100).{approval_note} "
+            + (f"Issues to listen for: {issues}." if issues != "none" else "Technically clean — listen and decide.")
         )
     else:
         issues = "; ".join(f.detail[:60] for f in fails)
         report.summary = (
-            f"Track FAILED quality gate (score {score}/100). "
+            f"Track FAILED quality gate (score {score}/100) — auto-rejected. "
             f"Technical problems: {issues}."
         )
 

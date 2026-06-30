@@ -128,6 +128,19 @@ def _run_daily_backup() -> None:
         logger.exception("Auto-backup failed")
 
 
+def _run_youtube_analytics() -> None:
+    """Poll YouTube performance metrics for all uploaded PulseBreak tracks."""
+    from backend.services.youtube_analytics import poll_video_performance
+    db = SessionLocal()
+    try:
+        result = poll_video_performance(db)
+        logger.info("YouTube analytics: %s", result)
+    except Exception:
+        logger.exception("YouTube analytics poll failed")
+    finally:
+        db.close()
+
+
 def _run_crisis_scan_job() -> None:
     from backend.services.crisis_engine import run_crisis_scan, save_crisis_scan
     db = SessionLocal()
@@ -193,6 +206,14 @@ def start_scheduler() -> BackgroundScheduler:
         CronTrigger(day_of_week="mon", hour=8, minute=0),
         id="weekly_digest_email",
         name="Weekly Digest Email",
+        replace_existing=True,
+    )
+
+    # YouTube performance analytics — every 24h
+    _scheduler.add_job(
+        _run_youtube_analytics,
+        trigger=IntervalTrigger(hours=24),
+        id="youtube_analytics",
         replace_existing=True,
     )
 
