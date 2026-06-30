@@ -1320,6 +1320,7 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
       <button class="btn btn-sm" onclick="triggerAgent('ROI Reaper')">🔪 ROI Reaper</button>
       <button class="btn btn-sm" onclick="triggerAgent('Trend Watcher')">📡 Trends</button>
       <button class="btn btn-sm btn-green" onclick="runMarketScout()" id="market-scout-btn">🔍 Market Scout</button>
+      <button class="btn btn-sm" onclick="runGigScout()" id="gig-scout-btn" style="background:linear-gradient(135deg,rgba(100,116,252,0.3),rgba(139,92,246,0.2));border-color:rgba(139,92,246,0.4);color:#c084fc">💼 Gig Scout</button>
     </div>
   </div>
 
@@ -1341,6 +1342,29 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
     </div>
     <div id="market-scout-results" style="display:none">
       <div id="market-scout-niches" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- Gig Scout Panel -->
+  <div class="card" style="margin-bottom:16px;border-color:rgba(139,92,246,0.25)">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(139,92,246,0.25),rgba(100,116,252,0.15))">💼</div>
+      <div>
+        <div class="card-title">Gig Scout — Fiverr Market Intelligence</div>
+        <div class="card-subtitle" id="gig-scout-headline">Scanning 17 gig categories · Price × reviews = proven market value</div>
+      </div>
+      <div class="card-action">
+        <button class="btn btn-sm" onclick="runGigScout()" id="gig-scout-btn2" style="background:rgba(139,92,246,0.2);border-color:rgba(139,92,246,0.4);color:#c084fc">▶ Analyse Gigs</button>
+      </div>
+    </div>
+    <div id="gig-scout-status" style="padding:6px 0 10px;font-size:0.72rem;color:var(--muted)">
+      Uses Claude AI to score each gig against our capabilities — no scraping, no API keys needed. Runs every 48h.
+    </div>
+    <div id="gig-scout-results" style="display:none">
+      <!-- Summary bar -->
+      <div id="gig-scout-summary" style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap"></div>
+      <!-- Gig cards grid -->
+      <div id="gig-scout-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px"></div>
     </div>
   </div>
 
@@ -2492,6 +2516,7 @@ async function loadOpportunitiesTab() {
   renderForecast(forecast);
   renderGoals(goals);
   loadMarketScoutResults();
+  loadGigScoutResults();
 }
 
 /* ─── MARKET SCOUT ─── */
@@ -3052,6 +3077,94 @@ function checkOnboarding() {
     document.getElementById('onboarding-overlay').classList.remove('hidden');
     renderOBStep();
   }
+}
+
+/* ─── GIG SCOUT ─── */
+async function runGigScout() {
+  const btns = ['gig-scout-btn','gig-scout-btn2'].map(id => document.getElementById(id));
+  const status = document.getElementById('gig-scout-status');
+  btns.forEach(b => { if(b){b.disabled=true; b.textContent='Analysing…';} });
+  if (status) status.innerHTML = '💼 Claude is scoring 17+ Fiverr gig categories against our capabilities… ~30 seconds.';
+
+  try {
+    const r = await fetch('/gig-scout/run', {method:'POST'});
+    const d = await r.json();
+    if (status) {
+      if (d.opportunities_created >= 0) {
+        status.innerHTML = `✅ Done — <strong style="color:#c084fc">${d.opportunities_created} new gig opportunities</strong> scored and ranked.`;
+        loadGigScoutResults();
+      } else {
+        status.innerHTML = `⚠️ ${d.error || 'Analysis finished — no high-scoring gigs found this run.'}`;
+      }
+    }
+  } catch(e) {
+    if (status) status.innerHTML = `❌ Failed: ${e.message}`;
+  } finally {
+    btns.forEach(b => { if(b){b.disabled=false; b.textContent=b.id==='gig-scout-btn'?'💼 Gig Scout':'▶ Analyse Gigs';} });
+  }
+}
+
+async function loadGigScoutResults() {
+  const cards = document.getElementById('gig-scout-cards');
+  const summary = document.getElementById('gig-scout-summary');
+  const wrapper = document.getElementById('gig-scout-results');
+  const headline = document.getElementById('gig-scout-headline');
+  if (!cards) return;
+  try {
+    const d = await fetchJSON('/gig-scout/opportunities?limit=16');
+    const opps = d.opportunities || [];
+    if (!opps.length) return;
+    wrapper.style.display = 'block';
+
+    // Headline
+    const totalMkt = (d.total_market_value_gbp || 0).toLocaleString('en-GB', {style:'currency', currency:'GBP', maximumFractionDigits:0});
+    if (headline) headline.textContent = `${opps.length} gig opportunities · ${totalMkt} total proven market value`;
+
+    // Summary pills
+    const byComp = {Low:0, Medium:0, High:0};
+    opps.forEach(o => { if(byComp[o.competition]!==undefined) byComp[o.competition]++; });
+    const topMkt = opps.reduce((a,b) => (a.implied_market_value_gbp||0)>(b.implied_market_value_gbp||0)?a:b, opps[0]);
+    summary.innerHTML = [
+      `<div style="background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.2);border-radius:8px;padding:8px 14px;text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--green)">${byComp.Low}</div><div style="font-size:0.65rem;color:var(--muted)">Low Competition</div></div>`,
+      `<div style="background:rgba(255,179,0,0.1);border:1px solid rgba(255,179,0,0.2);border-radius:8px;padding:8px 14px;text-align:center"><div style="font-size:1.4rem;font-weight:800;color:var(--amber)">${byComp.Medium}</div><div style="font-size:0.65rem;color:var(--muted)">Medium Comp.</div></div>`,
+      `<div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:8px 14px;text-align:center"><div style="font-size:1.1rem;font-weight:800;color:#c084fc">${totalMkt}</div><div style="font-size:0.65rem;color:var(--muted)">Proven Market</div></div>`,
+      topMkt ? `<div style="background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:8px 14px;flex:2"><div style="font-size:0.7rem;font-weight:700;color:var(--cyan)">🏆 Top Pick</div><div style="font-size:0.72rem;color:var(--text);margin-top:2px">${topMkt.title}</div><div style="font-size:0.65rem;color:var(--muted)">£${topMkt.implied_market_value_gbp?.toLocaleString()} market · ${topMkt.estimated_revenue}</div></div>` : '',
+    ].join('');
+
+    // Gig cards
+    cards.innerHTML = opps.map(o => {
+      const score = o.kingdom_score || 0;
+      const scoreCol = score >= 70 ? 'var(--green)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
+      const compCol = o.competition === 'Low' ? 'var(--green)' : o.competition === 'Medium' ? 'var(--amber)' : 'var(--red)';
+      const mktVal = (o.implied_market_value_gbp || 0).toLocaleString('en-GB', {style:'currency',currency:'GBP',maximumFractionDigits:0});
+      const prodBadge = o.production_cost === 'Near-Zero' ? '🟢 Near-Zero cost' : o.production_cost === 'Low' ? '🟡 Low cost' : '🔴 Medium cost';
+      return `<div class="card" style="padding:14px;border-color:rgba(139,92,246,0.15);position:relative">
+        <div style="position:absolute;top:10px;right:10px;font-size:1.4rem;font-weight:800;color:${scoreCol}">${score}</div>
+        <div style="font-size:0.78rem;font-weight:700;color:var(--text);margin-bottom:6px;padding-right:40px;line-height:1.3">${o.title}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="font-size:0.62rem;padding:2px 6px;border-radius:4px;background:rgba(139,92,246,0.15);color:#c084fc">${o.platform || 'Fiverr'}</span>
+          <span style="font-size:0.62rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:${compCol}">${o.competition || ''} comp.</span>
+          <span style="font-size:0.62rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--muted)">${prodBadge}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+          <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:1rem;font-weight:700;color:#c084fc">£${o.typical_price_gbp || 0}</div>
+            <div style="font-size:0.6rem;color:var(--muted)">per delivery</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.04);border-radius:6px;padding:6px;text-align:center">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--cyan)">${mktVal}</div>
+            <div style="font-size:0.6rem;color:var(--muted)">proven market</div>
+          </div>
+        </div>
+        ${o.why_we_win ? `<div style="font-size:0.68rem;color:var(--muted);margin-bottom:6px">${o.why_we_win}</div>` : ''}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:0.7rem;color:var(--green)">Est. ${o.estimated_revenue || '?'}/mo</div>
+          <div style="font-size:0.65rem;color:var(--muted)">${o.effort || ''} effort</div>
+        </div>
+        ${o.next_action ? `<div style="font-size:0.66rem;color:var(--amber);padding:5px 8px;background:rgba(255,179,0,0.07);border-radius:4px;border-left:2px solid var(--amber)">▶ ${o.next_action}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) { /* silent */ }
 }
 
 /* ─── PWA SERVICE WORKER ─── */

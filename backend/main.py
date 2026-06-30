@@ -30,6 +30,7 @@ from backend.api.routes_printify import router as printify_router
 from backend.api.routes_treasury import router as treasury_router
 from backend.api.routes_images import router as images_router
 from backend.api.routes_market_scout import router as market_scout_router
+from backend.api.routes_gig_scout import router as gig_scout_router
 from backend.api.routes_sprint import router as sprint_router
 from backend.api.routes_log import router as log_router
 from backend.api.routes_achievements import router as achievements_router
@@ -156,6 +157,7 @@ app.include_router(avatars_router)
 app.include_router(performance_router)
 app.include_router(images_router)
 app.include_router(market_scout_router)
+app.include_router(gig_scout_router)
 
 
 @app.get("/", include_in_schema=False)
