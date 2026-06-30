@@ -538,6 +538,7 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
         <button onclick="showPanel('abtests');loadABTests()" class="quick-btn">&#x1F9EA; A/B Tests</button>
         <button onclick="showPanel('avatars');loadAvatars()" class="quick-btn">&#x1F9D1; Customer Avatars</button>
         <button onclick="showPanel('orders');loadOrders()" class="quick-btn">&#x1F4E6; Printify Orders</button>
+        <button onclick="showPanel('performance');loadPerformance()" class="quick-btn">&#x26A1; Performance</button>
         <div id="action-result" style="font-size:0.7rem;color:var(--green);margin-top:4px;min-height:20px"></div>
       </div>
     </div>
@@ -1802,6 +1803,15 @@ async function loadDashboard() {
     <div id="orders-list" style="max-height:420px;overflow-y:auto"></div>
   </div>`);
 
+
+  panels.push(`<div class="panel" id="panel-performance" style="display:none">
+    <h3>&#x26A1; Performance Monitor</h3>
+    <div style="margin-bottom:8px"><button class="quick-btn" onclick="loadPerformance()">&#x21BB; Refresh</button></div>
+    <div id="perf-summary" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px"></div>
+    <h4 style="margin:0 0 6px;font-size:0.85rem;color:#888">Agent Breakdown (7 days)</h4>
+    <div id="perf-agents" style="max-height:280px;overflow-y:auto"></div>
+  </div>`);
+
   document.getElementById('panels').innerHTML=panels.join('');
 }
 
@@ -2522,6 +2532,37 @@ initMobileTabs();
         </div>`;
       }).join('');
     } catch(e) { showToast('Orders load failed','error'); }
+  }
+
+
+  // ── Performance Monitor ───────────────────────────────────────────────────
+  async function loadPerformance() {
+    try {
+      const r = await fetch('/performance'); const d = await r.json();
+      const summary = document.getElementById('perf-summary');
+      if (summary) summary.innerHTML = [
+        ['⏱ Uptime', d.uptime],
+        ['💾 DB Size', d.db_size_kb + ' KB'],
+        ['🤖 Runs (24h)', d.agents.runs_24h],
+        ['❌ Error Rate', d.agents.error_rate_24h_pct + '%'],
+        ['💡 Lessons (7d)', d.knowledge.lessons_7d],
+        ['🎯 Opps (7d)', d.opportunities.created_7d],
+        ['💰 Rev 7d', '£' + d.revenue.gbp_7d],
+        ['💰 Rev 30d', '£' + d.revenue.gbp_30d],
+      ].map(([label, val]) => `<div style="background:#1a1a2e;border:1px solid #333;border-radius:6px;padding:8px;text-align:center">
+        <div style="font-size:0.72rem;color:#888">${label}</div>
+        <div style="font-size:1rem;color:#0ff;font-weight:bold">${val}</div>
+      </div>`).join('');
+      const agents = document.getElementById('perf-agents');
+      if (agents && d.per_agent) agents.innerHTML = d.per_agent.map(a => `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #222;font-size:0.82rem">
+          <span style="flex:2;color:#eee">${a.name}</span>
+          <span style="color:#888">${a.runs_7d} runs</span>
+          <span style="color:${a.errors_7d>0?'#f66':'#0f4'}">${a.errors_7d} err</span>
+          <span style="color:#f90">${a.opps_created_7d} opps</span>
+          <span style="color:${a.error_rate_pct>10?'#f66':a.error_rate_pct>0?'#f90':'#0f4'};font-size:0.75rem">${a.error_rate_pct}%</span>
+        </div>`).join('') || '<div style="color:#666">No agent runs yet.</div>';
+    } catch(e) { showToast('Performance load failed','error'); }
   }
 
 </script>

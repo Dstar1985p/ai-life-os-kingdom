@@ -56,6 +56,7 @@ from backend.api.routes_goals import router as goals_router
 from backend.api.routes_backup import router as backup_router
 from backend.api.routes_launch import router as launch_router
 from backend.api.routes_avatars import router as avatars_router
+from backend.api.routes_performance import router as performance_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -150,6 +151,7 @@ app.include_router(goals_router)
 app.include_router(backup_router)
 app.include_router(launch_router)
 app.include_router(avatars_router)
+app.include_router(performance_router)
 
 
 @app.get("/", include_in_schema=False)
