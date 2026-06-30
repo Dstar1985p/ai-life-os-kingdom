@@ -2,20 +2,21 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from backend.agents.base_agent import AgentRunResult, BaseRevenueAgent
-from backend.models.tables import Opportunity
+from backend.models.tables import Lesson, Opportunity
 from backend.services.agent_progression import award_xp
 
 
 PLATFORMS = [
-    {"name": "Pond5", "url_hint": "pond5.com", "royalty_pct": 35, "exclusivity": "non-exclusive", "best_for": "film/TV/corporate"},
-    {"name": "AudioJungle (Envato)", "url_hint": "audiojungle.net", "royalty_pct": 33, "exclusivity": "non-exclusive", "best_for": "YouTube/ads/social"},
-    {"name": "Musicbed", "url_hint": "musicbed.com", "royalty_pct": 50, "exclusivity": "non-exclusive", "best_for": "film/documentary/commercial"},
-    {"name": "Epidemic Sound", "url_hint": "epidemicsound.com", "royalty_pct": 50, "exclusivity": "exclusive", "best_for": "YouTube creators/streaming"},
-    {"name": "Artlist", "url_hint": "artlist.io", "royalty_pct": 50, "exclusivity": "non-exclusive", "best_for": "video creators/filmmakers"},
-    {"name": "Soundstripe", "url_hint": "soundstripe.com", "royalty_pct": 40, "exclusivity": "non-exclusive", "best_for": "social media/advertising"},
+    {"name": "Pond5", "royalty_pct": 35, "exclusivity": "non-exclusive", "best_for": "film/TV/corporate"},
+    {"name": "AudioJungle (Envato)", "royalty_pct": 33, "exclusivity": "non-exclusive", "best_for": "YouTube/ads/social"},
+    {"name": "Musicbed", "royalty_pct": 50, "exclusivity": "non-exclusive", "best_for": "film/documentary/commercial"},
+    {"name": "Epidemic Sound", "royalty_pct": 50, "exclusivity": "exclusive", "best_for": "YouTube creators/streaming"},
+    {"name": "Artlist", "royalty_pct": 50, "exclusivity": "non-exclusive", "best_for": "video creators/filmmakers"},
+    {"name": "Soundstripe", "royalty_pct": 40, "exclusivity": "non-exclusive", "best_for": "social media/advertising"},
 ]
 
 _PLATFORM_NAMES = [p["name"] for p in PLATFORMS]
@@ -37,10 +38,10 @@ _TRACK_CONCEPTS = [
         "submission_checklist": [
             "Export WAV 44.1kHz 24-bit stereo",
             "Export MP3 320kbps version",
-            "Write metadata description: Cinematic DnB, dramatic, trailer-ready",
+            "Write metadata: Cinematic DnB, dramatic, trailer-ready",
             "Tag mood: dramatic, tense, epic",
             "Tag use case: trailer, sports, action",
-            "Upload to Pond5 with film/TV/corporate category",
+            "Upload to Pond5 — film/TV/corporate category",
             "Upload to Musicbed via artist portal",
             "Upload to Artlist with filmmaker tags",
         ],
@@ -61,10 +62,10 @@ _TRACK_CONCEPTS = [
         "submission_checklist": [
             "Export WAV 44.1kHz 24-bit stereo",
             "Export MP3 320kbps version",
-            "Write metadata description: Corporate DnB, energetic, professional background music",
+            "Write metadata: Corporate DnB, energetic, professional background music",
             "Tag mood: uplifting, motivating, corporate",
             "Tag use case: tech ad, startup, product launch",
-            "Upload to Pond5 with corporate category",
+            "Upload to Pond5 — corporate category",
             "Upload to AudioJungle via Envato author portal",
             "Upload to Soundstripe with social media/advertising tags",
         ],
@@ -85,10 +86,10 @@ _TRACK_CONCEPTS = [
         "submission_checklist": [
             "Export WAV 44.1kHz 24-bit stereo",
             "Export MP3 320kbps version",
-            "Write metadata description: Liquid DnB, smooth, melodic, lifestyle background music",
+            "Write metadata: Liquid DnB, smooth, melodic, lifestyle background music",
             "Tag mood: warm, uplifting, flowing",
             "Tag use case: travel vlog, lifestyle, fashion",
-            "Upload to AudioJungle with background/corporate category",
+            "Upload to AudioJungle — background/corporate category",
             "Upload to Artlist with video creator tags",
             "Upload to Soundstripe with social media tags",
         ],
@@ -109,11 +110,11 @@ _TRACK_CONCEPTS = [
         "submission_checklist": [
             "Export WAV 44.1kHz 24-bit stereo",
             "Export MP3 320kbps version",
-            "Write metadata description: Dark DnB, intense, gaming, action background music",
+            "Write metadata: Dark DnB, intense, gaming, action background music",
             "Tag mood: dark, intense, menacing",
             "Tag use case: gaming, action, thriller",
-            "Upload to Pond5 with action/thriller category",
-            "Upload to AudioJungle with gaming category",
+            "Upload to Pond5 — action/thriller category",
+            "Upload to AudioJungle — gaming category",
             "Upload to Soundstripe with gaming/sport tags",
         ],
     },
@@ -133,10 +134,10 @@ _TRACK_CONCEPTS = [
         "submission_checklist": [
             "Export WAV 44.1kHz 24-bit stereo",
             "Export MP3 320kbps version",
-            "Write metadata description: Neurofunk DnB, futuristic, electronic, sci-fi background music",
+            "Write metadata: Neurofunk DnB, futuristic, electronic, sci-fi background music",
             "Tag mood: futuristic, innovative, electronic",
             "Tag use case: tech, sci-fi, AI content",
-            "Upload to Pond5 with tech/science category",
+            "Upload to Pond5 — tech/science category",
             "Upload to Musicbed via artist portal with tech tags",
             "Apply for Epidemic Sound (exclusive) with sci-fi/tech playlist pitch",
         ],
@@ -146,7 +147,7 @@ _TRACK_CONCEPTS = [
         "sub_genre": "Jump Up Clean",
         "bpm": 174,
         "mood_tags": ["fun", "energetic", "bouncy", "upbeat", "vibrant"],
-        "use_case_tags": ["social media", "fitness content", "sports promo", "kids/family event", "party montage"],
+        "use_case_tags": ["social media", "fitness content", "sports promo", "party montage", "highlight reel"],
         "suno_prompt": (
             "Jump up drum and bass clean edit, 174bpm, bouncy punchy bassline, energetic rave stabs, "
             "fun synth hooks, rolling breaks, no swearing, no dark themes, no vocals. "
@@ -157,10 +158,10 @@ _TRACK_CONCEPTS = [
         "submission_checklist": [
             "Export WAV 44.1kHz 24-bit stereo",
             "Export MP3 320kbps version",
-            "Write metadata description: Jump Up DnB clean, fun, energetic, social media music",
+            "Write metadata: Jump Up DnB clean, fun, energetic, social media music",
             "Tag mood: fun, upbeat, energetic",
             "Tag use case: social media, fitness, sport",
-            "Upload to AudioJungle with upbeat/party category",
+            "Upload to AudioJungle — upbeat/party category",
             "Upload to Soundstripe with social media/fitness tags",
             "Apply for Epidemic Sound with energetic/sport playlist pitch",
         ],
@@ -181,11 +182,11 @@ _TRACK_CONCEPTS = [
         "submission_checklist": [
             "Export WAV 44.1kHz 24-bit stereo",
             "Export MP3 320kbps version",
-            "Write metadata description: Minimal DnB, understated, corporate background music",
+            "Write metadata: Minimal DnB, understated, corporate background music",
             "Tag mood: subtle, focused, clean",
             "Tag use case: corporate B-roll, product video, tutorial",
-            "Upload to Pond5 with corporate/business category",
-            "Upload to AudioJungle with background/corporate category",
+            "Upload to Pond5 — corporate/business category",
+            "Upload to AudioJungle — background/corporate category",
             "Upload to Artlist with corporate filmmaker tags",
         ],
     },
@@ -205,26 +206,36 @@ _TRACK_CONCEPTS = [
         "submission_checklist": [
             "Export WAV 44.1kHz 24-bit stereo",
             "Export MP3 320kbps version",
-            "Write metadata description: Atmospheric DnB, ambient, documentary-ready background music",
+            "Write metadata: Atmospheric DnB, ambient, documentary-ready background music",
             "Tag mood: ambient, contemplative, cinematic",
             "Tag use case: documentary, nature, travel",
             "Upload to Musicbed via artist portal with documentary tags",
             "Upload to Artlist with filmmaker/documentary tags",
-            "Upload to Pond5 with documentary/nature category",
+            "Upload to Pond5 — documentary/nature category",
         ],
     },
 ]
 
-_SUB_GENRES = [c["sub_genre"] for c in _TRACK_CONCEPTS]
-
 
 def _revenue_to_kingdom_score(revenue_gbp: float) -> float:
-    """Map £2-£25 estimated monthly revenue to kingdom_score 30-95."""
-    min_rev, max_rev = 2.0, 25.0
-    min_score, max_score = 30.0, 95.0
-    clamped = max(min_rev, min(max_rev, revenue_gbp))
-    ratio = (clamped - min_rev) / (max_rev - min_rev)
-    return round(min_score + ratio * (max_score - min_score), 1)
+    """Map £2–£25 estimated monthly revenue to kingdom_score 30–95."""
+    clamped = max(2.0, min(25.0, revenue_gbp))
+    ratio = (clamped - 2.0) / (25.0 - 2.0)
+    return round(30.0 + ratio * (95.0 - 30.0), 1)
+
+
+def _used_sub_genres(existing_opps: list) -> set[str]:
+    """Read sub_genre from each opportunity's evidence JSON."""
+    used: set[str] = set()
+    for opp in existing_opps:
+        try:
+            ev = json.loads(opp.evidence or "{}")
+            sg = ev.get("sub_genre")
+            if sg:
+                used.add(sg)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return used
 
 
 class MusicLicensingAgent(BaseRevenueAgent):
@@ -232,116 +243,130 @@ class MusicLicensingAgent(BaseRevenueAgent):
     mission = "Generate sync licensing concepts for PulseBreak DnB tracks targeting Pond5, AudioJungle, Musicbed and more"
 
     def run(self, db: Session) -> AgentRunResult:
+        existing_opps = (
+            db.query(Opportunity)
+            .filter(Opportunity.source == "music_licensing")
+            .all()
+        )
+
+        used_sub = _used_sub_genres(existing_opps)
+
+        # Prioritise unused sub-genres; if all used, cycle from the top
+        unused = [c for c in _TRACK_CONCEPTS if c["sub_genre"] not in used_sub]
+        pool = unused if unused else list(_TRACK_CONCEPTS)
+        to_generate = pool[:3]
+
+        ai_calls = 0
+        # Try Claude for a platform pitch tip based on the batch
+        platform_tip = ""
         try:
-            existing_opps = (
-                db.query(Opportunity)
-                .filter(Opportunity.source == "music_licensing")
-                .all()
+            from backend.services.ai_brain import call_claude
+            sub_genres = ", ".join(c["sub_genre"] for c in to_generate)
+            prompt = (
+                f"You are the music licensing strategist for PulseBreak, a DnB music brand. "
+                f"This run will generate licensing concepts for: {sub_genres}. "
+                f"Give ONE specific tip (2 sentences max) on which sync platform to prioritise "
+                f"and why, based on current demand for DnB/electronic music in sync licensing."
             )
-            existing_titles = {o.title for o in existing_opps}
+            platform_tip = call_claude(prompt, db=db, purpose="music_licensing")
+            ai_calls = 1
+        except Exception:
+            pass
 
-            # Track which sub-genres have been used to rotate through them
-            used_sub_genres: set[str] = set()
-            for opp in existing_opps:
-                try:
-                    ev = json.loads(opp.evidence or "{}")
-                    sg = ev.get("sub_genre")
-                    if sg:
-                        used_sub_genres.add(sg)
-                except (json.JSONDecodeError, TypeError):
-                    pass
+        created = 0
+        updated = 0
+        targeted_platforms: set[str] = set()
 
-            # Pick 3 concepts, prioritising unused sub-genres
-            unused = [c for c in _TRACK_CONCEPTS if c["sub_genre"] not in used_sub_genres]
-            pool = unused if unused else _TRACK_CONCEPTS
-            # Take first 3 from pool, rotating
-            to_generate = pool[:3]
+        for concept in to_generate:
+            title = f"PulseBreak Licensing — {concept['track_title']}"
+            kingdom_score = _revenue_to_kingdom_score(concept["estimated_monthly_revenue_gbp"])
 
-            created = 0
-            updated = 0
-            targeted_platforms: set[str] = set()
+            scores = {
+                "revenue_score": round(concept["estimated_monthly_revenue_gbp"] * 4.0, 1),
+                "automation_score": 70.0,
+                "competition_score": 45.0,
+                "risk_score": 20.0,
+                "complexity_score": 25.0,
+                "strategic_alignment_score": 85.0,
+                "kingdom_score": kingdom_score,
+            }
 
-            for concept in to_generate:
-                title = f"PulseBreak Licensing — {concept['track_title']}"
+            evidence_data = {
+                "track_title": concept["track_title"],
+                "sub_genre": concept["sub_genre"],
+                "bpm": concept["bpm"],
+                "mood_tags": concept["mood_tags"],
+                "use_case_tags": concept["use_case_tags"],
+                "suno_prompt": concept["suno_prompt"],
+                "recommended_platforms": concept["recommended_platforms"],
+                "estimated_monthly_revenue_gbp": concept["estimated_monthly_revenue_gbp"],
+                "submission_checklist": concept["submission_checklist"],
+                "platform_tip": platform_tip,
+                "generated_at": datetime.utcnow().isoformat(),
+            }
 
-                if title in existing_titles:
-                    updated += 1
-                    continue
+            _opp, is_new = self._upsert_opportunity(
+                db,
+                title=title,
+                category="Stock Music",
+                source="music_licensing",
+                scores=scores,
+                extra={"evidence": json.dumps(evidence_data)},
+            )
 
-                kingdom_score = _revenue_to_kingdom_score(concept["estimated_monthly_revenue_gbp"])
+            if is_new:
+                created += 1
+                for p in concept["recommended_platforms"]:
+                    targeted_platforms.add(p)
+            else:
+                updated += 1
 
-                scores = {
-                    "revenue_score": 65.0,
-                    "automation_score": 70.0,
-                    "competition_score": 45.0,
-                    "risk_score": 20.0,
-                    "complexity_score": 25.0,
-                    "strategic_alignment_score": 80.0,
-                    "kingdom_score": kingdom_score,
-                }
+        db.commit()
 
-                evidence = json.dumps({
-                    "track_title": concept["track_title"],
-                    "sub_genre": concept["sub_genre"],
-                    "bpm": concept["bpm"],
-                    "mood_tags": concept["mood_tags"],
-                    "use_case_tags": concept["use_case_tags"],
-                    "suno_prompt": concept["suno_prompt"],
-                    "recommended_platforms": concept["recommended_platforms"],
-                    "estimated_monthly_revenue_gbp": concept["estimated_monthly_revenue_gbp"],
-                    "submission_checklist": concept["submission_checklist"],
-                })
-
-                opp, is_new = self._upsert_opportunity(
+        if created > 0:
+            try:
+                award_xp(
+                    "Music Licensing",
+                    created * 25,
+                    f"Sync licensing concept generated ({created} new concept(s))",
                     db,
-                    title,
-                    "Stock Music",
-                    "music_licensing",
-                    scores,
-                    {"evidence": evidence},
                 )
+            except Exception:
+                pass
 
-                if is_new:
-                    created += 1
-                    for p in concept["recommended_platforms"]:
-                        targeted_platforms.add(p)
-                else:
-                    updated += 1
+        platforms_str = ", ".join(sorted(targeted_platforms)) if targeted_platforms else "none new"
+        source = "Claude AI" if ai_calls > 0 else "templates"
+        lesson_text = (
+            f"Music Licensing Agent ({source}): {created} new sync concepts, {updated} refreshed. "
+            f"Sub-genres: {', '.join(c['sub_genre'] for c in to_generate)}. "
+            f"Platforms targeted: {platforms_str}."
+        )
+        db.add(Lesson(
+            lesson=lesson_text,
+            source="music_licensing_agent",
+            confidence_score=80.0,
+            evidence=json.dumps({
+                "concepts": [c["track_title"] for c in to_generate],
+                "platforms": sorted(targeted_platforms),
+                "platform_tip": platform_tip,
+                "created": created,
+                "updated": updated,
+                "ran_at": datetime.utcnow().isoformat(),
+            }),
+        ))
+        db.commit()
 
-            db.commit()
-
-            # Award XP to Vibes AI agent for new concepts
-            if created > 0:
-                try:
-                    award_xp(
-                        "Vibes AI",
-                        created * 25,
-                        f"Stock licensing concept generated ({created} new concept(s))",
-                        db,
-                    )
-                except Exception:
-                    pass
-
-            platforms_str = ", ".join(sorted(targeted_platforms)) if targeted_platforms else "none"
-            lesson = (
-                f"MusicLicensingAgent: {created} licensing concepts generated targeting {platforms_str}"
-            )
-
-            result = AgentRunResult(
-                status="ok",
-                ai_calls=0,
-                opportunities_created=created,
-                opportunities_updated=updated,
-                lessons=[lesson],
-                actions_taken=[
-                    f"Generated {created} new licensing concepts for sync platforms: {platforms_str}"
-                ],
-            )
-            self._record_run(result, db)
-            return result
-
-        except Exception as exc:
-            return AgentRunResult(
-                status="error",
-                error=str(exc),
-            )
+        result = AgentRunResult(
+            status="ok",
+            ai_calls=ai_calls,
+            opportunities_created=created,
+            opportunities_updated=updated,
+            lessons=[lesson_text],
+            actions_taken=[
+                f"Generated {created} new + {updated} refreshed sync licensing concepts via {source}",
+                f"Sub-genres: {', '.join(c['sub_genre'] for c in to_generate)}",
+                f"Platform targets: {platforms_str}",
+            ] + ([f"Platform tip: {platform_tip[:80]}"] if platform_tip else []),
+        )
+        self._record_run(result, db)
+        return result
