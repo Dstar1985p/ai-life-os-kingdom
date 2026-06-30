@@ -53,6 +53,7 @@ from backend.api.routes_engineer import router as engineer_router
 from backend.api.routes_new_agents import router as new_agents_router
 from backend.api.routes_etsy_webhook import router as etsy_webhook_router
 from backend.api.routes_goals import router as goals_router
+from backend.api.routes_backup import router as backup_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -144,6 +145,7 @@ app.include_router(engineer_router)
 app.include_router(new_agents_router)
 app.include_router(etsy_webhook_router)
 app.include_router(goals_router)
+app.include_router(backup_router)
 
 
 @app.get("/", include_in_schema=False)
@@ -161,13 +163,3 @@ def health() -> dict:
         "service": "Kingdom — AI Life OS",
         "version": "1.3.0",
     }
-
-
-@app.get("/backup/create")
-def backup_create():
-    return {"status": "ok", "message": "Backup created (stub)", "backup_id": "bk_001"}
-
-
-@app.get("/backup/list")
-def backup_list():
-    return {"backups": [{"id": "bk_001", "created_at": "2026-01-01T00:00:00", "size_kb": 128}]}

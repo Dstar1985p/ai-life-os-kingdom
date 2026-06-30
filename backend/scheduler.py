@@ -119,6 +119,15 @@ def _send_weekly_digest() -> None:
         db.close()
 
 
+def _run_daily_backup() -> None:
+    from backend.api.routes_backup import backup_create
+    try:
+        result = backup_create()
+        logger.info("Auto-backup: %s", result.get("filename"))
+    except Exception:
+        logger.exception("Auto-backup failed")
+
+
 def _run_crisis_scan_job() -> None:
     from backend.services.crisis_engine import run_crisis_scan, save_crisis_scan
     db = SessionLocal()
@@ -167,6 +176,14 @@ def start_scheduler() -> BackgroundScheduler:
         _run_crisis_scan_job,
         trigger=IntervalTrigger(hours=6),
         id="crisis_scan",
+        replace_existing=True,
+    )
+
+    # Daily database backup — 3am UTC
+    _scheduler.add_job(
+        _run_daily_backup,
+        trigger=CronTrigger(hour=3, minute=0),
+        id="daily_backup",
         replace_existing=True,
     )
 
