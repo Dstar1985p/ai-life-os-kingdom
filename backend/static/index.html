@@ -1667,6 +1667,10 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
         <div id="tr-api-costs"><div class="loading">Loading…</div></div>
       </div>
     </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-header"><div class="card-title">Cost by Agent</div></div>
+      <div id="tr-agent-costs"><div class="loading">Loading…</div></div>
+    </div>
   </div>
 
   <!-- COMMANDER -->
@@ -3016,8 +3020,8 @@ async function loadRooms() {
   const el = document.getElementById('rooms-grid');
   const data = await fetchJSON('/rooms');
   if (!data || !data.rooms) { el.innerHTML = '<div style="color:var(--muted)">Could not load rooms.</div>'; return; }
-  const statusColour = s => s === 'active' ? 'var(--green)' : s === 'stalled' ? 'var(--amber)' : s === 'error' ? 'var(--red)' : 'var(--muted)';
-  const statusDot = s => s === 'active' ? '●' : s === 'stalled' ? '◐' : s === 'error' ? '✕' : '○';
+  const statusColour = s => s === 'active' ? 'var(--green)' : s === 'paused' ? 'var(--muted)' : s === 'stalled' ? 'var(--amber)' : s === 'error' ? 'var(--red)' : 'var(--muted)';
+  const statusDot = s => s === 'active' ? '●' : s === 'paused' ? '⏸' : s === 'stalled' ? '◐' : s === 'error' ? '✕' : '○';
   el.innerHTML = data.rooms.map(r => `
     <div class="card" style="border-color:${r.colour}33">
       <div class="card-header">
@@ -3034,8 +3038,11 @@ async function loadRooms() {
       <div style="display:flex;flex-direction:column;gap:6px">
         ${r.agents.map(a => `
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.72rem;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.02)">
-            <span>${a.agent}</span>
-            <span style="color:${statusColour(a.status)}">${statusDot(a.status)} ${a.status}</span>
+            <span>${a.agent}${a.paused ? ` <span style="color:var(--muted);font-size:0.65rem">(${a.paused_by || 'paused'})</span>` : ''}</span>
+            <span style="display:flex;align-items:center;gap:6px">
+              <span style="color:${statusColour(a.status)}">${statusDot(a.status)} ${a.status}</span>
+              <button class="btn btn-sm" style="padding:2px 6px;font-size:0.65rem" onclick="toggleAgentPause('${a.agent}', ${a.paused})">${a.paused ? '▶' : '⏸'}</button>
+            </span>
           </div>`).join('')}
       </div>
     </div>`).join('');
@@ -3049,19 +3056,34 @@ async function runAllInRoom(roomId) {
   } catch (e) {}
 }
 
+async function toggleAgentPause(agentName, isPaused) {
+  try {
+    const path = isPaused ? 'resume' : 'pause';
+    const opts = { method: 'POST' };
+    if (!isPaused) {
+      opts.headers = { 'Content-Type': 'application/json' };
+      opts.body = JSON.stringify({ reason: 'Paused from Rooms UI' });
+    }
+    await fetch(`/rooms/agent/${encodeURIComponent(agentName)}/${path}`, opts);
+    loadRooms();
+  } catch (e) {}
+}
+
 /* Treasury */
 async function loadTreasuryPeriod(period) {
   document.querySelectorAll('.tp-btn').forEach(b => b.classList.remove('active'));
   const btn = document.querySelector(`.tp-btn[data-period="${period}"]`);
   if (btn) btn.classList.add('active');
 
-  const days = {'1d':1,'7d':7,'1m':30,'3m':90,'6m':180,'1y':365,'all':365}[period] || 30;
+  const daysMap = {'1d':1,'7d':7,'1m':30,'3m':90,'6m':180,'1y':365,'all':0};
+  const days = period in daysMap ? daysMap[period] : 30;
 
-  const [pnl, breakdown, subs, apiCosts] = await Promise.all([
+  const [pnl, breakdown, subs, apiCosts, agentCosts] = await Promise.all([
     fetchJSON(`/treasury/pnl/${period}`),
     fetchJSON(`/treasury/breakdown?days=${days}`),
     fetchJSON('/treasury/subscriptions'),
     fetchJSON(`/treasury/api-costs?days=${days}`),
+    fetchJSON(`/treasury/agent-costs?days=${days}`),
   ]);
 
   if (pnl) {
@@ -3099,6 +3121,16 @@ async function loadTreasuryPeriod(period) {
       <div style="font-size:0.7rem;color:var(--muted);margin-bottom:8px">${apiCosts.total_tokens.toLocaleString()} tokens over ${apiCosts.period_days}d</div>
       ${Object.entries(apiCosts.by_source_tokens || {}).map(([src, tok]) => `
         <div style="display:flex;justify-content:space-between;font-size:0.74rem;padding:4px 0"><span style="text-transform:capitalize">${src}</span><span>${tok.toLocaleString()} tokens</span></div>`).join('')}`;
+  }
+
+  if (agentCosts) {
+    const rows = Object.entries(agentCosts.by_feature || {});
+    document.getElementById('tr-agent-costs').innerHTML = rows.length ? rows.map(([feature, d]) => `
+      <div style="display:flex;justify-content:space-between;font-size:0.76rem;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span>${feature} <span style="color:var(--muted);font-size:0.65rem;text-transform:capitalize">(${d.provider})</span></span>
+        <span>£${d.estimated_cost_gbp} <span style="color:var(--muted)">· ${d.tokens.toLocaleString()} tok</span></span>
+      </div>`).join('') + `<div style="font-size:0.75rem;margin-top:8px;color:var(--cyan)">Total: £${agentCosts.total_estimated_cost_gbp}</div>`
+      : '<div style="color:var(--muted);font-size:0.75rem">No agent spend recorded yet.</div>';
   }
 }
 
