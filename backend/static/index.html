@@ -536,6 +536,8 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
         <button onclick="triggerAgent('Revenue Forecaster')" class="quick-btn">&#x1F4C8; Run Forecaster</button>
         <button onclick="showPanel('launch');loadChecklist()" class="quick-btn">&#x1F680; Launch Checklist</button>
         <button onclick="showPanel('abtests');loadABTests()" class="quick-btn">&#x1F9EA; A/B Tests</button>
+        <button onclick="showPanel('avatars');loadAvatars()" class="quick-btn">&#x1F9D1; Customer Avatars</button>
+        <button onclick="showPanel('orders');loadOrders()" class="quick-btn">&#x1F4E6; Printify Orders</button>
         <div id="action-result" style="font-size:0.7rem;color:var(--green);margin-top:4px;min-height:20px"></div>
       </div>
     </div>
@@ -1783,6 +1785,23 @@ async function loadDashboard() {
     </div>
   </div>`);
 
+
+  panels.push(`<div class="panel" id="panel-avatars" style="display:none">
+    <h3>&#x1F9D1; Customer Avatars</h3>
+    <div style="margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="quick-btn" onclick="loadAvatars()">All</button>
+      <button class="quick-btn" onclick="loadAvatars('Pitwall Classics')">Pitwall Classics</button>
+      <button class="quick-btn" onclick="loadAvatars('PulseBreak')">PulseBreak</button>
+    </div>
+    <div id="avatars-list" style="max-height:420px;overflow-y:auto"></div>
+  </div>`);
+
+  panels.push(`<div class="panel" id="panel-orders" style="display:none">
+    <h3>&#x1F4E6; Printify Orders</h3>
+    <div style="margin-bottom:8px"><button class="quick-btn" onclick="loadOrders()">&#x21BB; Refresh</button></div>
+    <div id="orders-list" style="max-height:420px;overflow-y:auto"></div>
+  </div>`);
+
   document.getElementById('panels').innerHTML=panels.join('');
 }
 
@@ -2452,6 +2471,57 @@ initMobileTabs();
   async function deleteABTest(id) {
     await fetch('/launch/ab-tests/'+id, {method:'DELETE'});
     loadABTests();
+  }
+
+
+  // ── Customer Avatars ──────────────────────────────────────────────────────
+  async function loadAvatars(venture) {
+    const url = venture ? `/avatars?venture=${encodeURIComponent(venture)}` : '/avatars';
+    try {
+      const r = await fetch(url); const d = await r.json();
+      const el = document.getElementById('avatars-list');
+      if (!el) return;
+      if (!d.avatars.length) { el.innerHTML = '<div style="color:#666">No avatars yet.</div>'; return; }
+      el.innerHTML = d.avatars.map(a => `
+        <div style="border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div><span style="font-size:1rem;font-weight:bold;color:#0ff">${a.name}</span>
+            <span style="font-size:0.75rem;color:#888;margin-left:8px">${a.venture}</span></div>
+            <span style="font-size:0.75rem;padding:2px 6px;border-radius:4px;background:${a.price_sensitivity==='low'?'#0a2':'#a60'};color:#fff">${a.price_sensitivity} sensitivity</span>
+          </div>
+          ${a.age_range ? `<div style="font-size:0.8rem;color:#aaa;margin-top:4px">Age: ${a.age_range} · ${a.occupation}</div>` : ''}
+          ${a.location ? `<div style="font-size:0.78rem;color:#666">📍 ${a.location}</div>` : ''}
+          ${a.pain_points ? `<div style="margin-top:8px"><span style="font-size:0.75rem;color:#f66">😤 Pain:</span> <span style="font-size:0.82rem;color:#ddd">${a.pain_points}</span></div>` : ''}
+          ${a.desires ? `<div><span style="font-size:0.75rem;color:#0f4">✨ Desires:</span> <span style="font-size:0.82rem;color:#ddd">${a.desires}</span></div>` : ''}
+          ${a.buying_triggers ? `<div><span style="font-size:0.75rem;color:#f90">⚡ Triggers:</span> <span style="font-size:0.82rem;color:#ddd">${a.buying_triggers}</span></div>` : ''}
+          ${a.platforms ? `<div style="font-size:0.75rem;color:#888;margin-top:4px">Platforms: ${a.platforms}</div>` : ''}
+        </div>`).join('');
+    } catch(e) { showToast('Avatars load failed','error'); }
+  }
+
+  // ── Printify Orders ───────────────────────────────────────────────────────
+  async function loadOrders() {
+    try {
+      const r = await fetch('/printify/orders'); const d = await r.json();
+      const el = document.getElementById('orders-list');
+      if (!el) return;
+      if (d.message && !d.orders.length) {
+        el.innerHTML = `<div style="color:#888;font-size:0.85rem">${d.message}</div>`; return;
+      }
+      if (!d.orders.length) { el.innerHTML = '<div style="color:#666">No orders found.</div>'; return; }
+      el.innerHTML = d.orders.map(o => {
+        const status = o.status || o.fulfillment_status || 'unknown';
+        const colour = status.includes('ship') || status === 'fulfilled' ? '#0f4' : status === 'pending' ? '#f90' : '#0ff';
+        return `<div style="border:1px solid #333;border-radius:6px;padding:10px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:#eee;font-size:0.88rem">#${o.id || o.order_id}</span>
+            <span style="font-size:0.78rem;padding:2px 6px;border-radius:4px;background:#1a1a2e;color:${colour}">${status}</span>
+          </div>
+          <div style="font-size:0.8rem;color:#aaa;margin-top:4px">${o.line_items ? o.line_items.map(li => li.title || li.product_id).join(', ') : 'Order details'}</div>
+          ${o.created_at ? `<div style="font-size:0.74rem;color:#666">${new Date(o.created_at).toLocaleDateString()}</div>` : ''}
+        </div>`;
+      }).join('');
+    } catch(e) { showToast('Orders load failed','error'); }
   }
 
 </script>
