@@ -70,6 +70,24 @@ def _apply_migrations(eng) -> None:
                     concluded_at DATETIME
                 )
             """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS customer_avatars (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    venture VARCHAR(120) NOT NULL,
+                    name VARCHAR(120) NOT NULL,
+                    age_range VARCHAR(40) DEFAULT '',
+                    occupation VARCHAR(120) DEFAULT '',
+                    location VARCHAR(120) DEFAULT '',
+                    pain_points TEXT DEFAULT '',
+                    desires TEXT DEFAULT '',
+                    buying_triggers TEXT DEFAULT '',
+                    platforms VARCHAR(255) DEFAULT '',
+                    price_sensitivity VARCHAR(40) DEFAULT 'medium',
+                    notes TEXT DEFAULT '',
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+            """))
             conn.commit()
     except Exception:
         logger.exception("Migration step failed (non-fatal)")
