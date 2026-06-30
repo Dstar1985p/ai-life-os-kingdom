@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.services.treasury import (
     add_entry,
+    get_agent_costs,
     get_api_costs,
     get_cost_breakdown,
     get_kingdom_treasury,
@@ -100,17 +101,23 @@ def subscriptions(db: Session = Depends(get_db)):
 
 @router.get("/api-costs")
 def api_costs(days: int = Query(30), db: Session = Depends(get_db)):
-    """API spend breakdown from TokenUsageLog."""
-    return get_api_costs(db, days=days)
+    """API spend breakdown from TokenUsageLog. days=0 means all-time."""
+    return get_api_costs(db, days=days or None)
 
 
 @router.get("/breakdown")
 def full_breakdown(days: int = Query(30), db: Session = Depends(get_db)):
-    """Full cost + revenue breakdown by category."""
+    """Full cost + revenue breakdown by category. days=0 means all-time."""
     return {
-        "costs": get_cost_breakdown(db, days=days),
-        "revenue": get_revenue_breakdown(db, days=days),
+        "costs": get_cost_breakdown(db, days=days or None),
+        "revenue": get_revenue_breakdown(db, days=days or None),
     }
+
+
+@router.get("/agent-costs")
+def agent_costs(days: int = Query(30), db: Session = Depends(get_db)):
+    """Token spend grouped by agent/feature and provider. days=0 means all-time."""
+    return get_agent_costs(db, days=days or None)
 
 
 @router.get("/{venture}")

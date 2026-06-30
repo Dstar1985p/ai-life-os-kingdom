@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
@@ -53,8 +54,16 @@ ROOMS = {
 }
 
 
+class PauseRequest(BaseModel):
+    reason: str = ""
+
+
 def _agent_activity(db: Session, agent_name: str) -> dict:
     """Look up latest AgentRun for an agent name and derive a status."""
+    from backend.services.agent_control import get_control
+
+    control = get_control(agent_name, db)
+
     run = (
         db.query(AgentRun)
         .filter(AgentRun.agent_name == agent_name)
@@ -64,16 +73,21 @@ def _agent_activity(db: Session, agent_name: str) -> dict:
     if not run:
         return {
             "agent": agent_name,
-            "status": "idle",
+            "status": "paused" if control["paused"] else "idle",
             "last_run": None,
             "estimated_cost_gbp": 0.0,
             "revenue_generated_gbp": 0.0,
             "roi": 0.0,
+            "paused": control["paused"],
+            "paused_reason": control["paused_reason"],
+            "paused_by": control["paused_by"],
         }
 
     from datetime import datetime, timedelta
     age = datetime.utcnow() - run.run_at
-    if age > timedelta(hours=48):
+    if control["paused"]:
+        status = "paused"
+    elif age > timedelta(hours=48):
         status = "stalled"
     elif run.roi and run.roi < 0:
         status = "error"
@@ -87,6 +101,9 @@ def _agent_activity(db: Session, agent_name: str) -> dict:
         "estimated_cost_gbp": round(run.estimated_cost_gbp, 4),
         "revenue_generated_gbp": round(run.revenue_generated_gbp, 2),
         "roi": round(run.roi, 3),
+        "paused": control["paused"],
+        "paused_reason": control["paused_reason"],
+        "paused_by": control["paused_by"],
     }
 
 
@@ -163,3 +180,17 @@ def run_all_in_room(room_id: str, db: Session = Depends(get_db)):
             results.append({"agent": agent_name, "status": "error", "error": str(exc)})
 
     return {"room": room_id, "triggered": len(results), "results": results}
+
+
+@router.post("/agent/{agent_name}/pause")
+def pause_agent(agent_name: str, body: PauseRequest, db: Session = Depends(get_db)):
+    """Pause an agent's scheduled runs (founder kill switch). Manual triggers still work."""
+    from backend.services.agent_control import set_paused
+    return set_paused(agent_name, True, db, reason=body.reason, by="founder")
+
+
+@router.post("/agent/{agent_name}/resume")
+def resume_agent(agent_name: str, db: Session = Depends(get_db)):
+    """Resume an agent's scheduled runs."""
+    from backend.services.agent_control import set_paused
+    return set_paused(agent_name, False, db)

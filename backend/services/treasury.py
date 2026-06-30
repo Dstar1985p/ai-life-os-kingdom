@@ -273,14 +273,13 @@ def get_subscriptions(db: Session) -> dict:
     }
 
 
-def get_api_costs(db: Session, days: int = 30) -> dict:
-    """Sum TokenUsageLog estimated costs by date."""
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    logs = (
-        db.query(TokenUsageLog)
-        .filter(TokenUsageLog.recorded_at >= cutoff)
-        .all()
-    )
+def get_api_costs(db: Session, days: Optional[int] = 30) -> dict:
+    """Sum TokenUsageLog estimated costs by date. days=None or 0 means all-time."""
+    q = db.query(TokenUsageLog)
+    if days:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        q = q.filter(TokenUsageLog.recorded_at >= cutoff)
+    logs = q.all()
 
     by_date: dict[str, dict] = {}
     by_source: dict[str, int] = {}
@@ -314,14 +313,13 @@ def get_api_costs(db: Session, days: int = 30) -> dict:
     }
 
 
-def get_cost_breakdown(db: Session, days: int = 30) -> dict:
-    """Costs by category: API, subscriptions, production (i.e. RevenueEntry expenses)."""
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    expense_entries = (
-        db.query(RevenueEntry)
-        .filter(RevenueEntry.entry_type == "expense", RevenueEntry.recorded_at >= cutoff)
-        .all()
-    )
+def get_cost_breakdown(db: Session, days: Optional[int] = 30) -> dict:
+    """Costs by category: API, subscriptions, production (i.e. RevenueEntry expenses). days=None/0 = all-time."""
+    q = db.query(RevenueEntry).filter(RevenueEntry.entry_type == "expense")
+    if days:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        q = q.filter(RevenueEntry.recorded_at >= cutoff)
+    expense_entries = q.all()
 
     production_cost = round(
         sum(e.amount for e in expense_entries if e.category != "subscription"), 2
@@ -349,14 +347,13 @@ def get_cost_breakdown(db: Session, days: int = 30) -> dict:
     }
 
 
-def get_revenue_breakdown(db: Session, days: int = 30) -> dict:
-    """Revenue by venture for the given period."""
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    income_entries = (
-        db.query(RevenueEntry)
-        .filter(RevenueEntry.entry_type == "income", RevenueEntry.recorded_at >= cutoff)
-        .all()
-    )
+def get_revenue_breakdown(db: Session, days: Optional[int] = 30) -> dict:
+    """Revenue by venture for the given period. days=None/0 = all-time."""
+    q = db.query(RevenueEntry).filter(RevenueEntry.entry_type == "income")
+    if days:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        q = q.filter(RevenueEntry.recorded_at >= cutoff)
+    income_entries = q.all()
 
     by_venture: dict[str, float] = {}
     for e in income_entries:
@@ -372,4 +369,35 @@ def get_revenue_breakdown(db: Session, days: int = 30) -> dict:
         "by_venture_pct": {
             k: round((v / total) * 100, 1) if total else 0.0 for k, v in by_venture.items()
         },
+    }
+
+
+def get_agent_costs(db: Session, days: Optional[int] = 30) -> dict:
+    """Token spend grouped by feature (proxy for agent) and provider (Claude vs OpenRouter)."""
+    q = db.query(TokenUsageLog)
+    if days:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        q = q.filter(TokenUsageLog.recorded_at >= cutoff)
+    logs = q.all()
+
+    by_feature: dict[str, dict] = {}
+    for log in logs:
+        provider = "openrouter" if log.feature.startswith("openrouter:") else "claude"
+        feature_label = log.feature.replace("openrouter:", "")
+        row = by_feature.setdefault(feature_label, {"tokens": 0, "provider": provider, "estimated_cost_gbp": 0.0})
+        row["tokens"] += log.estimated_tokens
+        # last provider seen wins — a feature is normally consistently routed to one provider
+        row["provider"] = provider
+
+    for row in by_feature.values():
+        row["estimated_cost_gbp"] = round(
+            (row["tokens"] / 1_000_000) * _BLENDED_USD_PER_1M_TOKENS * _USD_TO_GBP, 4
+        )
+
+    ranked = sorted(by_feature.items(), key=lambda kv: kv[1]["estimated_cost_gbp"], reverse=True)
+
+    return {
+        "period_days": days,
+        "by_feature": dict(ranked),
+        "total_estimated_cost_gbp": round(sum(r["estimated_cost_gbp"] for r in by_feature.values()), 4),
     }

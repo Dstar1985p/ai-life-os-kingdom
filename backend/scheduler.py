@@ -92,6 +92,10 @@ def _run_agent(agent_name: str) -> None:
         return
     db = SessionLocal()
     try:
+        from backend.services.agent_control import is_paused
+        if is_paused(agent_name, db):
+            logger.info("Skipping scheduled run for paused agent: %s", agent_name)
+            return
         logger.info("Running agent: %s", agent_name)
         agent.run(db)
         logger.info("Agent complete: %s", agent_name)

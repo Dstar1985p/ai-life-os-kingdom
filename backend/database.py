@@ -158,6 +158,18 @@ def _apply_migrations(eng) -> None:
                 )
             """))
             conn.commit()
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS agent_controls (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    agent_name VARCHAR(120) UNIQUE NOT NULL,
+                    paused BOOLEAN DEFAULT 0,
+                    paused_reason TEXT DEFAULT '',
+                    paused_by VARCHAR(50) DEFAULT '',
+                    paused_at DATETIME,
+                    updated_at DATETIME
+                )
+            """))
+            conn.commit()
     except Exception:
         logger.exception("Migration step failed (non-fatal)")
 

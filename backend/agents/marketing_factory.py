@@ -37,15 +37,65 @@ _EMAIL_SYSTEM = """You are an email marketer. Generate subject lines and preview
 Output JSON only: {"emails": [ {"subject": string, "preview_text": string} ] }"""
 
 
-def _factory_prompt(venture: str, context: str) -> str:
+def _recent_product_context(venture: str, db: Session) -> str:
+    """Pull real, current products/commissions so content doesn't go stale or generic."""
+    try:
+        if venture == "Pitwall Classics":
+            from backend.models.tables import EtsyListing
+            listings = (
+                db.query(EtsyListing)
+                .filter(EtsyListing.status == "active")
+                .order_by(EtsyListing.imported_at.desc())
+                .limit(5)
+                .all()
+            )
+            if listings:
+                titles = "; ".join(f"{l.title} (£{l.price})" for l in listings)
+                return f"Currently live Etsy listings to reference: {titles}"
+        elif venture == "Livery Forge":
+            from backend.models.tables import LiveryCommission
+            commissions = (
+                db.query(LiveryCommission)
+                .filter(LiveryCommission.status.in_(["approved", "delivered"]))
+                .order_by(LiveryCommission.created_at.desc())
+                .limit(5)
+                .all()
+            )
+            if commissions:
+                summary = "; ".join(
+                    f"{c.car_class} {c.style} livery for {c.client_name or 'client'} (#{c.racing_number})"
+                    for c in commissions
+                )
+                return f"Recent livery commissions to showcase: {summary}"
+        elif venture == "PulseBreak":
+            from backend.models.tables import TrackRelease
+            tracks = (
+                db.query(TrackRelease)
+                .filter(TrackRelease.status == "approved")
+                .order_by(TrackRelease.created_at.desc())
+                .limit(5)
+                .all()
+            )
+            if tracks:
+                names = "; ".join(f"{t.track_name} ({t.sub_genre})" for t in tracks)
+                return f"Recently released tracks to reference: {names}"
+    except Exception as exc:
+        logger.warning("Marketing Factory: product context lookup failed for %s: %s", venture, exc)
+    return ""
+
+
+def _factory_prompt(venture: str, context: str, product_context: str = "") -> str:
     return (
         f"Kingdom context: {context}\n\n"
+        f"{product_context + chr(10) + chr(10) if product_context else ''}"
         f"Generate a full marketing content pack for venture: {venture}\n\n"
         f"Include:\n"
         f"- 5 Instagram captions with hashtags\n"
         f"- 3 TikTok hook scripts (hook = first 3 seconds, full_script = full ~30s script)\n"
         f"- 2 email subject lines + preview text\n"
         f"- 1 YouTube description template\n\n"
+        f"If real products/commissions/tracks are listed above, reference specific ones by name "
+        f"instead of generic placeholders.\n"
         f"Return the JSON structure as specified."
     )
 
@@ -85,7 +135,8 @@ class MarketingFactoryAgent(BaseRevenueAgent):
             context = ""
 
         for venture in VENTURES:
-            prompt = _factory_prompt(venture, context)
+            product_context = _recent_product_context(venture, db)
+            prompt = _factory_prompt(venture, context, product_context)
             raw = _call_text_model(prompt, _FACTORY_SYSTEM, "marketing_factory", db, max_tokens=1800)
             result.ai_calls += 1
 

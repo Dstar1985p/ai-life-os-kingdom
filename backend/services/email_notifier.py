@@ -82,6 +82,43 @@ def send_weekly_digest_email(digest: dict) -> dict:
         return {"sent": False, "reason": str(e)}
 
 
+def send_commander_alert_email(critical_issues: list, report_text: str) -> dict:
+    """Send an immediate alert email when the AI Commander flags a red-health issue."""
+    config = get_email_config()
+
+    if not is_email_configured():
+        return {"sent": False, "reason": "Email not configured — see /digest/email-status"}
+
+    issues_html = "".join(f"<li>{i}</li>" for i in critical_issues)
+    issues_text = "\n".join(f"- {i}" for i in critical_issues)
+
+    html = f"""
+    <div style="font-family:sans-serif;max-width:600px">
+      <h2 style="color:#ff3366">⚡ Commander Alert</h2>
+      <ul>{issues_html}</ul>
+      <p style="white-space:pre-wrap;color:#444">{report_text}</p>
+    </div>
+    """
+    text = f"COMMANDER ALERT\n\n{issues_text}\n\n{report_text}"
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"⚡ Kingdom Commander Alert — {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC"
+    msg["From"] = config["from_email"]
+    msg["To"] = config["to_email"]
+    msg.attach(MIMEText(text, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    try:
+        with smtplib.SMTP(config["smtp_host"], config["smtp_port"]) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(config["smtp_user"], config["smtp_password"])
+            server.sendmail(config["from_email"], config["to_email"], msg.as_string())
+        return {"sent": True, "to": config["to_email"], "subject": msg["Subject"]}
+    except Exception as e:
+        return {"sent": False, "reason": str(e)}
+
+
 def _build_digest_html(digest: dict) -> str:
     actions = digest.get("top_actions", [])
     actions_html = ""
