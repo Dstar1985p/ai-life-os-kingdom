@@ -51,6 +51,8 @@ from backend.api.routes_competitor import router as competitor_router
 from backend.api.routes_export import router as export_router
 from backend.api.routes_engineer import router as engineer_router
 from backend.api.routes_new_agents import router as new_agents_router
+from backend.api.routes_etsy_webhook import router as etsy_webhook_router
+from backend.api.routes_goals import router as goals_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -140,6 +142,8 @@ app.include_router(competitor_router)
 app.include_router(export_router)
 app.include_router(engineer_router)
 app.include_router(new_agents_router)
+app.include_router(etsy_webhook_router)
+app.include_router(goals_router)
 
 
 @app.get("/", include_in_schema=False)

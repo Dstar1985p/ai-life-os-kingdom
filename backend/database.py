@@ -26,6 +26,20 @@ def _apply_migrations(eng) -> None:
                 conn.execute(text("ALTER TABLE lessons ADD COLUMN evidence TEXT DEFAULT ''"))
                 conn.commit()
                 logger.info("Migration applied: lessons.evidence column added")
+            # Ensure kingdom_goals table exists (created by SQLAlchemy metadata, but belt-and-suspenders)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS kingdom_goals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    venture VARCHAR(120) NOT NULL,
+                    goal_type VARCHAR(50) NOT NULL,
+                    target_value FLOAT NOT NULL,
+                    period VARCHAR(50) DEFAULT 'monthly',
+                    label VARCHAR(255) DEFAULT '',
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+            """))
+            conn.commit()
     except Exception:
         logger.exception("Migration step failed (non-fatal)")
 

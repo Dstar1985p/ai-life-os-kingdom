@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#070a10">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Kingdom — AI Life OS Command Centre</title>
 <style>
 :root {
@@ -41,7 +43,7 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 #kingdom-map-canvas {
   width: 100%; height: 100%; display: block; cursor: pointer;
 }
-@media (max-width: 600px) { #kingdom-world { height: 400px; } }
+@media (max-width: 600px) { #kingdom-world { height: 300px; } }
 
 /* ===== MODAL ===== */
 #char-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
@@ -239,6 +241,194 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 #chat-input:focus { outline: none; border-color: var(--cyan); }
 #chat-send { background: var(--cyan); color: #000; border: none; padding: 8px 12px; font-family: 'Courier New', monospace; font-size: 0.72rem; font-weight: bold; cursor: pointer; border-radius: 4px; }
 #chat-send:hover { opacity: 0.85; }
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .main-layout { grid-template-columns: 1fr; }
+  .side-panel { border-left: none; border-top: none; display: block; }
+  .side-panel .side-section { display: none; }
+  #mobile-side-tabs { display: flex !important; }
+  #mobile-tab-content { display: block !important; }
+  #kingdom-world { height: 300px; }
+  #chat-bubble { bottom: 72px; right: 16px; width: 44px; height: 44px; font-size: 1.1rem; }
+  #chat-drawer { right: 8px; left: 8px; width: auto; bottom: 124px; }
+}
+@media (max-width: 600px) {
+  .grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .resources-bar { display: grid; grid-template-columns: 1fr 1fr; }
+  .resource-item { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 1.4rem; letter-spacing: 4px; }
+  header { padding: 10px 12px 8px; }
+  header p { font-size: 0.62rem; letter-spacing: 1px; }
+  .panels-section { padding: 10px; }
+  .kingdom-map-section { padding: 10px; }
+}
+
+/* ===== MOBILE SIDE TABS ===== */
+#mobile-side-tabs { display: none; border-bottom: 1px solid var(--border); background: var(--surface); overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+#mobile-side-tabs button { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-family: 'Courier New', monospace; font-size: 0.72rem; padding: 10px 16px; cursor: pointer; letter-spacing: 1px; white-space: nowrap; }
+#mobile-side-tabs button.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+#mobile-tab-content { display: none; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); max-height: 300px; overflow-y: auto; }
+
+/* ===== BOTTOM NAV ===== */
+#bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 800; background: var(--surface); border-top: 1px solid var(--border); height: 56px; }
+#bottom-nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; color: var(--muted); font-size: 0.55rem; letter-spacing: 1px; text-decoration: none; padding: 4px 0; gap: 2px; cursor: pointer; }
+#bottom-nav a .bnav-icon { font-size: 1.2rem; }
+#bottom-nav a:hover, #bottom-nav a.active { color: var(--cyan); }
+@media (max-width: 768px) { #bottom-nav { display: flex; } body { padding-bottom: 56px; } }
+
+/* ===== SETTINGS PANEL ===== */
+#settings-panel { position: fixed; top: 0; right: 0; width: 360px; height: 100vh; background: var(--surface); border-left: 1px solid var(--border); z-index: 950; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); overflow-y: auto; box-shadow: -8px 0 40px rgba(0,0,0,0.6); }
+#settings-panel.open { transform: translateX(0); }
+#settings-overlay { display: none; position: fixed; inset: 0; z-index: 940; background: rgba(0,0,0,0.5); }
+#settings-overlay.open { display: block; }
+.settings-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.settings-header h2 { font-size: 0.85rem; letter-spacing: 3px; color: var(--cyan); text-transform: uppercase; flex: 1; }
+.settings-close { background: none; border: 1px solid var(--border); color: var(--muted); width: 28px; height: 28px; cursor: pointer; font-size: 1rem; border-radius: 3px; font-family: monospace; }
+.settings-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.settings-section-title { font-size: 0.6rem; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 0.8rem; }
+.settings-label { color: var(--text); }
+.toggle-switch { position: relative; width: 36px; height: 20px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 10px; cursor: pointer; transition: 0.3s; }
+.toggle-slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: 0.3s; }
+.toggle-switch input:checked + .toggle-slider { background: rgba(0,212,255,0.3); border: 1px solid var(--cyan); }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(16px); background: var(--cyan); }
+.settings-input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'Courier New', monospace; font-size: 0.78rem; padding: 6px 10px; border-radius: 4px; width: 100%; margin-top: 4px; }
+.settings-input:focus { outline: none; border-color: var(--cyan); }
+.settings-btn { background: var(--surface2); border: 1px solid var(--cyan); color: var(--cyan); padding: 7px 16px; font-family: 'Courier New', monospace; font-size: 0.72rem; letter-spacing: 1px; cursor: pointer; border-radius: 4px; margin-top: 8px; }
+.settings-btn:hover { background: rgba(0,212,255,0.08); }
+.settings-btn.danger { border-color: var(--red); color: var(--red); }
+.settings-btn.danger:hover { background: rgba(255,51,85,0.08); }
+.settings-link { color: var(--cyan); font-size: 0.78rem; text-decoration: none; display: block; padding: 4px 0; }
+.settings-link:hover { text-decoration: underline; }
+
+/* ===== ONBOARDING WIZARD ===== */
+#onboarding-overlay { display: none; position: fixed; inset: 0; z-index: 1100; background: rgba(7,10,16,0.97); align-items: center; justify-content: center; }
+#onboarding-overlay.open { display: flex; }
+#onboarding-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 520px; margin: 20px; box-shadow: 0 0 60px rgba(0,212,255,0.15); overflow: hidden; }
+.ob-header { background: linear-gradient(135deg, #0d1117, #111827); padding: 24px 28px 16px; border-bottom: 1px solid var(--border); }
+.ob-header h2 { color: var(--cyan); font-size: 1.2rem; letter-spacing: 4px; text-shadow: 0 0 20px rgba(0,212,255,0.5); }
+.ob-header p { color: var(--muted); font-size: 0.72rem; margin-top: 4px; letter-spacing: 1px; }
+.ob-steps { display: flex; gap: 0; padding: 0 28px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+.ob-step-dot { flex: 1; padding: 10px 0; text-align: center; font-size: 0.6rem; letter-spacing: 2px; color: var(--muted); border-bottom: 2px solid transparent; }
+.ob-step-dot.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+.ob-step-dot.done { color: var(--green); border-bottom-color: var(--green); }
+.ob-body { padding: 24px 28px; min-height: 220px; }
+.ob-body h3 { color: var(--text); font-size: 0.95rem; margin-bottom: 8px; }
+.ob-body p { color: var(--muted); font-size: 0.78rem; line-height: 1.6; margin-bottom: 14px; }
+.ob-label { font-size: 0.65rem; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 4px; margin-top: 10px; }
+.ob-input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'Courier New', monospace; font-size: 0.82rem; padding: 8px 12px; border-radius: 4px; width: 100%; }
+.ob-input:focus { outline: none; border-color: var(--cyan); }
+.ob-select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'Courier New', monospace; font-size: 0.82rem; padding: 8px 12px; border-radius: 4px; width: 100%; }
+.ob-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.ob-toggle-label { font-size: 0.82rem; color: var(--text); }
+.ob-toggle-sub { font-size: 0.65rem; color: var(--muted); }
+.ob-footer { padding: 16px 28px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+.ob-btn-primary { background: var(--cyan); color: #000; border: none; padding: 10px 24px; font-family: 'Courier New', monospace; font-size: 0.82rem; font-weight: bold; letter-spacing: 1px; cursor: pointer; border-radius: 4px; }
+.ob-btn-primary:hover { opacity: 0.85; }
+.ob-btn-skip { background: none; border: 1px solid var(--border); color: var(--muted); padding: 10px 16px; font-family: 'Courier New', monospace; font-size: 0.78rem; cursor: pointer; border-radius: 4px; }
+.ob-btn-skip:hover { border-color: var(--muted); }
+.ob-checkmark { text-align: center; padding: 20px 0; }
+.ob-checkmark .check-icon { font-size: 4rem; display: block; animation: checkPop 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+@keyframes checkPop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.ob-checkmark p { color: var(--green); font-size: 0.85rem; margin-top: 10px; }
+.ob-key-field { position: relative; margin-top: 8px; }
+.ob-key-field .ob-input { padding-right: 60px; }
+.ob-key-show { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.7rem; font-family: monospace; }
+.ob-note { background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.15); border-radius: 6px; padding: 10px 12px; font-size: 0.72rem; color: var(--muted); margin-top: 12px; line-height: 1.5; }
+
+/* ===== HELP OVERLAY ===== */
+#help-overlay { display: none; position: fixed; inset: 0; z-index: 1050; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; }
+#help-overlay.open { display: flex; }
+#help-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 480px; margin: 20px; box-shadow: 0 0 40px rgba(0,212,255,0.1); overflow: hidden; }
+.help-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; }
+.help-header h2 { color: var(--cyan); font-size: 0.85rem; letter-spacing: 3px; text-transform: uppercase; flex: 1; }
+.help-close { background: none; border: 1px solid var(--border); color: var(--muted); width: 28px; height: 28px; cursor: pointer; font-size: 1rem; border-radius: 3px; font-family: monospace; }
+.help-body { padding: 20px; }
+.help-section-title { font-size: 0.58rem; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; margin-top: 16px; }
+.help-section-title:first-child { margin-top: 0; }
+.help-shortcut { display: flex; align-items: center; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+.help-shortcut:last-child { border-bottom: none; }
+.help-key { background: var(--surface2); border: 1px solid var(--border); color: var(--cyan); padding: 2px 8px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 0.75rem; min-width: 32px; text-align: center; }
+.help-desc { color: var(--text); flex: 1; }
+.help-link { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+.help-link:last-child { border-bottom: none; }
+.help-link a { color: var(--cyan); text-decoration: none; }
+.help-link a:hover { text-decoration: underline; }
+.help-link span { color: var(--muted); font-size: 0.72rem; }
+.help-about { margin-top: 16px; padding: 12px; background: var(--surface2); border-radius: 6px; font-size: 0.72rem; color: var(--muted); line-height: 1.6; }
+
+/* ===== HEADER ICONS ===== */
+.header-icons { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); display: flex; gap: 8px; }
+.hdr-icon-btn { background: none; border: 1px solid var(--border); color: var(--muted); width: 34px; height: 34px; cursor: pointer; font-size: 1rem; border-radius: 6px; font-family: monospace; display: flex; align-items: center; justify-content: center; transition: border-color 0.2s, color 0.2s; }
+.hdr-icon-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+@media (max-width: 600px) { .header-icons { right: 8px; } .hdr-icon-btn { width: 28px; height: 28px; font-size: 0.85rem; } }
+
+/* ===== CELEBRATION OVERLAY ===== */
+#celebration-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,0.82); align-items: center; justify-content: center;
+  flex-direction: column; text-align: center; pointer-events: none;
+}
+#celebration-overlay.active { display: flex; }
+#celebration-title { font-size: 2rem; color: var(--amber); text-shadow: 0 0 30px var(--amber); letter-spacing: 4px; margin-bottom: 8px; animation: celebPulse 0.6s ease infinite alternate; }
+#celebration-subtitle { font-size: 1rem; color: var(--text); letter-spacing: 2px; }
+#celebration-emoji-main { font-size: 3.5rem; margin-bottom: 16px; animation: celebBounce 0.5s ease infinite alternate; }
+.celeb-rain { position: absolute; top: 0; left: 0; right: 0; pointer-events: none; overflow: hidden; height: 100%; }
+.celeb-rain span {
+  position: absolute; top: -60px; font-size: 1.6rem;
+  animation: celebFall linear forwards;
+}
+@keyframes celebFall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(360deg); opacity: 0.3; }
+}
+@keyframes celebPulse {
+  from { opacity: 0.85; text-shadow: 0 0 20px var(--amber); }
+  to   { opacity: 1;    text-shadow: 0 0 60px var(--amber), 0 0 100px rgba(255,170,0,0.5); }
+}
+@keyframes celebBounce {
+  from { transform: scale(0.9) translateY(0); }
+  to   { transform: scale(1.1) translateY(-12px); }
+}
+
+/* ===== TOAST NOTIFICATIONS ===== */
+#toast-container {
+  position: fixed; bottom: 20px; left: 20px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border-left: 4px solid var(--cyan);
+  color: var(--text); font-family: 'Courier New', monospace; font-size: 0.78rem;
+  padding: 10px 16px; border-radius: 4px; min-width: 220px; max-width: 360px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  animation: toastSlideIn 0.25s ease forwards;
+  pointer-events: auto; cursor: pointer; letter-spacing: 0.5px;
+  border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.toast.removing { animation: toastSlideOut 0.25s ease forwards; }
+.toast.info  { border-left-color: var(--cyan); }
+.toast.success { border-left-color: var(--green); }
+.toast.warning { border-left-color: var(--amber); }
+.toast.error   { border-left-color: var(--red); }
+@keyframes toastSlideIn {
+  from { transform: translateX(-110%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes toastSlideOut {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(-110%); opacity: 0; }
+}
+
+/* ===== OUTCOME BUTTONS ===== */
+.outcome-btns { display: flex; gap: 5px; margin-top: 5px; }
+.outcome-btn { background: none; border: 1px solid var(--border); color: var(--muted); font-size: 0.65rem; padding: 2px 7px; cursor: pointer; border-radius: 3px; font-family: monospace; letter-spacing: 0.5px; transition: border-color 0.2s, color 0.2s; }
+.outcome-btn.pos:hover { border-color: var(--green); color: var(--green); }
+.outcome-btn.neg:hover { border-color: var(--red); color: var(--red); }
+.outcome-btn.recorded { opacity: 0.5; cursor: default; }
 </style>
 </head>
 <body>
@@ -254,6 +444,10 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 <header>
   <h1>&#x2694; KINGDOM <span id="reminders-badge" onclick="toggleRemindersPanel()" title="Active reminders">0</span></h1>
   <p>AI LIFE OS &#x2014; COMMAND CENTRE v2.0 &#x2014; PIXEL KINGDOM WORLD</p>
+  <div class="header-icons">
+    <button class="hdr-icon-btn" onclick="openHelp()" title="Help &amp; Shortcuts">&#x2753;</button>
+    <button class="hdr-icon-btn" onclick="openSettings()" title="Settings">&#x2699;&#xFE0F;</button>
+  </div>
 </header>
 
 <div class="resources-bar">
@@ -309,6 +503,16 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
     </div>
   </div>
   <div class="side-panel">
+    <!-- Mobile tabs (shown only at ≤768px) -->
+    <div id="mobile-side-tabs">
+      <button onclick="showMobileTab('activity')" class="active" id="tab-activity">&#x26A1; Activity</button>
+      <button onclick="showMobileTab('agents')" id="tab-agents">&#x1F916; Agents</button>
+      <button onclick="showMobileTab('actions')" id="tab-actions">&#x1F4E1; Actions</button>
+    </div>
+    <div id="mobile-tab-content">
+      <!-- Filled dynamically by showMobileTab() -->
+    </div>
+    <!-- Desktop side sections (hidden on mobile) -->
     <div class="side-section">
       <h3>&#x26A1; Agent Activity Feed</h3>
       <div class="activity-feed" id="activity-feed">
@@ -361,7 +565,21 @@ function openModal(key) {
 }
 function closeModal() { document.getElementById('char-modal-bg').classList.remove('open'); }
 function closeModalBg(e) { if (e.target === document.getElementById('char-modal-bg')) closeModal(); }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement ? document.activeElement.tagName : '';
+  const isInput = ['INPUT','TEXTAREA','SELECT'].includes(tag);
+  if (e.key === 'Escape') {
+    closeModal();
+    closeHelp();
+    closeSettings();
+  }
+  if (!isInput) {
+    if (e.key === '?') { e.preventDefault(); openHelp(); }
+    if (e.key === 'r' || e.key === 'R') { e.preventDefault(); loadDashboard(); }
+    if (e.key === 'c' || e.key === 'C') { e.preventDefault(); if (!chatOpen) toggleChat(); }
+    if (e.key === 'm' || e.key === 'M') { e.preventDefault(); scrollToPanel('DAILY MISSION'); }
+  }
+});
 
 async function loadModalContent(key, c) {
   const body = document.getElementById('modal-body');
@@ -407,7 +625,7 @@ async function renderVibesModal(body, c) {
     }
   }
   h += `<div class="modal-section"><button class="modal-action-btn" style="border-color:${c};color:${c}"
-    onclick="fetch('/vibes/process-tracks',{method:'POST'}).then(r=>r.json()).then(d=>alert('Processed: '+d.processed+' track(s)'))">
+    onclick="fetch('/vibes/process-tracks',{method:'POST'}).then(r=>r.json()).then(d=>showToast('Processed: '+d.processed+' track(s)','success'))">
     &#x25B6; Process Tracks Now</button></div>`;
   body.innerHTML = h;
 }
@@ -992,18 +1210,56 @@ function buildDistrict(d) {
     <div class="district-name">${d.name}</div><div class="district-desc">${d.description}</div>
     ${workers}<div class="district-action">${d.top_action}</div></div>`;
 }
+const DISTRICT_ACTIONS = {
+  pitwall_classics:[
+    {label:'▶ Print Forge AI',fn:"triggerAgent('Print Forge AI')"},
+    {label:'▶ Printify Studio',fn:"triggerAgent('Printify Studio')"},
+    {label:'🔍 SEO Agent',fn:"triggerAgent('SEO Agent')"},
+    {label:'💰 Price Optimizer',fn:"triggerAgent('Price Optimizer')"},
+  ],
+  pulsebreak:[
+    {label:'▶ Vibes AI',fn:"triggerAgent('Vibes AI')"},
+    {label:'▶ Music Licensing',fn:"triggerAgent('Music Licensing')"},
+    {label:'📱 Content Agent',fn:"triggerAgent('Content Agent')"},
+  ],
+  command_centre:[
+    {label:'🔧 AI Engineer',fn:"triggerAgent('AI Engineer')"},
+    {label:'▶ Opportunity Scout',fn:"triggerAgent('Opportunity Scout')"},
+    {label:'📈 Revenue Forecaster',fn:"triggerAgent('Revenue Forecaster')"},
+  ],
+  printify_studio:[
+    {label:'▶ Printify Studio',fn:"triggerAgent('Printify Studio')"},
+    {label:'💰 Price Optimizer',fn:"triggerAgent('Price Optimizer')"},
+  ],
+  venture_forge:[
+    {label:'▶ Opportunity Scout',fn:"triggerAgent('Opportunity Scout')"},
+    {label:'▶ ROI Reaper',fn:"triggerAgent('ROI Reaper')"},
+    {label:'▶ Trend Watcher',fn:"triggerAgent('Trend Watcher')"},
+  ],
+  knowledge_vault:[
+    {label:'🔧 AI Engineer',fn:"triggerAgent('AI Engineer')"},
+    {label:'📥 Export Report',fn:"window.open('/export/weekly-report.txt','_blank')"},
+  ],
+};
+
 function toggleDistrict(id) {
   const el = document.getElementById('district-detail');
   if (activeDistrict===id) { el.classList.remove('active'); activeDistrict=null; return; }
   activeDistrict=id; el.classList.add('active');
   const d = window._kingdomDistricts?.find(x=>x.id===id);
   if (!d) return;
-  document.getElementById('detail-title').textContent = `${d.emoji} ${d.name} — ${d.description}`;
+  document.getElementById('detail-title').textContent = `${d.emoji} ${d.name}`;
   const rows = Object.entries(d.stats||{}).map(([k,v]) => {
     const val = typeof v==='number'?(Number.isInteger(v)?v:v.toFixed(2)):v;
-    return `<div class="detail-metric"><span style="color:var(--muted)">${k.replace(/_/g,' ')}</span><span style="color:var(--text)">${val}</span></div>`;
+    return `<div class="detail-metric"><span style="color:var(--muted)">${k.replace(/_/g,' ')}</span><span style="color:var(--text);font-weight:bold">${val}</span></div>`;
   }).join('');
-  document.getElementById('detail-content').innerHTML = rows||'<div style="color:var(--muted);font-size:0.8rem">No stats available</div>';
+  const acts = DISTRICT_ACTIONS[id]||[];
+  const btns = acts.map(a=>`<button onclick="${a.fn}" class="quick-btn" style="font-size:0.7rem">${a.label}</button>`).join('');
+  document.getElementById('detail-content').innerHTML =
+    (rows?`<div style="margin-bottom:10px">${rows}</div>`:'')+
+    '<div style="font-size:0.6rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Actions</div>'+
+    `<div style="display:flex;flex-direction:column;gap:5px">${btns||'<div style="color:var(--muted)">No actions</div>'}</div>`+
+    '<div id="district-action-result" style="font-size:0.7rem;color:var(--green);margin-top:6px;min-height:16px"></div>';
 }
 
 /* ── ACTIVITY FEED ── */
@@ -1051,7 +1307,7 @@ async function triggerAgent(name) {
   try {
     const r = await fetch(`/scheduler/run/${encodeURIComponent(name)}`,{method:'POST'});
     const d = await r.json();
-    if (d.status==='ok') { el.style.color='var(--green)'; el.textContent=`&#x2713; ${name}: ${d.opportunities_created||0} opps created`; setTimeout(loadKingdomMap,500); }
+    if (d.status==='ok') { el.style.color='var(--green)'; el.textContent=`&#x2713; ${name}: ${d.opportunities_created||0} opps created`; if((d.opportunities_created||0)>0) triggerCelebration('AGENT SUCCESS!',name+': '+(d.opportunities_created||0)+' new opportunities','🔥'); setTimeout(loadKingdomMap,500); }
     else { el.style.color='var(--red)'; el.textContent=`&#x2717; ${d.error||'Error'}`; }
   } catch(e) { el.style.color='var(--red)'; el.textContent='&#x2717; Request failed'; }
 }
@@ -1120,8 +1376,37 @@ async function loadDashboard() {
 
   if (leaderboard && leaderboard.length>0) {
     panels.push(panel('OPPORTUNITY LEADERBOARD','green',`<h2>Top Opportunities</h2>${leaderboard.slice(0,5).map((o,i)=>`
-      <div class="metric"><span class="metric-label">${i+1}. ${o.title.slice(0,25)}</span><span>${scoreBar(o.kingdom_score)} ${o.kingdom_score}</span></div>`).join('')}`));
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:7px 10px;margin-bottom:5px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="metric-label" style="flex:1">${i+1}. ${o.title.slice(0,28)}</span>
+          <span style="font-size:0.72rem;color:var(--amber)">${o.kingdom_score}</span>
+        </div>
+        <div class="outcome-btns">
+          <button class="outcome-btn pos" onclick="recordOutcome('opportunity',${o.id},'positive',this)">✓ Worked</button>
+          <button class="outcome-btn neg" onclick="recordOutcome('opportunity',${o.id},'negative',this)">✗ Didn't work</button>
+        </div>
+      </div>`).join('')}`));
   }
+
+  // Goals panel
+  try {
+    const goalsSummary = await fetchJSON('/goals/summary');
+    const gc = goalsSummary ? `<div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px">${goalsSummary.on_track||0}/${goalsSummary.total_goals||0} goals on track &bull; Avg ${goalsSummary.overall_pct||0}%</div>` : '';
+    panels.push(panel('KINGDOM GOALS','green',`<h2>&#x1F3AF; Goals &amp; Targets</h2>${gc}
+      <div id="goals-panel-content"><div style="color:var(--muted);font-size:0.78rem">Loading goals...</div></div>
+      <div style="margin-top:10px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px">
+        <div style="font-size:0.65rem;letter-spacing:2px;color:var(--muted);margin-bottom:6px">ADD GOAL</div>
+        <input id="goal-venture" type="text" placeholder="Venture (e.g. Pitwall Classics)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.75rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px">
+          <select id="goal-type" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;font-family:monospace;font-size:0.75rem"><option value="revenue">Revenue</option><option value="opportunities">Opportunities</option></select>
+          <select id="goal-period" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;font-family:monospace;font-size:0.75rem"><option value="monthly">Monthly</option><option value="weekly">Weekly</option><option value="quarterly">Quarterly</option></select>
+        </div>
+        <input id="goal-target" type="number" step="0.01" placeholder="Target value" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.75rem">
+        <input id="goal-label" type="text" placeholder="Label (optional)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:6px;font-family:monospace;font-size:0.75rem">
+        <button onclick="addGoal()" class="quick-btn" style="width:100%">+ Set Goal</button>
+      </div>`));
+    setTimeout(loadGoalsPanel, 0);
+  } catch(e) {}
 
   if (lessons && lessons.length>0) {
     panels.push(panel('BUSINESS MEMORY','',`<h2>Lessons Learned</h2>${lessons.slice(0,4).map(l=>`<div class="list-item">${l.lesson.slice(0,80)}${l.lesson.length>80?'...':''}</div>`).join('')}`));
@@ -1163,7 +1448,7 @@ async function loadDashboard() {
     <div class="metric"><span class="metric-label">Upload Queue</span><span class="metric-value">${uploadQueue?uploadQueue.count:0} file(s) waiting</span></div>
     <div style="margin-top:8px;font-size:0.72rem;color:var(--muted)">&#x1F4C1; Drop MP3 into pulsebreak_tracks/ folder</div>
     <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="fetch('/vibes/process-tracks',{method:'POST'}).then(r=>r.json()).then(d=>alert('Processed: '+d.processed+' track(s)'))" class="quick-btn">&#x25B6; Process Tracks Now</button>
+      <button onclick="fetch('/vibes/process-tracks',{method:'POST'}).then(r=>r.json()).then(d=>showToast('Processed: '+d.processed+' track(s)','success'))" class="quick-btn">&#x25B6; Process Tracks Now</button>
       ${!ytOk?'<a href="/docs#/Vibes%20AI/youtube_status_vibes_youtube_status_get" style="color:var(--cyan);font-size:0.78rem;text-decoration:none">&#x2699;&#xFE0F; Setup YouTube</a>':''}
     </div>`));
 
@@ -1210,7 +1495,7 @@ async function loadDashboard() {
         <input id="t-amount" type="number" step="0.01" placeholder="Amount (&#xa3;)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
         <input id="t-desc" type="text" placeholder="Description" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:4px;font-family:monospace;font-size:0.78rem">
         <input id="t-cat" type="text" placeholder="Category (e.g. Sale)" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px;margin-bottom:6px;font-family:monospace;font-size:0.78rem">
-        <button onclick="(async()=>{const b={venture:document.getElementById('t-venture').value,entry_type:document.getElementById('t-type').value,amount:parseFloat(document.getElementById('t-amount').value)||0,description:document.getElementById('t-desc').value,category:document.getElementById('t-cat').value||'General'};const r=await fetch('/treasury/entry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();alert('Entry added: &#xa3;'+d.amount+' ('+d.entry_type+')');loadDashboard();})()" class="quick-btn" style="width:100%">+ Add Entry</button>
+        <button onclick="(async()=>{const b={venture:document.getElementById('t-venture').value,entry_type:document.getElementById('t-type').value,amount:parseFloat(document.getElementById('t-amount').value)||0,description:document.getElementById('t-desc').value,category:document.getElementById('t-cat').value||'General'};try{const r=await fetch('/treasury/entry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const d=await r.json();showToast('Entry added: \xa3'+d.amount+' ('+d.entry_type+')','success');if(d.entry_type==='income')triggerCelebration('REVENUE RECORDED!','\xa3'+d.amount+' added to '+b.venture,'💰');loadDashboard();}catch(e){showToast('Failed to add entry','error');}})()" class="quick-btn" style="width:100%">+ Add Entry</button>
       </div>`));
   }
 
@@ -1300,7 +1585,7 @@ async function loadDashboard() {
     panels.push(panel('ACHIEVEMENTS','amber',`<h2>&#x1F3C6; Trophy Hall</h2>
       <div style="margin-bottom:8px;font-size:0.78rem;color:var(--amber)">${uc} / ${achievements?achievements.length:0} unlocked</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">${aCards}</div>
-      <div style="margin-top:10px"><button onclick="fetch('/achievements/check',{method:'POST'}).then(r=>r.json()).then(d=>{if(d.count>0){alert('Unlocked: '+d.newly_unlocked.map(a=>a.title).join(', '));}else{alert('No new achievements this time.');}loadDashboard();}).catch(e=>alert('Error: '+e))" class="quick-btn">&#x1F50D; Check Achievements</button></div>`));
+      <div style="margin-top:10px"><button onclick="fetch('/achievements/check',{method:'POST'}).then(r=>r.json()).then(d=>{if(d.count>0){triggerCelebration('ACHIEVEMENT UNLOCKED!',d.newly_unlocked.map(a=>a.title).join(' + '),'🏆');showToast('Unlocked: '+d.newly_unlocked.map(a=>a.title).join(', '),'success',5000);}else{showToast('No new achievements this time.','info');}loadDashboard();}).catch(e=>showToast('Error checking achievements','error'))" class="quick-btn">&#x1F50D; Check Achievements</button></div>`));
   } catch(e) { panels.push(panel('ACHIEVEMENTS','amber','<h2>&#x1F3C6; Trophy Hall</h2><div style="color:var(--muted)">Could not load achievements.</div>')); }
 
   /* ── AI ENGINEER ── */
@@ -1324,7 +1609,7 @@ async function loadDashboard() {
       ${patchHTML}
       ${insightHTML}
       <div style="margin-top:10px;display:flex;gap:8px">
-        <button onclick="(async()=>{const b=document.querySelector('#ai-eng-btn');b.disabled=true;b.textContent='SCANNING...';try{const d=await (await fetch('/engineer/run',{method:'POST'})).json();alert('AI Engineer: '+d.actions_taken.join('. '));}catch(e){alert('Error');}finally{b.disabled=false;b.textContent='RUN SCAN';loadDashboard();}})();" class="quick-btn" id="ai-eng-btn">&#x1F527; Run Scan Now</button>
+        <button onclick="(async()=>{const b=document.querySelector('#ai-eng-btn');b.disabled=true;b.textContent='SCANNING...';try{const d=await (await fetch('/engineer/run',{method:'POST'})).json();showToast('AI Engineer: '+d.actions_taken.join('. '),'success',5000);}catch(e){showToast('Error running AI Engineer','error');}finally{b.disabled=false;b.textContent='RUN SCAN';loadDashboard();}})();" class="quick-btn" id="ai-eng-btn">&#x1F527; Run Scan Now</button>
       </div>`));
   } catch(e) {}
 
@@ -1442,7 +1727,7 @@ async function loadDashboard() {
       panels.push(panel('WEEKLY RETRO','green',`<h2>&#x1F4CB; Weekly Retrospective</h2>
         <div style="font-size:0.65rem;color:var(--muted);margin-bottom:8px">Week of ${retro.week_start} &bull; Score: <span style="color:var(--amber);font-weight:700">${retro.performance_score||'?'}/100</span></div>
         ${wins}${missed}${insights}
-        <div style="margin-top:10px"><button onclick="(async()=>{const b=this;b.disabled=true;b.textContent='GENERATING...';try{const d=await (await fetch('/retro/generate',{method:'POST'})).json();alert(d.message||'Retro generated');loadDashboard();}catch(e){alert('Error generating retro');}finally{b.disabled=false;b.textContent='Regenerate';}})()" class="quick-btn">&#x21BA; Regenerate</button></div>`));
+        <div style="margin-top:10px"><button onclick="(async()=>{const b=this;b.disabled=true;b.textContent='GENERATING...';try{const d=await (await fetch('/retro/generate',{method:'POST'})).json();showToast(d.message||'Retro generated','success');loadDashboard();}catch(e){showToast('Error generating retro','error');}finally{b.disabled=false;b.textContent='Regenerate';}})()" class="quick-btn">&#x21BA; Regenerate</button></div>`));
     }
   } catch(e) {}
 
@@ -1485,7 +1770,7 @@ function runScenario() {
 function conveneCouncil() {
   const proposal=document.getElementById('council-proposal').value.trim();
   const context=document.getElementById('council-context').value.trim();
-  if (!proposal){alert('Please enter a proposal.');return;}
+  if (!proposal){showToast('Please enter a proposal.','warning');return;}
   const resultEl=document.getElementById('council-result');
   resultEl.innerHTML='<span style="color:var(--muted)">&#x23F3; Convening council...</span>';
   fetch('/council/convene',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({proposal,context})})
@@ -1532,9 +1817,9 @@ async function generateLicensingConcepts() {
   try {
     const res=await fetch('/music-licensing/generate',{method:'POST'});
     const data=await res.json();
-    alert('Generated: '+(data.opportunities_created||0)+' new concept(s), updated: '+(data.opportunities_updated||0));
+    showToast('Generated: '+(data.opportunities_created||0)+' new concept(s), updated: '+(data.opportunities_updated||0),'success');
     loadLicensingConcepts();loadLicensingRevenue();
-  }catch(e){alert('Failed to generate concepts');}
+  }catch(e){showToast('Failed to generate concepts','error');}
 }
 
 /* ── AUTO-UPDATE ── */
@@ -1591,6 +1876,10 @@ function renderMissionPanel(m) {
         <div class="mission-title">${a.title||''}</div>
         <div class="mission-why">${a.why||''}</div>
         <div class="mission-meta">~${a.estimated_minutes||'?'} min &bull; ${a.venture||''} &bull; ${a.agent||''}</div>
+        <div class="outcome-btns">
+          <button class="outcome-btn pos" onclick="recordOutcome('quest',${a.quest_id||0},'positive',this)">✓ Done &amp; worked</button>
+          <button class="outcome-btn neg" onclick="recordOutcome('quest',${a.quest_id||0},'negative',this)">✗ Skipped</button>
+        </div>
       </div>
     </div>`).join('');
   el.innerHTML = `
@@ -1689,6 +1978,335 @@ document.addEventListener('DOMContentLoaded', () => {
   if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
 });
 
+/* ── TOAST SYSTEM ── */
+function showToast(message, type='info', duration=3500) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const existing = container.querySelectorAll('.toast:not(.removing)');
+  if (existing.length >= 4) _removeToast(existing[0]);
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icon = type === 'success' ? '✓' : type === 'warning' ? '⚠' : type === 'error' ? '✗' : 'ℹ';
+  t.innerHTML = `<span style="font-size:1rem">${icon}</span><span style="flex:1">${message}</span>`;
+  t.onclick = () => _removeToast(t);
+  container.appendChild(t);
+  setTimeout(() => _removeToast(t), duration);
+}
+function _removeToast(el) {
+  if (!el || el.classList.contains('removing')) return;
+  el.classList.add('removing');
+  setTimeout(() => { try { el.remove(); } catch(e){} }, 260);
+}
+
+/* ── CELEBRATION OVERLAY ── */
+function triggerCelebration(title, subtitle, emoji) {
+  const overlay = document.getElementById('celebration-overlay');
+  if (!overlay) return;
+  document.getElementById('celebration-title').textContent = title || 'ACHIEVEMENT UNLOCKED';
+  document.getElementById('celebration-subtitle').textContent = subtitle || '';
+  document.getElementById('celebration-emoji-main').textContent = emoji || '🏆';
+  const rain = document.getElementById('celeb-rain');
+  const emojis = ['💰','🏆','🔥','⭐','✨','💎','🎯'];
+  rain.innerHTML = '';
+  for (let i = 0; i < 20; i++) {
+    const s = document.createElement('span');
+    s.textContent = emojis[i % emojis.length];
+    s.style.left = (Math.random() * 100) + '%';
+    s.style.animationDuration = (2 + Math.random() * 2) + 's';
+    s.style.animationDelay = (Math.random() * 1.5) + 's';
+    rain.appendChild(s);
+  }
+  overlay.classList.add('active');
+  setTimeout(() => overlay.classList.remove('active'), 4000);
+}
+
+/* ── OUTCOME RECORDING ── */
+async function recordOutcome(entityType, entityId, outcome, btnEl) {
+  try {
+    await fetch('/outcomes/record', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({entity_type: entityType, entity_id: entityId, outcome, notes: ''})
+    });
+    if (btnEl) btnEl.closest('.outcome-btns').querySelectorAll('.outcome-btn').forEach(b => b.classList.add('recorded'));
+    showToast('Outcome recorded: ' + outcome, 'success');
+  } catch(e) { showToast('Failed to record outcome', 'error'); }
+}
+
+/* ── GOALS PANEL ── */
+async function loadGoalsPanel() {
+  try {
+    const data = await fetchJSON('/goals/summary');
+    const el = document.getElementById('goals-panel-content');
+    if (!el || !data) return;
+    const goals = data.goals || [];
+    if (!goals.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.78rem">No goals set yet. Add one below.</div>'; return; }
+    el.innerHTML = goals.map(g => {
+      const color = g.on_track ? 'var(--green)' : g.pct > 50 ? 'var(--amber)' : 'var(--red)';
+      const sym = g.goal_type === 'revenue' ? '£' : '#';
+      const cur = g.goal_type === 'revenue' ? sym + g.current_value.toFixed(2) : g.current_value;
+      const tgt = g.goal_type === 'revenue' ? sym + g.target_value.toFixed(2) : g.target_value;
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px 10px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:0.78rem;color:var(--cyan)">${g.label||g.venture} — ${g.goal_type.toUpperCase()}</span>
+          <span style="font-size:0.72rem;color:${color}">${g.pct}%</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:4px">
+          <div style="height:100%;width:${Math.min(g.pct,100)}%;background:${color};border-radius:2px"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--muted)">
+          <span>${cur} / ${tgt} &bull; ${g.period}</span>
+          <span>${g.days_left}d left &bull; <a onclick="deleteGoal(${g.id})" style="color:var(--red);cursor:pointer">✕</a></span>
+        </div></div>`;
+    }).join('');
+  } catch(e) {}
+}
+async function addGoal() {
+  const venture = document.getElementById('goal-venture').value;
+  const goal_type = document.getElementById('goal-type').value;
+  const target_value = parseFloat(document.getElementById('goal-target').value);
+  const period = document.getElementById('goal-period').value;
+  const label = document.getElementById('goal-label').value || '';
+  if (!venture || !target_value) { showToast('Fill in venture and target value', 'warning'); return; }
+  try {
+    await fetch('/goals', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({venture, goal_type, target_value, period, label})});
+    showToast('Goal saved!', 'success');
+    loadGoalsPanel();
+  } catch(e) { showToast('Failed to save goal', 'error'); }
+}
+async function deleteGoal(id) {
+  try {
+    await fetch(`/goals/${id}`, {method:'DELETE'});
+    showToast('Goal removed', 'info');
+    loadGoalsPanel();
+  } catch(e) { showToast('Failed to remove goal', 'error'); }
+}
+
+
+/* ── MOBILE TABS ── */
+let mobileTabActive = 'activity';
+function showMobileTab(tab) {
+  mobileTabActive = tab;
+  ['activity','agents','actions'].forEach(t => {
+    const btn = document.getElementById('tab-'+t);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  const tc = document.getElementById('mobile-tab-content');
+  if (!tc) return;
+  if (tab === 'activity') {
+    const feed = document.getElementById('activity-feed');
+    tc.innerHTML = '<h3 style="font-size:0.65rem;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">&#x26A1; Agent Activity Feed</h3>' + (feed ? feed.outerHTML.replace(' id="activity-feed"',' id="activity-feed-mob"') : '');
+  } else if (tab === 'agents') {
+    const sched = document.getElementById('scheduler-status');
+    tc.innerHTML = '<h3 style="font-size:0.65rem;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">&#x1F916; Automation Status</h3>' + (sched ? sched.innerHTML : 'Loading...');
+  } else if (tab === 'actions') {
+    tc.innerHTML = '<h3 style="font-size:0.65rem;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">&#x1F4E1; Quick Actions</h3><div style="display:flex;flex-direction:column;gap:8px"><button onclick="triggerAgent('Print Forge AI')" class="quick-btn">&#x25B6; Run Print Forge</button><button onclick="triggerAgent('Vibes AI')" class="quick-btn">&#x25B6; Run Vibes AI</button><button onclick="triggerAgent('Printify Studio')" class="quick-btn">&#x25B6; Run Printify</button><button onclick="triggerAgent('Opportunity Scout')" class="quick-btn">&#x25B6; Run Scout</button><button onclick="triggerAgent('SEO Agent')" class="quick-btn">&#x1F50D; Run SEO Agent</button><button onclick="triggerAgent('Content Agent')" class="quick-btn">&#x1F4F1; Run Content</button></div><div id="action-result-mob" style="font-size:0.7rem;color:var(--green);margin-top:6px;min-height:18px"></div>';
+  }
+}
+
+/* ── SCROLL TO PANEL ── */
+function scrollToPanel(title) {
+  const panels = document.querySelectorAll('.panel-title');
+  for (const p of panels) {
+    if (p.textContent.trim().toUpperCase().includes(title.toUpperCase())) {
+      p.closest('.panel').scrollIntoView({behavior:'smooth', block:'start'});
+      return;
+    }
+  }
+}
+
+/* ── SETTINGS ── */
+function openSettings() {
+  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('settings-overlay').classList.add('open');
+  loadSettingsScheduler();
+  loadSettingsFromStorage();
+}
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+function loadSettingsFromStorage() {
+  try {
+    const s = JSON.parse(localStorage.getItem('kingdom_settings')||'{}');
+    if (s.pitwall !== undefined) document.getElementById('set-pitwall').checked = s.pitwall;
+    if (s.pulsebreak !== undefined) document.getElementById('set-pulsebreak').checked = s.pulsebreak;
+    if (s.targetPitwall) document.getElementById('set-target-pitwall').value = s.targetPitwall;
+    if (s.targetPulsebreak) document.getElementById('set-target-pulsebreak').value = s.targetPulsebreak;
+    if (s.digest !== undefined) document.getElementById('set-digest').checked = s.digest;
+    if (s.email) document.getElementById('set-email').value = s.email;
+  } catch(e) {}
+}
+function saveVentureSettings() {
+  const s = JSON.parse(localStorage.getItem('kingdom_settings')||'{}');
+  s.pitwall = document.getElementById('set-pitwall').checked;
+  s.pulsebreak = document.getElementById('set-pulsebreak').checked;
+  localStorage.setItem('kingdom_settings', JSON.stringify(s));
+}
+function saveRevenueTargets() {
+  const s = JSON.parse(localStorage.getItem('kingdom_settings')||'{}');
+  s.targetPitwall = document.getElementById('set-target-pitwall').value;
+  s.targetPulsebreak = document.getElementById('set-target-pulsebreak').value;
+  s.email = document.getElementById('set-email').value;
+  s.digest = document.getElementById('set-digest').checked;
+  localStorage.setItem('kingdom_settings', JSON.stringify(s));
+  if (typeof showToast === 'function') showToast('Settings saved', 'success');
+}
+async function loadSettingsScheduler() {
+  const el = document.getElementById('settings-scheduler');
+  if (!el) return;
+  const status = await fetchJSON('/scheduler/status');
+  const agents = status?.agents||[];
+  if (!agents.length) { el.textContent = 'Scheduler not running'; return; }
+  el.innerHTML = agents.slice(0,5).map(a=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:0.72rem"><span style="color:var(--text)">${a.name}</span><span style="color:var(--muted)">${a.interval}</span></div>`).join('');
+}
+async function resetLearningWeights() {
+  const el = document.getElementById('settings-danger-result');
+  el.style.color = 'var(--amber)'; el.textContent = 'Resetting...';
+  try {
+    const r = await fetch('/learning/reset', {method:'POST'});
+    if (r.ok) { el.style.color='var(--green)'; el.textContent='Reset complete.'; }
+    else { el.style.color='var(--muted)'; el.textContent='Contact support to reset learning weights.'; }
+  } catch(e) { el.style.color='var(--muted)'; el.textContent='Contact support to reset learning weights.'; }
+}
+function toggleKeyVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = 'HIDE'; }
+  else { input.type = 'password'; btn.textContent = 'SHOW'; }
+}
+
+/* ── HELP OVERLAY ── */
+function openHelp() {
+  document.getElementById('help-overlay').classList.add('open');
+}
+function closeHelp() {
+  document.getElementById('help-overlay').classList.remove('open');
+}
+function closeHelpBg(e) {
+  if (e.target === document.getElementById('help-overlay')) closeHelp();
+}
+
+/* ── ONBOARDING ── */
+let obStep = 1;
+const OB_STEPS = 4;
+
+function obRender() {
+  const body = document.getElementById('ob-body');
+  const footer = document.getElementById('ob-footer');
+  for (let i=1; i<=OB_STEPS; i++) {
+    const dot = document.getElementById('ob-dot-'+i);
+    if (dot) dot.className = 'ob-step-dot' + (i < obStep ? ' done' : i === obStep ? ' active' : '');
+  }
+  if (obStep === 1) {
+    body.innerHTML = `
+      <h3>Welcome to Kingdom OS</h3>
+      <p>Your autonomous AI founder command centre. Let's configure your kingdom in 60 seconds.</p>
+      <div class="ob-toggle-row">
+        <div><div class="ob-toggle-label">&#x1F3CE; Pitwall Classics</div><div class="ob-toggle-sub">Motorsport art &amp; prints venture</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="ob-pitwall" checked><span class="toggle-slider"></span></label>
+      </div>
+      <div class="ob-toggle-row">
+        <div><div class="ob-toggle-label">&#x1F3B5; PulseBreak</div><div class="ob-toggle-sub">DnB music &amp; licensing venture</div></div>
+        <label class="toggle-switch"><input type="checkbox" id="ob-pulsebreak" checked><span class="toggle-slider"></span></label>
+      </div>`;
+    footer.innerHTML = `<span></span><button class="ob-btn-primary" onclick="obNext()">Next &#x2192;</button>`;
+  } else if (obStep === 2) {
+    const s = JSON.parse(localStorage.getItem('kingdom_settings')||'{}');
+    body.innerHTML = `
+      <h3>Set Your Targets</h3>
+      <p>Define what success looks like for your kingdom.</p>
+      <label class="ob-label">Monthly Revenue Target</label>
+      <input type="number" class="ob-input" id="ob-target" value="${s.monthlyTarget||500}" placeholder="500">
+      <label class="ob-label">Primary Venture</label>
+      <select class="ob-select" id="ob-venture">
+        <option value="both" ${s.primaryVenture==='both'?'selected':''}>Both Ventures</option>
+        <option value="pitwall" ${s.primaryVenture==='pitwall'?'selected':''}>Pitwall Classics</option>
+        <option value="pulsebreak" ${s.primaryVenture==='pulsebreak'?'selected':''}>PulseBreak</option>
+      </select>
+      <label class="ob-label">Email for Digests</label>
+      <input type="email" class="ob-input" id="ob-email" value="${s.email||'prydeprydey@yahoo.co.uk'}" placeholder="your@email.com">`;
+    footer.innerHTML = `<button class="ob-btn-skip" onclick="obPrev()">&#x2190; Back</button><button class="ob-btn-primary" onclick="obNext()">Next &#x2192;</button>`;
+  } else if (obStep === 3) {
+    body.innerHTML = `
+      <h3>API Keys <span style="font-size:0.7rem;color:var(--muted);font-weight:normal">(optional)</span></h3>
+      <p>Add keys to unlock full agent capabilities. You can skip this and add them later in Settings.</p>
+      <label class="ob-label">ANTHROPIC_API_KEY</label>
+      <div class="ob-key-field">
+        <input type="password" class="ob-input" id="ob-anthropic" placeholder="Unlocks AI-powered responses">
+        <button class="ob-key-show" onclick="toggleKeyVisibility('ob-anthropic',this)">SHOW</button>
+      </div>
+      <label class="ob-label">PRINTIFY_API_TOKEN</label>
+      <div class="ob-key-field">
+        <input type="password" class="ob-input" id="ob-printify" placeholder="Unlocks Printify Studio agent">
+        <button class="ob-key-show" onclick="toggleKeyVisibility('ob-printify',this)">SHOW</button>
+      </div>
+      <div class="ob-note">&#x2139; You can skip this — all agents work without API keys using smart templates. Add keys later in Settings.</div>`;
+    footer.innerHTML = `<button class="ob-btn-skip" onclick="obStep=4;obRender()">SKIP</button><div style="display:flex;gap:8px"><button class="ob-btn-skip" onclick="obPrev()">&#x2190; Back</button><button class="ob-btn-primary" onclick="obNext()">Next &#x2192;</button></div>`;
+  } else if (obStep === 4) {
+    body.innerHTML = `
+      <div class="ob-checkmark">
+        <span class="check-icon">&#x2705;</span>
+        <p>Your 14 AI agents are now active and working for you 24/7.<br>First mission loading...</p>
+      </div>`;
+    footer.innerHTML = `<span></span><button class="ob-btn-primary" onclick="obComplete()">Enter Kingdom &#x2192;</button>`;
+  }
+}
+
+function obNext() {
+  if (obStep === 1) {
+    const s = JSON.parse(localStorage.getItem('kingdom_settings')||'{}');
+    s.pitwall = document.getElementById('ob-pitwall')?.checked ?? true;
+    s.pulsebreak = document.getElementById('ob-pulsebreak')?.checked ?? true;
+    localStorage.setItem('kingdom_settings', JSON.stringify(s));
+  } else if (obStep === 2) {
+    const s = JSON.parse(localStorage.getItem('kingdom_settings')||'{}');
+    s.monthlyTarget = document.getElementById('ob-target')?.value || '500';
+    s.primaryVenture = document.getElementById('ob-venture')?.value || 'both';
+    s.email = document.getElementById('ob-email')?.value || 'prydeprydey@yahoo.co.uk';
+    localStorage.setItem('kingdom_settings', JSON.stringify(s));
+  }
+  if (obStep < OB_STEPS) { obStep++; obRender(); }
+}
+
+function obPrev() {
+  if (obStep > 1) { obStep--; obRender(); }
+}
+
+async function obComplete() {
+  localStorage.setItem('kingdom_onboarded', '1');
+  document.getElementById('onboarding-overlay').classList.remove('open');
+  try {
+    const s = JSON.parse(localStorage.getItem('kingdom_settings')||'{}');
+    await fetch('/setup/configure', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        monthly_target: parseFloat(s.monthlyTarget||500),
+        primary_venture: s.primaryVenture||'both',
+        email: s.email||'prydeprydey@yahoo.co.uk',
+        ventures: {pitwall: s.pitwall!==false, pulsebreak: s.pulsebreak!==false}
+      })
+    });
+  } catch(e) { /* non-fatal */ }
+  loadDashboard();
+}
+
+function initOnboarding() {
+  if (!localStorage.getItem('kingdom_onboarded')) {
+    obStep = 1;
+    document.getElementById('onboarding-overlay').classList.add('open');
+    obRender();
+  }
+}
+
+/* ── MOBILE TAB INIT ── */
+function initMobileTabs() {
+  if (window.innerWidth <= 768) {
+    showMobileTab('activity');
+  }
+}
+
 /* ── BOOT ── */
 loadReminders();
 setInterval(loadReminders, 120000);
@@ -1700,7 +2318,150 @@ setInterval(()=>{
   fetchJSON('/scheduler/status').then(renderScheduler);
 },60000);
 setInterval(pollCharacterStates,30000);
+initOnboarding();
+initMobileTabs();
 </script>
+
+<!-- Celebration Overlay -->
+<div id="celebration-overlay">
+  <div class="celeb-rain" id="celeb-rain"></div>
+  <div id="celebration-emoji-main">🏆</div>
+  <div id="celebration-title">ACHIEVEMENT UNLOCKED</div>
+  <div id="celebration-subtitle"></div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Bottom Nav (mobile only) -->
+<nav id="bottom-nav">
+  <a onclick="document.querySelector('header').scrollIntoView({behavior:'smooth'})">
+    <span class="bnav-icon">&#x1F3E0;</span>DASHBOARD
+  </a>
+  <a onclick="document.querySelector('.panels-section').scrollIntoView({behavior:'smooth'})">
+    <span class="bnav-icon">&#x1F916;</span>AGENTS
+  </a>
+  <a onclick="scrollToPanel('KINGDOM TREASURY')">
+    <span class="bnav-icon">&#x1F4B0;</span>TREASURY
+  </a>
+  <a onclick="scrollToPanel('DAILY MISSION')">
+    <span class="bnav-icon">&#x1F4CB;</span>QUESTS
+  </a>
+</nav>
+
+<!-- Settings overlay backdrop -->
+<div id="settings-overlay" onclick="closeSettings()"></div>
+
+<!-- Settings Panel -->
+<div id="settings-panel">
+  <div class="settings-header">
+    <h2>&#x2699; Settings</h2>
+    <button class="settings-close" onclick="closeSettings()">&#x2715;</button>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Ventures</div>
+    <div class="settings-row">
+      <div><div class="settings-label">Pitwall Classics</div><div style="font-size:0.65rem;color:var(--muted)">Motorsport art &amp; prints</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="set-pitwall" checked onchange="saveVentureSettings()"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-label">PulseBreak</div><div style="font-size:0.65rem;color:var(--muted)">DnB music &amp; licensing</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="set-pulsebreak" checked onchange="saveVentureSettings()"><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Revenue Targets</div>
+    <label class="ob-label">Monthly Target (Pitwall, &#xa3;)</label>
+    <input type="number" class="settings-input" id="set-target-pitwall" placeholder="500" value="500">
+    <label class="ob-label">Monthly Target (PulseBreak, &#xa3;)</label>
+    <input type="number" class="settings-input" id="set-target-pulsebreak" placeholder="500" value="500">
+    <button class="settings-btn" onclick="saveRevenueTargets()">&#x1F4BE; Save Targets</button>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Notifications</div>
+    <div class="settings-row">
+      <div class="settings-label">Digest Email</div>
+      <label class="toggle-switch"><input type="checkbox" id="set-digest" checked><span class="toggle-slider"></span></label>
+    </div>
+    <label class="ob-label" style="margin-top:10px">Email Address</label>
+    <input type="email" class="settings-input" id="set-email" value="prydeprydey@yahoo.co.uk">
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">API Keys</div>
+    <label class="ob-label">ANTHROPIC_API_KEY</label>
+    <div class="ob-key-field">
+      <input type="password" class="settings-input ob-input" id="set-anthropic-key" placeholder="sk-ant-...">
+      <button class="ob-key-show" onclick="toggleKeyVisibility('set-anthropic-key',this)">SHOW</button>
+    </div>
+    <label class="ob-label">PRINTIFY_API_TOKEN</label>
+    <div class="ob-key-field">
+      <input type="password" class="settings-input ob-input" id="set-printify-key" placeholder="API token...">
+      <button class="ob-key-show" onclick="toggleKeyVisibility('set-printify-key',this)">SHOW</button>
+    </div>
+    <label class="ob-label">ETSY_CLIENT_ID</label>
+    <div class="ob-key-field">
+      <input type="password" class="settings-input ob-input" id="set-etsy-key" placeholder="Client ID...">
+      <button class="ob-key-show" onclick="toggleKeyVisibility('set-etsy-key',this)">SHOW</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Agent Schedule</div>
+    <a href="/scheduler/status" target="_blank" class="settings-link">&#x1F4C5; View Scheduler Status &#x2192;</a>
+    <div id="settings-scheduler" style="margin-top:8px;font-size:0.75rem;color:var(--muted)">Loading...</div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Export Data</div>
+    <a href="/export/treasury.csv" download class="settings-link">&#x1F4BE; Treasury CSV</a>
+    <a href="/export/opportunities.csv" download class="settings-link">&#x1F4BE; Opportunities CSV</a>
+    <a href="/export/weekly-report.txt" download class="settings-link">&#x1F4C4; Weekly Report TXT</a>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title" style="color:var(--red)">Danger Zone</div>
+    <button class="settings-btn danger" onclick="resetLearningWeights()">&#x26A0; Reset All Learning Weights</button>
+    <div id="settings-danger-result" style="font-size:0.72rem;margin-top:6px;color:var(--muted)"></div>
+  </div>
+</div>
+
+<!-- Onboarding Wizard -->
+<div id="onboarding-overlay">
+  <div id="onboarding-box">
+    <div class="ob-header">
+      <h2>&#x2694; KINGDOM OS</h2>
+      <p>Your autonomous AI founder command centre</p>
+    </div>
+    <div class="ob-steps">
+      <div class="ob-step-dot active" id="ob-dot-1">01 WELCOME</div>
+      <div class="ob-step-dot" id="ob-dot-2">02 TARGETS</div>
+      <div class="ob-step-dot" id="ob-dot-3">03 API KEYS</div>
+      <div class="ob-step-dot" id="ob-dot-4">04 READY</div>
+    </div>
+    <div class="ob-body" id="ob-body"></div>
+    <div class="ob-footer" id="ob-footer"></div>
+  </div>
+</div>
+
+<!-- Help Overlay -->
+<div id="help-overlay" onclick="closeHelpBg(event)">
+  <div id="help-box">
+    <div class="help-header">
+      <h2>&#x2753; Help &amp; Shortcuts</h2>
+      <button class="help-close" onclick="closeHelp()">&#x2715;</button>
+    </div>
+    <div class="help-body">
+      <div class="help-section-title">Keyboard Shortcuts</div>
+      <div class="help-shortcut"><span class="help-key">?</span><span class="help-desc">Show this help</span></div>
+      <div class="help-shortcut"><span class="help-key">Esc</span><span class="help-desc">Close all modals</span></div>
+      <div class="help-shortcut"><span class="help-key">R</span><span class="help-desc">Refresh dashboard</span></div>
+      <div class="help-shortcut"><span class="help-key">C</span><span class="help-desc">Open agent chat</span></div>
+      <div class="help-shortcut"><span class="help-key">M</span><span class="help-desc">Show daily mission</span></div>
+      <div class="help-section-title">Quick Links</div>
+      <div class="help-link"><span>API Docs</span><a href="/docs" target="_blank">/docs &#x2192;</a></div>
+      <div class="help-link"><span>Health Check</span><a href="/health" target="_blank">/health &#x2192;</a></div>
+      <div class="help-link"><span>Export Data</span><a href="/export/weekly-report.txt" download>/export/weekly-report.txt &#x2192;</a></div>
+      <div class="help-about">Kingdom OS v1.3 &nbsp;&#x2022;&nbsp; 14 agents &nbsp;&#x2022;&nbsp; Built for founders who build in public</div>
+    </div>
+  </div>
+</div>
 
 <!-- Chat bubble -->
 <button id="chat-bubble" onclick="toggleChat()" title="Chat with agents">&#x1F4AC;</button>

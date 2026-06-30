@@ -238,3 +238,16 @@ class TokenUsageLog(Base):
     feature: Mapped[str] = mapped_column(String(120))
     estimated_tokens: Mapped[int] = mapped_column(Integer)
     recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class KingdomGoal(Base):
+    __tablename__ = "kingdom_goals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    venture: Mapped[str] = mapped_column(String(120), index=True)
+    goal_type: Mapped[str] = mapped_column(String(50))  # "revenue", "opportunities"
+    target_value: Mapped[float] = mapped_column(Float)
+    period: Mapped[str] = mapped_column(String(50), default="monthly")  # "weekly", "monthly", "quarterly"
+    label: Mapped[str] = mapped_column(String(255), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
