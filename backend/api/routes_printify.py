@@ -93,6 +93,36 @@ def push_to_printify(opp_id: int, db: Session = Depends(get_db)):
     return {"ok": True, "printify_product_id": draft.get("id"), "title": opp.title}
 
 
+@router.get("/orders")
+def list_orders(limit: int = 20):
+    """Return recent Printify orders from the API."""
+    from backend.services.printify_api import is_configured, get_orders
+    if not is_configured():
+        return {"orders": [], "count": 0, "message": "Printify not configured"}
+    try:
+        orders = get_orders(limit=limit) or []
+        return {"orders": orders, "count": len(orders)}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Printify API error: {exc}")
+
+
+@router.get("/orders/{order_id}")
+def get_order(order_id: str):
+    """Return a single Printify order by ID."""
+    from backend.services.printify_api import is_configured, get_order_detail
+    if not is_configured():
+        raise HTTPException(status_code=400, detail="Printify not configured")
+    try:
+        order = get_order_detail(order_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        return order
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Printify API error: {exc}")
+
+
 @router.post("/generate")
 def generate_concepts(db: Session = Depends(get_db)):
     """Trigger PrintifyAgent to generate new POD concepts."""

@@ -209,3 +209,40 @@ def push_concept_as_draft(concept: dict) -> Optional[dict]:
         variants=variants,
         print_areas=print_areas,
     )
+
+
+def get_orders(limit: int = 20) -> Optional[list[dict]]:
+    """Return recent orders from the Printify shop."""
+    shop_id = _SHOP_ID
+    if not shop_id:
+        return None
+    try:
+        r = requests.get(
+            f"{_BASE}/shops/{shop_id}/orders.json?limit={limit}",
+            headers=_headers(),
+            timeout=10,
+        )
+        r.raise_for_status()
+        data = r.json()
+        return data.get("data", data) if isinstance(data, dict) else data
+    except Exception:
+        logger.exception("get_orders failed")
+        return None
+
+
+def get_order_detail(order_id: str) -> Optional[dict]:
+    """Return a single order by ID."""
+    shop_id = _SHOP_ID
+    if not shop_id:
+        return None
+    try:
+        r = requests.get(
+            f"{_BASE}/shops/{shop_id}/orders/{order_id}.json",
+            headers=_headers(),
+            timeout=10,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        logger.exception("get_order_detail failed for %s", order_id)
+        return None
