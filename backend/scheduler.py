@@ -18,6 +18,7 @@ _AGENT_REGISTRY: dict[str, Any] = {}
 
 _SCHEDULE = {
     "Print Forge AI": {"hours": 6},
+    "Image Forge": {"hours": 8},
     "Vibes AI": {"hours": 12},
     "Printify Studio": {"hours": 8},
     "Opportunity Scout": {"hours": 4},
@@ -63,6 +64,8 @@ def _get_agents() -> dict[str, Any]:
         _AGENT_REGISTRY["Content Agent"] = ContentAgent()
         from backend.agents.revenue_forecaster import RevenueForecastAgent
         _AGENT_REGISTRY["Revenue Forecaster"] = RevenueForecastAgent()
+        from backend.agents.image_forge import ImageForgeAgent
+        _AGENT_REGISTRY["Image Forge"] = ImageForgeAgent()
     return _AGENT_REGISTRY
 
 
@@ -154,6 +157,19 @@ def _run_revenue_attribution() -> None:
         db.close()
 
 
+def _run_etsy_order_sync() -> None:
+    """Pull Etsy orders and upsert to DB, then trigger attribution."""
+    from backend.services.etsy_order_sync import sync_etsy_orders
+    db = SessionLocal()
+    try:
+        result = sync_etsy_orders(db)
+        logger.info("Etsy order sync: %s", result)
+    except Exception:
+        logger.exception("Etsy order sync failed")
+    finally:
+        db.close()
+
+
 def _run_crisis_scan_job() -> None:
     from backend.services.crisis_engine import run_crisis_scan, save_crisis_scan
     db = SessionLocal()
@@ -235,6 +251,14 @@ def start_scheduler() -> BackgroundScheduler:
         _run_revenue_attribution,
         trigger=IntervalTrigger(hours=6),
         id="revenue_attribution",
+        replace_existing=True,
+    )
+
+    # Etsy order sync — every 6h
+    _scheduler.add_job(
+        _run_etsy_order_sync,
+        trigger=IntervalTrigger(hours=6),
+        id="etsy_order_sync",
         replace_existing=True,
     )
 

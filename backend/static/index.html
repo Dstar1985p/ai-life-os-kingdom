@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#060818">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kingdom">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.svg">
 <title>Kingdom OS — AI Revenue Command Centre</title>
 <style>
 :root {
@@ -718,6 +723,14 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
 .loading{color:var(--muted);font-size:0.75rem;text-align:center;padding:20px}
 .loading::after{content:'';animation:dot-pulse 1.4s infinite;display:inline-block}
 @keyframes dot-pulse{0%,80%,100%{opacity:0.2}40%{opacity:1}}
+
+/* ─── PIPELINE STEPS ─── */
+.pipeline-step{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border)}
+.pipeline-step.ok{border-color:rgba(0,255,136,0.2)}
+.pipeline-step.fail{border-color:rgba(255,51,102,0.2)}
+.ps-icon{font-size:1rem;line-height:1.4;flex-shrink:0}
+.ps-label{font-size:0.75rem;font-weight:600;color:var(--text)}
+.ps-detail{font-size:0.7rem;color:var(--muted);margin-top:2px}
 </style>
 </head>
 <body>
@@ -1015,6 +1028,23 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
       </div>
     </div>
     <div id="attribution-content"><div class="loading">Loading attribution data</div></div>
+  </div>
+
+  <!-- Pipeline Status -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(6,182,212,0.1))">🔗</div>
+      <div>
+        <div class="card-title">Pipeline Health</div>
+        <div class="card-subtitle" id="pipeline-score">Checking…</div>
+      </div>
+      <div class="card-action">
+        <button class="btn btn-sm btn-cyan" onclick="loadPipelineStatus()">↻ Check</button>
+      </div>
+    </div>
+    <div id="pipeline-status-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 0">
+      <div class="loading">Checking pipeline…</div>
+    </div>
   </div>
 
   <!-- Weekly Retro -->
@@ -2940,15 +2970,73 @@ function checkOnboarding() {
   }
 }
 
+/* ─── PWA SERVICE WORKER ─── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW reg failed:', err));
+  });
+}
+
+/* ─── PWA INSTALL PROMPT ─── */
+let _pwaInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _pwaInstallPrompt = e;
+  const btn = document.getElementById('pwa-install-btn');
+  if (btn) { btn.style.display = 'flex'; }
+});
+window.addEventListener('appinstalled', () => {
+  const btn = document.getElementById('pwa-install-btn');
+  if (btn) btn.style.display = 'none';
+  _pwaInstallPrompt = null;
+});
+function pwaInstall() {
+  if (!_pwaInstallPrompt) return;
+  _pwaInstallPrompt.prompt();
+  _pwaInstallPrompt.userChoice.then(() => { _pwaInstallPrompt = null; });
+}
+
+/* ─── PIPELINE STATUS ─── */
+async function loadPipelineStatus() {
+  const el = document.getElementById('pipeline-status-grid');
+  if (!el) return;
+  try {
+    const r = await fetch('/pipeline/status');
+    const d = await r.json();
+    const steps = d.steps || [];
+    el.innerHTML = steps.map(s => {
+      const ok = s.status === 'ok' || s.status === 'optional';
+      const icon = s.status === 'ok' ? '✅' : s.status === 'optional' ? '🔵' : '❌';
+      return `<div class="pipeline-step ${ok ? 'ok' : 'fail'}">
+        <span class="ps-icon">${icon}</span>
+        <div>
+          <div class="ps-label">${s.step || s.label || ''}</div>
+          <div class="ps-detail">${s.detail || ''}</div>
+        </div>
+      </div>`;
+    }).join('');
+    const score = steps.filter(s=>s.status==='ok'||s.status==='optional').length;
+    const total = steps.length;
+    const pct = Math.round(score/total*100);
+    const summary = document.getElementById('pipeline-score');
+    if (summary) {
+      summary.textContent = `${score}/${total} steps healthy`;
+      summary.style.color = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--red)';
+    }
+  } catch(e) { el.innerHTML = '<p style="color:var(--muted)">Pipeline check unavailable</p>'; }
+}
+
 /* ─── BOOT ─── */
 document.addEventListener('DOMContentLoaded', () => {
   checkOnboarding();
   initCanvas();
   loadOverview();
   loadAttribution();
+  loadPipelineStatus();
   setTimeout(checkForUpdate, 5000);
   setInterval(loadOverview, 5*60*1000);
   setInterval(loadReminders, 90*1000);
+  setInterval(loadPipelineStatus, 10*60*1000);
 
   // Chat enter key
   document.getElementById('chat-input')?.addEventListener('keydown', e => {
@@ -2956,5 +3044,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+
+<!-- PWA Install Button (hidden until browser fires beforeinstallprompt) -->
+<div id="pwa-install-btn" onclick="pwaInstall()" style="display:none;position:fixed;bottom:80px;right:20px;z-index:999;background:linear-gradient(135deg,#00ff88,#00ccff);color:#000;border:none;border-radius:12px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,255,136,0.4)">
+  📲 Add to Home Screen
+</div>
+
 </body>
 </html>

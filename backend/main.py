@@ -28,6 +28,7 @@ from backend.api.routes_intelligence import router as intelligence_router
 from backend.api.routes_etsy import router as etsy_router
 from backend.api.routes_printify import router as printify_router
 from backend.api.routes_treasury import router as treasury_router
+from backend.api.routes_images import router as images_router
 from backend.api.routes_sprint import router as sprint_router
 from backend.api.routes_log import router as log_router
 from backend.api.routes_achievements import router as achievements_router
@@ -152,6 +153,7 @@ app.include_router(backup_router)
 app.include_router(launch_router)
 app.include_router(avatars_router)
 app.include_router(performance_router)
+app.include_router(images_router)
 
 
 @app.get("/", include_in_schema=False)
