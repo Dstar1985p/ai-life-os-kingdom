@@ -50,3 +50,8 @@ def regret_score(opportunity_id: int, db: Session = Depends(get_db)):
 @router.get("/forecast/revenue")
 def revenue_forecast(db: Session = Depends(get_db)):
     return get_revenue_forecast(db)
+
+
+@router.get("/forecast")
+def revenue_forecast_alias(db: Session = Depends(get_db)):
+    return get_revenue_forecast(db)

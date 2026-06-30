@@ -218,6 +218,30 @@ def _compute_verdict(for_count: int, against_count: int, neutral_count: int) -> 
 # Main entry point
 # ---------------------------------------------------------------------------
 
+def _try_ai_council(proposal: str, context: str, db) -> dict | None:
+    """Attempt Claude-powered council analysis. Returns None on any failure."""
+    try:
+        from backend.services.ai_brain import generate_council_analysis, get_kingdom_context
+        kingdom_ctx = get_kingdom_context(db)
+        result = generate_council_analysis(proposal, context, kingdom_ctx, db)
+        if not result or "council" not in result:
+            return None
+        # Normalise to internal format
+        members = []
+        for m in result["council"]:
+            vote_map = {"YES": "for", "NO": "against", "ABSTAIN": "neutral"}
+            members.append({
+                "agent_name": m.get("member", m.get("role", "Advisor")),
+                "vote": vote_map.get(m.get("vote", "ABSTAIN"), "neutral"),
+                "reasoning": m.get("verdict", ""),
+                "key_concern": m.get("verdict", "")[:120],
+                "confidence_score": float(m.get("confidence", 65)),
+            })
+        return members
+    except Exception:
+        return None
+
+
 def run_council_session(
     proposal: str,
     context: str = "",
@@ -227,6 +251,33 @@ def run_council_session(
     try:
         session_id = str(uuid.uuid4())
         full_text = f"{proposal} {context}"
+
+        # Try Claude AI council first
+        ai_members = _try_ai_council(proposal, context, db) if db is not None else None
+        if ai_members and len(ai_members) >= 4:
+            members = ai_members[:5]
+            for_count = sum(1 for m in members if m["vote"] == "for")
+            against_count = sum(1 for m in members if m["vote"] == "against")
+            neutral_count = sum(1 for m in members if m["vote"] == "neutral")
+            verdict = _compute_verdict(for_count, against_count, neutral_count)
+            avg_confidence = round(sum(m["confidence_score"] for m in members) / len(members), 1)
+            minority_report = []
+            if db is not None:
+                proposal_field = f"[SESSION:{session_id}] {proposal}"
+                for m in members:
+                    db.add(CouncilVote(
+                        proposal=proposal_field, agent_name=m["agent_name"],
+                        vote=m["vote"], reasoning=m["reasoning"],
+                        confidence_score=m["confidence_score"],
+                    ))
+                db.commit()
+            return {
+                "session_id": session_id, "proposal": proposal,
+                "votes": members, "verdict": verdict, "confidence": avg_confidence,
+                "minority_report": minority_report, "for_count": for_count,
+                "against_count": against_count, "neutral_count": neutral_count,
+                "ai_powered": True,
+            }
 
         # Gather initial votes from the four rule-based members
         strat_vote, strat_reasoning, strat_concern, strat_conf = _strategist_vote(full_text)

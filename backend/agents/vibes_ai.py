@@ -1,4 +1,4 @@
-"""Vibes AI — PulseBreak Drum & Bass music agent."""
+"""Vibes AI — PulseBreak Drum & Bass music agent. Uses Claude for concept generation."""
 from __future__ import annotations
 
 import json
@@ -9,17 +9,33 @@ from backend.agents.base_agent import AgentRunResult, BaseRevenueAgent
 from backend.models.tables import Lesson, Opportunity
 
 
-_SUB_GENRES = ["Dancefloor DnB", "Neurofunk", "Jump Up", "Festival DnB", "Liquid DnB"]
-_ENERGY_LEVELS = ["High-energy", "Dark & driving", "Uplifting", "Atmospheric", "Raw"]
-_MOODS = ["euphoric", "tense", "melodic", "aggressive", "hypnotic", "soulful"]
-_STYLES = [
-    "heavy reese basslines, chopped breaks",
-    "sci-fi synths, distorted bass",
-    "festival horns, crowd-ready drops",
-    "deep pads, rolling sub bass",
-    "funk-infused breaks, warm chords",
+_FALLBACK_CONCEPTS = [
+    {"title": "PulseBreak — Liquid DnB Session Vol.1", "sub_genre": "Liquid DnB", "bpm": 174, "mood": "melodic",
+     "style_description": "deep rolling basslines, warm Rhodes chords, soulful vocal chops",
+     "suno_prompt": "Liquid drum and bass, 174bpm, melodic, deep rolling basslines, warm Rhodes chords, soulful vocal chops. Professional studio quality. No vocals.",
+     "cover_art_concept": "Abstract cyan/teal waveform on dark background, smooth curves, neon glow",
+     "suggested_platforms": ["Pond5", "AudioJungle", "Musicbed"], "licensing_potential": "high", "estimated_monthly_gbp": 45.0},
+    {"title": "PulseBreak — Neurofunk Assault Vol.1", "sub_genre": "Neurofunk", "bpm": 175, "mood": "tense",
+     "style_description": "sci-fi synths, modulated reese bass, complex drum programming",
+     "suno_prompt": "Neurofunk drum and bass, 175bpm, dark and tense, sci-fi synths, modulated reese bass, complex drum programming. No vocals.",
+     "cover_art_concept": "Dark circuit board visuals, neon green on black, robotic aesthetic",
+     "suggested_platforms": ["Pond5", "AudioJungle", "Epidemic Sound"], "licensing_potential": "medium", "estimated_monthly_gbp": 30.0},
+    {"title": "PulseBreak — Jump Up Banger Vol.1", "sub_genre": "Jump Up", "bpm": 172, "mood": "aggressive",
+     "style_description": "heavy wobble bass, chopped breaks, festival energy drops",
+     "suno_prompt": "Jump up drum and bass, 172bpm, energetic and aggressive, heavy wobble bass, chopped breaks, festival energy drops. No vocals.",
+     "cover_art_concept": "Explosive energy, orange/red neon, crowd silhouette",
+     "suggested_platforms": ["Pond5", "Artlist", "Soundstripe"], "licensing_potential": "medium", "estimated_monthly_gbp": 25.0},
+    {"title": "PulseBreak — Cinematic DnB Vol.1", "sub_genre": "Dancefloor DnB", "bpm": 176, "mood": "euphoric",
+     "style_description": "orchestral stabs, epic build-ups, anthemic lead synths",
+     "suno_prompt": "Cinematic drum and bass, 176bpm, euphoric and epic, orchestral stabs, anthemic lead synths, massive drops. No vocals.",
+     "cover_art_concept": "Epic skyline, purple/gold gradient, cinematic wide-angle",
+     "suggested_platforms": ["Musicbed", "Artlist", "Pond5"], "licensing_potential": "high", "estimated_monthly_gbp": 60.0},
+    {"title": "PulseBreak — Atmospheric DnB Vol.1", "sub_genre": "Atmospheric DnB", "bpm": 170, "mood": "hypnotic",
+     "style_description": "lush pads, minimal percussion, deep sub bass, ambient textures",
+     "suno_prompt": "Atmospheric drum and bass, 170bpm, hypnotic and ambient, lush pads, minimal percussion, deep sub bass. No vocals.",
+     "cover_art_concept": "Deep space nebula, purple/blue, dreamlike blur",
+     "suggested_platforms": ["Musicbed", "Epidemic Sound", "Soundstripe"], "licensing_potential": "high", "estimated_monthly_gbp": 40.0},
 ]
-_BPMS = [172, 174, 175, 176, 178]
 
 
 def _current_iso_week() -> str:
@@ -27,147 +43,98 @@ def _current_iso_week() -> str:
     return f"{now.isocalendar()[0]}-W{now.isocalendar()[1]:02d}"
 
 
-def _generate_track_concepts(
-    existing_titles: set[str],
-    used_genres: set[str],
-    scheduled_weeks: set[str],
-    prioritised_genres: list[str],
-) -> list[dict]:
-    concepts = []
-    base_date = datetime.utcnow()
-    # Re-order genres: prioritised first, then remaining
-    ordered_genres = list(prioritised_genres) + [
-        g for g in _SUB_GENRES if g not in prioritised_genres
-    ]
-
-    for i, genre in enumerate(ordered_genres):
-        energy = _ENERGY_LEVELS[i % len(_ENERGY_LEVELS)]
-        mood = _MOODS[i % len(_MOODS)]
-        style = _STYLES[i % len(_STYLES)]
-        bpm = _BPMS[i % len(_BPMS)]
-        release_date = (base_date + timedelta(weeks=i + 1)).strftime("%Y-%m-%d")
-
-        # Compute ISO week for that release date
-        rd = base_date + timedelta(weeks=i + 1)
-        release_week = f"{rd.isocalendar()[0]}-W{rd.isocalendar()[1]:02d}"
-
-        # Skip if that week is already scheduled
-        if release_week in scheduled_weeks:
-            continue
-
-        title = f"PulseBreak — {energy} {genre} [{release_date}]"
-        if title in existing_titles:
-            continue
-
-        suno_prompt = (
-            f"{energy} {genre} drum and bass, {mood}, {bpm}bpm, {style}. "
-            f"Professional studio quality. No vocals."
-        )
-        cover_concept = (
-            f"Abstract neon artwork: {mood} colours, waveform/soundwave motif, "
-            f"dark background with glowing accents. Genre: {genre}."
-        )
-
-        evidence = json.dumps({
-            "suno_prompt": suno_prompt,
-            "bpm": bpm,
-            "sub_genre": genre,
-            "suggested_title": title,
-            "cover_art_concept": cover_concept,
-            "release_week": release_week,
-            "status": "draft",
-        })
-
-        concepts.append(
-            {
-                "title": title,
-                "genre": genre,
-                "release_date": release_date,
-                "release_week": release_week,
-                "evidence": evidence,
-            }
-        )
-    return concepts
-
-
 class VibesAIAgent(BaseRevenueAgent):
     name = "Vibes AI"
-    mission = "Generate Drum & Bass track concepts and release schedules"
+    mission = "Generate Drum & Bass track concepts and release schedules for stock music licensing"
 
     def run(self, db: Session) -> AgentRunResult:
-        existing_opps = (
-            db.query(Opportunity)
-            .filter(Opportunity.source == "vibes_ai")
-            .all()
-        )
-        existing_titles = {o.title for o in existing_opps}
-
-        # Track which sub-genres have been used recently
-        used_genres: set[str] = set()
+        existing_opps = db.query(Opportunity).filter(Opportunity.source == "vibes_ai").all()
+        existing_titles = [o.title for o in existing_opps]
         scheduled_weeks: set[str] = set()
         for opp in existing_opps:
             try:
                 ev = json.loads(opp.evidence or "{}")
-                if ev.get("sub_genre"):
-                    used_genres.add(ev["sub_genre"])
                 if ev.get("release_week"):
                     scheduled_weeks.add(ev["release_week"])
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        # Load lessons to prioritise sub-genres
-        lessons_raw = db.query(Lesson).filter(
-            Lesson.lesson.ilike("%vibes%")
-            | Lesson.lesson.ilike("%dnb%")
-            | Lesson.lesson.ilike("%drum%")
-        ).all()
+        # Try Claude first
+        concepts = None
+        ai_calls = 0
+        try:
+            from backend.services.ai_brain import generate_vibes_concepts, get_kingdom_context
+            context = get_kingdom_context(db)
+            concepts = generate_vibes_concepts(context, existing_titles, db)
+            if concepts:
+                ai_calls = 1
+        except Exception:
+            pass
 
-        prioritised_genres: list[str] = []
-        for lesson in lessons_raw:
-            ll = lesson.lesson.lower()
-            for genre in _SUB_GENRES:
-                if genre.lower() in ll and genre not in prioritised_genres:
-                    prioritised_genres.append(genre)
+        if not concepts:
+            concepts = _FALLBACK_CONCEPTS
 
-        concepts = _generate_track_concepts(
-            existing_titles, used_genres, scheduled_weeks, prioritised_genres
-        )
         created = 0
         updated = 0
-        for c in concepts:
+        base_date = datetime.utcnow()
+
+        for i, concept in enumerate(concepts):
+            release_date = (base_date + timedelta(weeks=i + 1)).strftime("%Y-%m-%d")
+            rd = base_date + timedelta(weeks=i + 1)
+            release_week = f"{rd.isocalendar()[0]}-W{rd.isocalendar()[1]:02d}"
+
+            if release_week in scheduled_weeks:
+                continue
+
+            title = concept.get("title") or f"PulseBreak — {concept.get('sub_genre','DnB')} Vol.{i+1}"
+            monthly_gbp = float(concept.get("estimated_monthly_gbp", 30.0))
+            licensing_pot = concept.get("licensing_potential", "medium")
+            pot_score = {"high": 80.0, "medium": 60.0, "low": 40.0}.get(licensing_pot, 60.0)
+
+            evidence = json.dumps({
+                "suno_prompt": concept.get("suno_prompt", ""),
+                "bpm": concept.get("bpm", 174),
+                "sub_genre": concept.get("sub_genre", "DnB"),
+                "suggested_title": title,
+                "cover_art_concept": concept.get("cover_art_concept", ""),
+                "suggested_platforms": concept.get("suggested_platforms", []),
+                "licensing_potential": licensing_pot,
+                "estimated_monthly_gbp": monthly_gbp,
+                "release_week": release_week,
+                "release_date": release_date,
+                "status": "draft",
+                "ai_generated": ai_calls > 0,
+            })
+
             scores = {
-                "revenue_score": 60.0,
+                "revenue_score": min(100.0, monthly_gbp * 1.5),
                 "automation_score": 80.0,
                 "competition_score": 50.0,
-                "risk_score": 25.0,
+                "risk_score": 20.0,
                 "complexity_score": 30.0,
                 "strategic_alignment_score": 75.0,
-                "kingdom_score": 65.0,
+                "kingdom_score": pot_score,
             }
-            extra = {"evidence": c["evidence"]}
-            opp, is_new = self._upsert_opportunity(
-                db, c["title"], "Music/DnB", "vibes_ai", scores, extra
+            _opp, is_new = self._upsert_opportunity(
+                db, title, "Music/DnB", "vibes_ai", scores, {"evidence": evidence}
             )
             if is_new:
                 created += 1
+                scheduled_weeks.add(release_week)
             else:
                 updated += 1
 
         db.commit()
 
-        lesson = (
-            f"Vibes AI ran: generated {created} new DnB track concepts, "
-            f"updated {updated} existing. Scheduled weeks: {len(scheduled_weeks)}."
-        )
+        source = "Claude AI" if ai_calls > 0 else "templates"
+        lesson = f"Vibes AI ran ({source}): {created} new DnB concepts, {updated} updated."
         result = AgentRunResult(
             status="ok",
-            ai_calls=0,
+            ai_calls=ai_calls,
             opportunities_created=created,
             opportunities_updated=updated,
             lessons=[lesson],
-            actions_taken=[
-                f"Generated {created} new + {updated} updated DnB track concepts with release schedules"
-            ],
+            actions_taken=[f"Generated {created} new + {updated} updated DnB track concepts via {source}"],
         )
         self._record_run(result, db)
         return result

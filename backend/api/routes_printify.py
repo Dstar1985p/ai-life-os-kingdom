@@ -55,6 +55,44 @@ def get_concept(opp_id: int, db: Session = Depends(get_db)):
     return _parse_concept(opp)
 
 
+@router.get("/status")
+def printify_status():
+    """Return Printify API connection status."""
+    from backend.services.printify_api import is_configured, get_shops
+    configured = is_configured()
+    shops = get_shops() if configured else None
+    return {
+        "configured": configured,
+        "shop_count": len(shops) if shops else 0,
+        "shops": shops or [],
+        "message": "Connected" if configured else "Set PRINTIFY_API_TOKEN and PRINTIFY_SHOP_ID env vars to connect",
+    }
+
+
+@router.post("/push/{opp_id}")
+def push_to_printify(opp_id: int, db: Session = Depends(get_db)):
+    """Push a concept directly to Printify as a draft product."""
+    from backend.services.printify_api import push_concept_as_draft, is_configured
+    if not is_configured():
+        raise HTTPException(status_code=400, detail="Printify not configured")
+    opp = db.query(Opportunity).filter(
+        Opportunity.id == opp_id, Opportunity.source == "printify_pod"
+    ).first()
+    if not opp:
+        raise HTTPException(status_code=404, detail="Concept not found")
+    concept = {}
+    if opp.evidence:
+        try:
+            concept = json.loads(opp.evidence)
+        except Exception:
+            pass
+    concept.setdefault("title", opp.title)
+    draft = push_concept_as_draft(concept)
+    if not draft:
+        raise HTTPException(status_code=502, detail="Printify API call failed")
+    return {"ok": True, "printify_product_id": draft.get("id"), "title": opp.title}
+
+
 @router.post("/generate")
 def generate_concepts(db: Session = Depends(get_db)):
     """Trigger PrintifyAgent to generate new POD concepts."""

@@ -1208,6 +1208,38 @@ async function loadDashboard() {
   } catch(e) { panels.push(panel("CAPTAIN'S LOG",'amber',"<h2>&#x1F4DC; Captain's Log</h2><div style=\"color:var(--muted)\">Could not load log entry.</div>")); }
 
   try {
+    const fc=await fetchJSON('/intelligence/forecast');
+    if(fc&&fc.ventures){
+      const trendIcon=t=>t==='growing'?'&#x25B2;':t==='declining'?'&#x25BC;':'&#x25CF;';
+      const trendCol=t=>t==='growing'?'var(--green)':t==='declining'?'var(--red)':'var(--amber)';
+      const confCol=c=>c==='high'?'var(--green)':c==='medium'?'var(--amber)':c==='estimated'?'var(--purple)':'var(--muted)';
+      const vRows=fc.ventures.map(v=>`
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-weight:700;font-size:0.82rem;color:var(--cyan)">${v.venture}</span>
+            <span style="color:${trendCol(v.trend)};font-size:0.75rem">${trendIcon(v.trend)} ${v.trend.toUpperCase()}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:0.72rem">
+            <div><div style="color:var(--muted)">30 days</div><div style="color:var(--green);font-weight:700">&#xa3;${v.forecast_30d_gbp.toFixed(0)}</div></div>
+            <div><div style="color:var(--muted)">60 days</div><div style="color:var(--green);font-weight:700">&#xa3;${v.forecast_60d_gbp.toFixed(0)}</div></div>
+            <div><div style="color:var(--muted)">90 days</div><div style="color:var(--green);font-weight:700">&#xa3;${v.forecast_90d_gbp.toFixed(0)}</div></div>
+          </div>
+          <div style="font-size:0.65rem;color:${confCol(v.confidence)};margin-top:3px">Confidence: ${v.confidence.toUpperCase()} &nbsp;&#xB7;&nbsp; Avg &#xa3;${v.avg_weekly_gbp.toFixed(0)}/wk</div>
+        </div>`).join('');
+      const insights=fc.insights&&fc.insights.length?fc.insights.map(i=>`<div style="font-size:0.72rem;color:var(--muted);padding:2px 0">&#x2022; ${i}</div>`).join(''):'<div style="color:var(--muted);font-size:0.72rem">Add revenue in Treasury to improve forecast accuracy.</div>';
+      const ktot=fc.kingdom_total;
+      panels.push(panel('REVENUE FORECAST','green',`<h2>&#x1F4C8; Revenue Forecast</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;text-align:center">
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px"><div style="font-size:0.6rem;color:var(--muted);letter-spacing:2px">30 DAYS</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">&#xa3;${ktot.forecast_30d_gbp.toFixed(0)}</div></div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px"><div style="font-size:0.6rem;color:var(--muted);letter-spacing:2px">60 DAYS</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">&#xa3;${ktot.forecast_60d_gbp.toFixed(0)}</div></div>
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px"><div style="font-size:0.6rem;color:var(--muted);letter-spacing:2px">90 DAYS</div><div style="font-size:1.1rem;font-weight:700;color:var(--green)">&#xa3;${ktot.forecast_90d_gbp.toFixed(0)}</div></div>
+        </div>
+        ${vRows}
+        <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px">${insights}</div>`));
+    }
+  } catch(e) { panels.push(panel('REVENUE FORECAST','amber','<h2>&#x1F4C8; Revenue Forecast</h2><div style="color:var(--muted)">Could not load forecast.</div>')); }
+
+  try {
     const achievements=await fetchJSON('/achievements');
     const aCards=achievements&&achievements.length?achievements.map(a=>{
       const glow=a.unlocked?'border-color:var(--amber);box-shadow:0 0 6px var(--amber)33':'opacity:0.45';
