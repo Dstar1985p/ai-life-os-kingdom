@@ -47,16 +47,22 @@ def _process_track(audio_file: Path, db) -> dict:
     track_name = audio_file.stem
     result = {"file": audio_file.name, "status": "pending"}
 
-    # Step 1: Generate visualiser
+    # Step 1: Generate visualiser — YouTube (16:9) and TikTok/Reels (9:16)
+    clean_title = track_name.replace("_", " ").replace("-", " ").title()
     video_path = VIDEOS_DIR / f"{track_name}.mp4"
+    video_path_tt = VIDEOS_DIR / f"{track_name}_tiktok.mp4"
+
+    vis_ok = False
     try:
         generate_visualiser(
             audio_path=str(audio_file),
             output_path=str(video_path),
-            title=track_name.replace("_", " ").replace("-", " ").title(),
+            title=clean_title,
             artist="PulseBreak",
+            fmt="youtube",
         )
-        result["video"] = str(video_path)
+        vis_ok = True
+        result["video_youtube"] = str(video_path)
         result["visualiser_status"] = "generated"
     except VisualizerUnavailableError:
         result["visualiser_status"] = "skipped_no_ffmpeg"
@@ -66,6 +72,22 @@ def _process_track(audio_file: Path, db) -> dict:
         result["visualiser_status"] = f"error: {e}"
         result["status"] = "failed"
         return result
+
+    # Also generate vertical cut for TikTok / Instagram Reels
+    if vis_ok:
+        try:
+            generate_visualiser(
+                audio_path=str(audio_file),
+                output_path=str(video_path_tt),
+                title=clean_title,
+                artist="PulseBreak",
+                fmt="tiktok",
+            )
+            result["video_tiktok"] = str(video_path_tt)
+        except Exception:
+            pass  # TikTok cut is best-effort
+
+    result["video"] = str(video_path)  # backward compat
 
     # Step 2: Upload to YouTube
     title = f"{track_name.replace('_', ' ').replace('-', ' ').title()} | PulseBreak DnB"

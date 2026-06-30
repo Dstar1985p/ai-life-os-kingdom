@@ -1,8 +1,10 @@
 """
-Generates an animated audio visualiser MP4 from an MP3 file.
-Uses moviepy + numpy. Requires ffmpeg to be installed.
-If ffmpeg/moviepy unavailable, raises VisualizerUnavailableError.
+Animated audio visualiser MP4 — radial design for YouTube, TikTok, Instagram.
+Uses moviepy + numpy. Requires ffmpeg. Falls back gracefully if unavailable.
 """
+from __future__ import annotations
+
+import math
 
 FFMPEG_AVAILABLE = False
 try:
@@ -18,6 +20,158 @@ class VisualizerUnavailableError(Exception):
     pass
 
 
+# ── Constants ────────────────────────────────────────────────────────────────
+
+_N_BARS = 128           # frequency bars around the circle
+_MAX_PARTICLES = 600    # particle ring buffer size
+_HUE_SPEED = 0.010      # hue cycles per second (full cycle ≈ 100 s)
+_BLOOM_SHIFTS = [(-3, 0), (3, 0), (0, -3), (0, 3), (-2, -2), (2, -2), (-2, 2), (2, 2)]
+
+
+# ── Colour helpers ────────────────────────────────────────────────────────────
+
+def _hsv_to_rgb_scalar(h: float, s: float, v: float):
+    """h, s, v in [0, 1]. Returns (r, g, b) ints 0-255."""
+    h6 = (h % 1.0) * 6.0
+    i = int(h6) % 6
+    f = h6 - math.floor(h6)
+    p, q, t = v * (1 - s), v * (1 - s * f), v * (1 - s * (1 - f))
+    rgb = [(v, t, p), (q, v, p), (p, v, t), (p, q, v), (t, p, v), (v, p, q)][i]
+    return (int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255))
+
+
+def _hsv_to_rgb_vec(h, s, v):
+    """Vectorized HSV → RGB. h/s/v are float arrays [0, 1]. Returns float array [..., 3] in [0, 255]."""
+    h6 = (h % 1.0) * 6.0
+    i = h6.astype(np.int32) % 6
+    f = h6 - np.floor(h6)
+    p = v * (1 - s)
+    q = v * (1 - s * f)
+    t_c = v * (1 - s * (1 - f))
+    result = np.zeros(h.shape + (3,), dtype=np.float32)
+    for k, (rv, gv, bv) in enumerate([(v, t_c, p), (q, v, p), (p, v, t_c),
+                                        (p, q, v), (t_c, p, v), (v, p, q)]):
+        m = i == k
+        result[m, 0] = rv[m] if hasattr(rv, '__len__') else rv
+        result[m, 1] = gv[m] if hasattr(gv, '__len__') else gv
+        result[m, 2] = bv[m] if hasattr(bv, '__len__') else bv
+    return result * 255.0
+
+
+# ── Line drawing (used for waveform ring) ────────────────────────────────────
+
+def _draw_text_simple(frame, text: str, x: int, y: int, colour, scale: int = 1):
+    """Pixel-font text onto float32 frame."""
+    FONT = {
+        'A': ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+        'B': ['11110', '10001', '10001', '11110', '10001', '10001', '11110'],
+        'C': ['01111', '10000', '10000', '10000', '10000', '10000', '01111'],
+        'D': ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+        'E': ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+        'F': ['11111', '10000', '10000', '11110', '10000', '10000', '10000'],
+        'G': ['01111', '10000', '10000', '10111', '10001', '10001', '01111'],
+        'H': ['10001', '10001', '10001', '11111', '10001', '10001', '10001'],
+        'I': ['11111', '00100', '00100', '00100', '00100', '00100', '11111'],
+        'J': ['00111', '00010', '00010', '00010', '10010', '10010', '01100'],
+        'K': ['10001', '10010', '10100', '11000', '10100', '10010', '10001'],
+        'L': ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+        'M': ['10001', '11011', '10101', '10001', '10001', '10001', '10001'],
+        'N': ['10001', '11001', '10101', '10011', '10001', '10001', '10001'],
+        'O': ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+        'P': ['11110', '10001', '10001', '11110', '10000', '10000', '10000'],
+        'Q': ['01110', '10001', '10001', '10001', '10101', '10010', '01101'],
+        'R': ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+        'S': ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+        'T': ['11111', '00100', '00100', '00100', '00100', '00100', '00100'],
+        'U': ['10001', '10001', '10001', '10001', '10001', '10001', '01110'],
+        'V': ['10001', '10001', '10001', '10001', '10001', '01010', '00100'],
+        'W': ['10001', '10001', '10001', '10101', '10101', '11011', '10001'],
+        'X': ['10001', '10001', '01010', '00100', '01010', '10001', '10001'],
+        'Y': ['10001', '10001', '01010', '00100', '00100', '00100', '00100'],
+        'Z': ['11111', '00001', '00010', '00100', '01000', '10000', '11111'],
+        ' ': ['00000', '00000', '00000', '00000', '00000', '00000', '00000'],
+        '-': ['00000', '00000', '00000', '11111', '00000', '00000', '00000'],
+        '.': ['00000', '00000', '00000', '00000', '00000', '00100', '00000'],
+        '|': ['00100', '00100', '00100', '00100', '00100', '00100', '00100'],
+        '0': ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
+        '1': ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
+        '2': ['01110', '10001', '00001', '00110', '01000', '10000', '11111'],
+        '3': ['11110', '00001', '00001', '01110', '00001', '00001', '11110'],
+        '4': ['00010', '00110', '01010', '10010', '11111', '00010', '00010'],
+        '5': ['11111', '10000', '10000', '11110', '00001', '00001', '11110'],
+        '6': ['01110', '10000', '10000', '11110', '10001', '10001', '01110'],
+        '7': ['11111', '00001', '00010', '00100', '01000', '10000', '10000'],
+        '8': ['01110', '10001', '10001', '01110', '10001', '10001', '01110'],
+        '9': ['01110', '10001', '10001', '01111', '00001', '00001', '01110'],
+    }
+    h, w = frame.shape[:2]
+    col = np.array(colour, dtype=np.float32)
+    px = x
+    for char in text.upper():
+        glyph = FONT.get(char, FONT[' '])
+        for row_i, row in enumerate(glyph):
+            for col_i, pixel in enumerate(row):
+                if pixel == '1':
+                    for sy in range(scale):
+                        for sx in range(scale):
+                            fy = y + row_i * scale + sy
+                            fx = px + col_i * scale + sx
+                            if 0 <= fy < h and 0 <= fx < w:
+                                frame[fy, fx] = np.maximum(frame[fy, fx], col)
+        px += (6 * scale) + scale
+
+
+# ── Audio analysis helpers ────────────────────────────────────────────────────
+
+def _get_fft(audio_mono, t: float, fps_audio: int, n_bars: int,
+             smooth_state: list, chunk_size: int):
+    """Return smoothed log-spaced FFT bars [0, 1]."""
+    start = int(t * fps_audio)
+    chunk = audio_mono[start:start + chunk_size]
+    if len(chunk) < chunk_size:
+        chunk = np.pad(chunk, (0, chunk_size - len(chunk)))
+    window = np.hanning(len(chunk))
+    raw = np.abs(np.fft.rfft(chunk * window, n=chunk_size))
+    n_fft = len(raw)
+    log_idx = np.logspace(0, math.log10(max(n_fft - 1, 2)), n_bars + 1).astype(int)
+    log_idx = np.clip(log_idx, 0, n_fft - 1)
+    bars = np.array([raw[log_idx[i]:log_idx[i + 1] + 1].mean() for i in range(n_bars)],
+                    dtype=np.float32)
+    if bars.max() > 0:
+        bars /= bars.max()
+    # Attack fast, release slow
+    prev = smooth_state[0]
+    smoothed = np.where(bars > prev, 0.35 * prev + 0.65 * bars, 0.72 * prev + 0.28 * bars)
+    smooth_state[0] = smoothed
+    return smoothed.copy()
+
+
+def _get_bass_energy(audio_mono, t: float, fps_audio: int) -> float:
+    """Sub-bass energy ratio relative to full spectrum."""
+    sz = fps_audio // 20
+    start = int(t * fps_audio)
+    chunk = audio_mono[start:start + sz]
+    if len(chunk) < 4:
+        return 0.0
+    raw = np.abs(np.fft.rfft(chunk))
+    bass_bins = max(1, len(raw) // 12)
+    return float(np.clip(raw[:bass_bins].mean() / (raw.mean() + 1e-8), 0, 8))
+
+
+# ── Bloom ─────────────────────────────────────────────────────────────────────
+
+def _apply_bloom(frame: 'np.ndarray', strength: float = 0.35) -> 'np.ndarray':
+    """Cheap directional-shift bloom: adds glow around bright pixels."""
+    bloom = frame * strength
+    result = frame.copy()
+    for dy, dx in _BLOOM_SHIFTS:
+        shifted = np.roll(np.roll(bloom, dy, axis=0), dx, axis=1)
+        np.maximum(result, shifted, out=result)
+    return result
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
 def generate_visualiser(
     audio_path: str,
     output_path: str,
@@ -29,86 +183,222 @@ def generate_visualiser(
     width: int = 1920,
     height: int = 1080,
     fps: int = 30,
+    fmt: str = "youtube",   # "youtube" | "tiktok" | "square"
+    # Legacy positional compat — ignored (format is now radial always)
+    **_kwargs,
 ) -> str:
     """
-    Generate a visualiser video from an audio file.
-    Returns the output_path on success.
+    Generate a radial audio visualiser MP4.
+
+    fmt:
+      "youtube"  → 1920×1080 (16:9)
+      "tiktok"   → 1080×1920 (9:16 for Reels/TikTok)
+      "square"   → 1080×1080 (Instagram square)
     """
     if not FFMPEG_AVAILABLE:
         raise VisualizerUnavailableError("moviepy/ffmpeg not available")
 
-    audio_path = str(audio_path)
-    output_path = str(output_path)
+    if fmt == "tiktok":
+        width, height = 1080, 1920
+    elif fmt == "square":
+        width, height = 1080, 1080
+
+    audio_path, output_path = str(audio_path), str(output_path)
 
     audio_clip = AudioFileClip(audio_path)
     duration = audio_clip.duration
-
     fps_audio = 44100
     audio_array = audio_clip.to_soundarray(fps=fps_audio)
-    if audio_array.ndim > 1:
-        audio_mono = audio_array.mean(axis=1)
-    else:
-        audio_mono = audio_array
+    audio_mono = (audio_array.mean(axis=1) if audio_array.ndim > 1 else audio_array).astype(np.float32)
 
-    n_bars = 64
-    bar_gap = 4
-    bar_width = (width - (n_bars + 1) * bar_gap) // n_bars
-    max_bar_height = int(height * 0.55)
-    baseline_y = int(height * 0.72)
+    # ── Geometry ──────────────────────────────────────────────────────────────
+    cx, cy = width // 2, height // 2
+    short = min(width, height)
+    r_inner = short * 0.13     # radius of center circle
+    r_max = short * 0.44       # maximum bar reach
+    r_wf = r_inner * 0.88      # waveform ring radius
+
+    # ── Precompute polar grid ─────────────────────────────────────────────────
+    ys_g, xs_g = np.mgrid[0:height, 0:width].astype(np.float32)
+    dx_g = xs_g - cx
+    dy_g = ys_g - cy
+    theta_g = np.arctan2(dy_g, dx_g) % (2 * math.pi)   # (H, W) in [0, 2π]
+    r_g = np.sqrt(dx_g ** 2 + dy_g ** 2)                # (H, W)
+
+    # Which bar does each pixel belong to?
+    bar_idx_g = (theta_g / (2 * math.pi) * _N_BARS).astype(np.int32) % _N_BARS  # (H, W)
+
+    bar_angles = np.linspace(0, 2 * math.pi, _N_BARS, endpoint=False)
+    bar_center_theta = bar_angles[bar_idx_g]  # (H, W) — center angle of nearest bar
+    theta_diff = theta_g - bar_center_theta
+    # Wrap to [-π, π]
+    theta_diff = ((theta_diff + math.pi) % (2 * math.pi)) - math.pi
+
+    bar_half_rad = math.pi / _N_BARS * 0.62  # 62% fill, 38% gap
+    in_bar_ang = np.abs(theta_diff) <= bar_half_rad  # (H, W) bool
+
+    in_annulus = (r_g >= r_inner) & (r_g <= r_max)   # (H, W) bool
+    r_norm_g = np.clip((r_g - r_inner) / max(r_max - r_inner, 1), 0.0, 1.0)  # (H, W)
+
+    # Bar hue offset per pixel (0–0.4 spread across all bars)
+    bar_hue_g = (bar_idx_g / _N_BARS * 0.4).astype(np.float32)  # (H, W)
+
+    # Inner circle mask
+    ic_r = int(r_inner * 0.82)
+    ys_ic = np.arange(max(0, cy - ic_r), min(height, cy + ic_r + 1))
+    xs_ic = np.arange(max(0, cx - ic_r), min(width, cx + ic_r + 1))
+    ic_yg, ic_xg = np.meshgrid(ys_ic, xs_ic, indexing='ij')
+    ic_dist = np.sqrt((ic_xg - cx) ** 2 + (ic_yg - cy) ** 2)
+    ic_ys = ic_yg[ic_dist <= ic_r].astype(int)
+    ic_xs = ic_xg[ic_dist <= ic_r].astype(int)
+
+    # Static background: deep space + subtle centre nebula
+    bg = np.zeros((height, width, 3), dtype=np.float32)
+    max_dist = math.sqrt(cx ** 2 + cy ** 2)
+    nebula = np.clip(1.0 - r_g / max_dist, 0.0, 1.0) * 0.28
+    bg[:, :, 0] = nebula * 18
+    bg[:, :, 1] = nebula * 4
+    bg[:, :, 2] = nebula * 38
+
+    # ── State ─────────────────────────────────────────────────────────────────
+    smooth_state = [np.zeros(_N_BARS, dtype=np.float32)]
+    particles = np.zeros((_MAX_PARTICLES, 6), dtype=np.float32)
+    # columns: [x, y, vx, vy, life, hue]
+    p_head = [0]
+    beat_cooldown = [0]
+    beat_flash = [0.0]
+    rolling_bass = [0.08]
+    chunk_size = fps_audio // 8  # ≈ 5512 samples — gives ~90ms window
+
+    cos_a = np.cos(bar_angles)
+    sin_a = np.sin(bar_angles)
+
+    def _spawn_particles(fft_bars, hue_base):
+        hot = np.where(fft_bars > 0.55)[0]
+        for i in hot[::4]:   # every 4th hot bar to keep count manageable
+            r_tip = r_inner + fft_bars[i] * (r_max - r_inner)
+            tx = cx + r_tip * cos_a[i]
+            ty = cy + r_tip * sin_a[i]
+            speed = 1.2 + fft_bars[i] * 2.5
+            vx = cos_a[i] * speed + np.random.randn() * 0.4
+            vy = sin_a[i] * speed + np.random.randn() * 0.4
+            idx = p_head[0] % _MAX_PARTICLES
+            particles[idx] = [tx, ty, vx, vy, 1.0, (hue_base + i / _N_BARS * 0.35) % 1.0]
+            p_head[0] += 1
 
     def make_frame(t: float):
-        frame = np.zeros((height, width, 3), dtype=np.uint8)
-        frame[:] = bg_colour
+        hue_base = (t * _HUE_SPEED) % 1.0
 
-        for y in range(0, height, 80):
-            frame[y, :] = tuple(min(255, c + 15) for c in bg_colour)
+        # Audio analysis
+        fft_bars = _get_fft(audio_mono, t, fps_audio, _N_BARS, smooth_state, chunk_size)
+        bass = _get_bass_energy(audio_mono, t, fps_audio)
 
-        sample_start = int(t * fps_audio)
-        chunk_size = fps_audio // 10
-        chunk = audio_mono[sample_start:sample_start + chunk_size]
+        # Beat detection
+        rolling_bass[0] = rolling_bass[0] * 0.94 + bass * 0.06
+        is_beat = (bass > rolling_bass[0] * 1.9) and beat_cooldown[0] <= 0
+        if is_beat:
+            beat_cooldown[0] = int(fps * 0.14)
+            beat_flash[0] = 0.40
+        else:
+            beat_cooldown[0] = max(0, beat_cooldown[0] - 1)
+            beat_flash[0] = max(0.0, beat_flash[0] - 0.045)
 
-        if len(chunk) == 0:
-            chunk = np.zeros(chunk_size)
+        frame = bg.copy()
 
-        fft = np.abs(np.fft.rfft(chunk, n=chunk_size))
-        fft = fft[:n_bars]
-        if fft.max() > 0:
-            fft = fft / fft.max()
+        # ── Inner circle glow (pulses with bass) ──────────────────────────────
+        bass_norm = min(bass / max(rolling_bass[0], 0.01), 3.0)
+        ic_intensity = 0.07 + bass_norm * 0.06 + beat_flash[0] * 0.18
+        ic_col = np.array(_hsv_to_rgb_scalar(hue_base, 0.75, ic_intensity), dtype=np.float32)
+        frame[ic_ys, ic_xs] = np.maximum(frame[ic_ys, ic_xs], ic_col)
 
-        for i, magnitude in enumerate(fft):
-            bar_h = int(magnitude * max_bar_height)
-            bar_h = max(4, bar_h)
-            x_start = bar_gap + i * (bar_width + bar_gap)
-            x_end = x_start + bar_width
-            y_top = baseline_y - bar_h
+        # ── Radial bars (vectorized) ──────────────────────────────────────────
+        bar_mags = fft_bars[bar_idx_g]          # (H, W) — magnitude at each pixel's bar
+        lit = in_annulus & in_bar_ang & (r_norm_g <= bar_mags)
 
-            for y in range(y_top, baseline_y):
-                t_grad = (y - y_top) / max(1, bar_h)
-                r = int(bar_colour[0] * (1 - t_grad) + accent_colour[0] * t_grad)
-                g = int(bar_colour[1] * (1 - t_grad) + accent_colour[1] * t_grad)
-                b = int(bar_colour[2] * (1 - t_grad) + accent_colour[2] * t_grad)
-                frame[y, x_start:x_end] = (r, g, b)
+        if lit.any():
+            h_lit = (hue_base + bar_hue_g[lit]) % 1.0
+            s_lit = np.full(h_lit.shape, 0.88, dtype=np.float32)
+            # Slightly dimmer at tips, brighter at base — gradient inside bar
+            v_lit = bar_mags[lit] * (1.0 - r_norm_g[lit] * 0.25)
+            bar_rgb = _hsv_to_rgb_vec(h_lit, s_lit, v_lit)
+            frame[lit] = np.maximum(frame[lit], bar_rgb)
 
-            if y_top > 0:
-                frame[max(0, y_top - 2):y_top + 1, x_start:x_end] = bar_colour
+        # ── Waveform ring around inner circle ─────────────────────────────────
+        wf_start = int(t * fps_audio)
+        wf_sz = int(fps_audio / fps)
+        wf = audio_mono[wf_start:wf_start + wf_sz]
+        if len(wf) > 0:
+            wf_norm = wf / (np.abs(wf).max() + 1e-8)
+            n_wf = min(len(wf_norm), _N_BARS * 6)
+            wf_a = np.linspace(0, 2 * math.pi, n_wf, endpoint=False)
+            wf_sub = np.interp(np.linspace(0, len(wf_norm) - 1, n_wf),
+                               np.arange(len(wf_norm)), wf_norm)
+            wf_r = r_wf + wf_sub * (r_inner * 0.12)
+            wxs = np.clip((cx + wf_r * np.cos(wf_a)).astype(int), 0, width - 1)
+            wys = np.clip((cy + wf_r * np.sin(wf_a)).astype(int), 0, height - 1)
+            wf_col = np.array(_hsv_to_rgb_scalar((hue_base + 0.5) % 1.0, 0.55, 0.85),
+                              dtype=np.float32)
+            # Draw 2px dots
+            for dy2, dx2 in [(-1, 0), (1, 0), (0, -1), (0, 1), (0, 0)]:
+                yy = np.clip(wys + dy2, 0, height - 1)
+                xx = np.clip(wxs + dx2, 0, width - 1)
+                frame[yy, xx] = np.maximum(frame[yy, xx], wf_col)
 
-        waveform_chunk = audio_mono[sample_start:sample_start + int(fps_audio / fps)]
-        if len(waveform_chunk) > 0:
-            waveform_chunk = waveform_chunk / (np.abs(waveform_chunk).max() + 1e-8)
-            xs = np.linspace(0, width - 1, len(waveform_chunk)).astype(int)
-            ys = (waveform_chunk * 30 + baseline_y + 60).astype(int)
-            ys = np.clip(ys, 0, height - 1)
-            for x, y in zip(xs, ys):
-                frame[y, x] = (100, 255, 200)
+        # ── Particles ──────────────────────────────────────────────────────────
+        _spawn_particles(fft_bars, hue_base)
+        alive = particles[:, 4] > 0
+        if alive.any():
+            particles[alive, 0] += particles[alive, 2]   # x
+            particles[alive, 1] += particles[alive, 3]   # y
+            particles[alive, 4] -= 0.016                 # life decay
+            particles[alive, 2] *= 0.975                 # friction
+            particles[alive, 3] *= 0.975
+            pxs = particles[alive, 0].astype(int)
+            pys = particles[alive, 1].astype(int)
+            valid = (pxs >= 0) & (pxs < width) & (pys >= 0) & (pys < height)
+            if valid.any():
+                lifes = particles[alive, 4][valid]
+                hues = particles[alive, 5][valid]
+                pcols = _hsv_to_rgb_vec(hues, np.full_like(hues, 0.9), lifes)
+                # 3×3 soft dot
+                for dy2, dx2 in [(-1, 0), (1, 0), (0, -1), (0, 1), (0, 0)]:
+                    yy = np.clip(pys[valid] + dy2, 0, height - 1)
+                    xx = np.clip(pxs[valid] + dx2, 0, width - 1)
+                    np.maximum(frame[yy, xx], pcols * 0.8, out=frame[yy, xx])
+                frame[pys[valid], pxs[valid]] = np.maximum(
+                    frame[pys[valid], pxs[valid]], pcols)
 
-        _draw_text_simple(frame, title.upper(), x=60, y=40, colour=bar_colour, scale=2)
-        _draw_text_simple(frame, artist.upper(), x=60, y=80, colour=(150, 150, 200), scale=1)
+        # ── Bloom pass ────────────────────────────────────────────────────────
+        frame = _apply_bloom(frame, strength=0.30)
 
-        progress = t / duration
-        pb_y = height - 6
-        frame[pb_y:pb_y + 4, 0:int(width * progress)] = bar_colour
+        # ── Beat flash ───────────────────────────────────────────────────────
+        if beat_flash[0] > 0.05:
+            frame = np.clip(frame + beat_flash[0] * 28, 0, 255)
 
-        return frame
+        # ── Text overlay ──────────────────────────────────────────────────────
+        title_col = _hsv_to_rgb_scalar(hue_base, 0.35, 1.0)
+        artist_col = _hsv_to_rgb_scalar((hue_base + 0.28) % 1.0, 0.6, 0.75)
+
+        if fmt == "tiktok":
+            # Title centre-top for vertical format
+            tx = max(40, cx - len(title) * 12)
+            _draw_text_simple(frame, title, x=tx, y=60, colour=title_col, scale=3)
+            _draw_text_simple(frame, artist, x=tx + 6, y=115, colour=artist_col, scale=2)
+        else:
+            _draw_text_simple(frame, title, x=55, y=48, colour=title_col, scale=3)
+            _draw_text_simple(frame, artist, x=57, y=100, colour=artist_col, scale=2)
+
+        # ── Progress bar ─────────────────────────────────────────────────────
+        progress = min(t / max(duration, 1), 1.0)
+        pb_col = np.array(_hsv_to_rgb_scalar(hue_base, 0.9, 1.0), dtype=np.float32)
+        pb_y = height - 5
+        pb_end = int(width * progress)
+        frame[pb_y:pb_y + 4, :pb_end] = pb_col
+        # Dot at progress head
+        dot_x = max(0, min(pb_end, width - 4))
+        frame[pb_y - 3:pb_y + 7, dot_x:dot_x + 4] = pb_col * 1.2
+
+        return np.clip(frame, 0, 255).astype(np.uint8)
 
     video_clip = mpy.VideoClip(make_frame, duration=duration)
     video_clip = video_clip.set_audio(audio_clip)
@@ -122,55 +412,3 @@ def generate_visualiser(
     audio_clip.close()
     video_clip.close()
     return output_path
-
-
-def _draw_text_simple(frame, text: str, x: int, y: int, colour: tuple, scale: int = 1):
-    """Draw simple block-letter text onto a numpy frame array."""
-    FONT = {
-        'A': ['01110','10001','10001','11111','10001','10001','10001'],
-        'B': ['11110','10001','10001','11110','10001','10001','11110'],
-        'C': ['01111','10000','10000','10000','10000','10000','01111'],
-        'D': ['11110','10001','10001','10001','10001','10001','11110'],
-        'E': ['11111','10000','10000','11110','10000','10000','11111'],
-        'F': ['11111','10000','10000','11110','10000','10000','10000'],
-        'G': ['01111','10000','10000','10111','10001','10001','01111'],
-        'H': ['10001','10001','10001','11111','10001','10001','10001'],
-        'I': ['11111','00100','00100','00100','00100','00100','11111'],
-        'J': ['00111','00010','00010','00010','10010','10010','01100'],
-        'K': ['10001','10010','10100','11000','10100','10010','10001'],
-        'L': ['10000','10000','10000','10000','10000','10000','11111'],
-        'M': ['10001','11011','10101','10001','10001','10001','10001'],
-        'N': ['10001','11001','10101','10011','10001','10001','10001'],
-        'O': ['01110','10001','10001','10001','10001','10001','01110'],
-        'P': ['11110','10001','10001','11110','10000','10000','10000'],
-        'Q': ['01110','10001','10001','10001','10101','10010','01101'],
-        'R': ['11110','10001','10001','11110','10100','10010','10001'],
-        'S': ['01111','10000','10000','01110','00001','00001','11110'],
-        'T': ['11111','00100','00100','00100','00100','00100','00100'],
-        'U': ['10001','10001','10001','10001','10001','10001','01110'],
-        'V': ['10001','10001','10001','10001','10001','01010','00100'],
-        'W': ['10001','10001','10001','10101','10101','11011','10001'],
-        'X': ['10001','10001','01010','00100','01010','10001','10001'],
-        'Y': ['10001','10001','01010','00100','00100','00100','00100'],
-        'Z': ['11111','00001','00010','00100','01000','10000','11111'],
-        ' ': ['00000','00000','00000','00000','00000','00000','00000'],
-        '-': ['00000','00000','00000','11111','00000','00000','00000'],
-        ':': ['00000','00100','00000','00000','00100','00000','00000'],
-        '0': ['01110','10001','10011','10101','11001','10001','01110'],
-        '1': ['00100','01100','00100','00100','00100','00100','01110'],
-    }
-    h, w = frame.shape[:2]
-    px = x
-    for char in text:
-        glyph = FONT.get(char, FONT.get(' '))
-        for row_i, row in enumerate(glyph):
-            for col_i, pixel in enumerate(row):
-                if pixel == '1':
-                    py = y + row_i * scale
-                    ppx = px + col_i * scale
-                    for sy in range(scale):
-                        for sx in range(scale):
-                            fy, fx = py + sy, ppx + sx
-                            if 0 <= fy < h and 0 <= fx < w:
-                                frame[fy, fx] = colour
-        px += (6 * scale) + scale
