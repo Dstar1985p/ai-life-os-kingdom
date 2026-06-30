@@ -326,6 +326,10 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
         <button onclick="triggerAgent('Vibes AI')" class="quick-btn">&#x25B6; Run Vibes AI</button>
         <button onclick="triggerAgent('Printify Studio')" class="quick-btn">&#x25B6; Run Printify</button>
         <button onclick="triggerAgent('Opportunity Scout')" class="quick-btn">&#x25B6; Run Scout</button>
+        <button onclick="triggerAgent('AI Engineer')" class="quick-btn">&#x1F527; Run Engineer</button>
+        <button onclick="triggerAgent('SEO Agent')" class="quick-btn">&#x1F50D; Run SEO Agent</button>
+        <button onclick="triggerAgent('Content Agent')" class="quick-btn">&#x1F4F1; Run Content</button>
+        <button onclick="triggerAgent('Revenue Forecaster')" class="quick-btn">&#x1F4C8; Run Forecaster</button>
         <div id="action-result" style="font-size:0.7rem;color:var(--green);margin-top:4px;min-height:20px"></div>
       </div>
     </div>
@@ -1299,7 +1303,182 @@ async function loadDashboard() {
       <div style="margin-top:10px"><button onclick="fetch('/achievements/check',{method:'POST'}).then(r=>r.json()).then(d=>{if(d.count>0){alert('Unlocked: '+d.newly_unlocked.map(a=>a.title).join(', '));}else{alert('No new achievements this time.');}loadDashboard();}).catch(e=>alert('Error: '+e))" class="quick-btn">&#x1F50D; Check Achievements</button></div>`));
   } catch(e) { panels.push(panel('ACHIEVEMENTS','amber','<h2>&#x1F3C6; Trophy Hall</h2><div style="color:var(--muted)">Could not load achievements.</div>')); }
 
+  /* ── AI ENGINEER ── */
+  try {
+    const [engPatches, engInsights] = await Promise.all([
+      fetchJSON('/engineer/patches'),
+      fetchJSON('/engineer/insights'),
+    ]);
+    const patches = (engPatches&&engPatches.patches||[]).slice(0,4);
+    const insights = (engInsights&&engInsights.insights||[]).slice(0,3);
+    const patchHTML = patches.length ? patches.map(p=>{
+      const src = p.source==='engineer_auto'?'<span style="color:var(--green);font-size:0.65rem">AUTO-APPLIED</span>':'<span style="color:var(--amber);font-size:0.65rem">REVIEW NEEDED</span>';
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px 10px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span style="font-size:0.78rem;color:var(--cyan)">${(p.lesson||'').replace('[AI Engineer] ','').slice(0,70)}</span>${src}</div>
+        <div style="font-size:0.65rem;color:var(--muted)">${p.created_at?p.created_at.slice(0,16):''}</div>
+      </div>`;
+    }).join('') : '<div style="color:var(--green);font-size:0.78rem;padding:6px 0">&#x2705; System healthy — no patches pending</div>';
+    const insightHTML = insights.length ? insights.map(i=>`<div style="font-size:0.72rem;color:var(--muted);padding:3px 0;border-bottom:1px solid var(--border)">&#x25B8; ${(i.lesson||'').replace('[AI Engineer] Performance: ','').slice(0,90)}</div>`).join('') : '';
+    panels.push(panel('AI ENGINEER','cyan',`<h2>&#x1F527; Self-Healing AI Engineer</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px">Scans for errors, proposes patches, auto-applies safe fixes. Runs every 12h.</p>
+      ${patchHTML}
+      ${insightHTML}
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button onclick="(async()=>{const b=document.querySelector('#ai-eng-btn');b.disabled=true;b.textContent='SCANNING...';try{const d=await (await fetch('/engineer/run',{method:'POST'})).json();alert('AI Engineer: '+d.actions_taken.join('. '));}catch(e){alert('Error');}finally{b.disabled=false;b.textContent='RUN SCAN';loadDashboard();}})();" class="quick-btn" id="ai-eng-btn">&#x1F527; Run Scan Now</button>
+      </div>`));
+  } catch(e) {}
+
+  /* ── SEO BRIEFS ── */
+  try {
+    const seo = await fetchJSON('/seo/briefs');
+    const briefs = (seo&&seo.seo_briefs||[]).slice(0,3);
+    const briefHTML = briefs.length ? briefs.map(b=>{
+      const d = b.detail||{};
+      const tags = (d.tags||[]).slice(0,8).join(', ');
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px 10px;margin-bottom:6px">
+        <div style="font-size:0.8rem;color:var(--cyan);margin-bottom:3px">${d.product||b.lesson.replace('SEO Brief: ','').split(' —')[0]}</div>
+        <div style="font-size:0.72rem;color:var(--text);margin-bottom:3px">${d.optimised_title||''}</div>
+        <div style="font-size:0.65rem;color:var(--muted)">${tags}</div>
+        ${d.seo_tip?`<div style="font-size:0.67rem;color:var(--amber);margin-top:3px">&#x1F4A1; ${d.seo_tip}</div>`:''}
+      </div>`;
+    }).join('') : '<div style="color:var(--muted);font-size:0.78rem">Run SEO Agent to generate listing optimisations</div>';
+    panels.push(panel('SEO AGENT','green',`<h2>&#x1F50D; SEO Optimiser</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px">Optimised Etsy titles, tags &amp; descriptions. Ready for copy-paste.</p>
+      ${briefHTML}
+      <div style="margin-top:10px"><button onclick="(async()=>{const b=this;b.disabled=true;b.textContent='GENERATING...';try{await fetch('/seo/run',{method:'POST'});loadDashboard();}finally{b.disabled=false;b.textContent='Generate SEO Briefs';}})()" class="quick-btn">&#x25B6; Generate SEO Briefs</button></div>`));
+  } catch(e) {}
+
+  /* ── CONTENT AGENT ── */
+  try {
+    const content = await fetchJSON('/content/briefs');
+    const briefs = (content&&content.content_briefs||[]).slice(0,3);
+    const contentHTML = briefs.length ? briefs.map(b=>{
+      const d = b.detail||{};
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px 10px;margin-bottom:6px">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:3px">
+          <span style="font-size:0.65rem;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);color:var(--cyan);padding:1px 6px;border-radius:3px">${d.platform||'Social'}</span>
+          <span style="font-size:0.65rem;color:var(--muted)">${d.venture||''}</span>
+        </div>
+        <div style="font-size:0.78rem;color:var(--text);line-height:1.4">${(d.caption||'').slice(0,120)}${(d.caption||'').length>120?'...':''}</div>
+        ${d.best_time?`<div style="font-size:0.65rem;color:var(--amber);margin-top:3px">&#x23F0; Best time: ${d.best_time}</div>`:''}
+      </div>`;
+    }).join('') : '<div style="color:var(--muted);font-size:0.78rem">Run Content Agent to generate social media copy</div>';
+    panels.push(panel('CONTENT AGENT','',`<h2>&#x1F4F1; Social Content</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px">Ready-to-post captions, hashtags &amp; timing. Founder reviews before publishing.</p>
+      ${contentHTML}
+      <div style="margin-top:10px"><button onclick="(async()=>{const b=this;b.disabled=true;b.textContent='GENERATING...';try{await fetch('/content/run',{method:'POST'});loadDashboard();}finally{b.disabled=false;b.textContent='Generate Content';}})()" class="quick-btn">&#x25B6; Generate Content</button></div>`));
+  } catch(e) {}
+
+  /* ── PRICE OPTIMIZER ── */
+  try {
+    const price = await fetchJSON('/price-optimizer/recommendations');
+    const recs = (price&&price.recommendations||[]).slice(0,1);
+    const priceHTML = recs.length && recs[0].detail && recs[0].detail.recommendations ? recs[0].detail.recommendations.filter(r=>r.action!=='hold').slice(0,4).map(r=>{
+      const ac = r.action==='increase'?'var(--green)':r.action==='test_lower'?'var(--amber)':'var(--muted)';
+      const ai = r.action==='increase'?'&#x25B2;':'&#x25BC;';
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:7px 10px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:0.78rem">${r.title.slice(0,40)}</div><div style="font-size:0.65rem;color:var(--muted)">${r.reason}</div></div>
+        <div style="text-align:right;flex-shrink:0;margin-left:8px"><div style="color:${ac};font-weight:700">${ai} &#xa3;${r.recommended_price_gbp.toFixed(2)}</div><div style="font-size:0.65rem;color:var(--muted)">was &#xa3;${r.current_price_gbp.toFixed(2)}</div></div>
+      </div>`;
+    }).join('') : '<div style="color:var(--muted);font-size:0.78rem">Run Price Optimizer to analyse margin opportunities</div>';
+    panels.push(panel('PRICE OPTIMIZER','amber',`<h2>&#x1F4B9; Price Optimiser</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px">Margin analysis &amp; optimal price recommendations by product type.</p>
+      ${priceHTML}
+      <div style="margin-top:10px"><button onclick="(async()=>{const b=this;b.disabled=true;b.textContent='ANALYSING...';try{await fetch('/price-optimizer/run',{method:'POST'});loadDashboard();}finally{b.disabled=false;b.textContent='Run Analysis';}})()" class="quick-btn">&#x25B6; Run Price Analysis</button></div>`));
+  } catch(e) {}
+
+  /* ── COMPETITOR GAP ── */
+  try {
+    const gap = await fetchJSON('/competitor/gaps');
+    const gaps = (gap&&gap.gaps||[]).slice(0,4);
+    const gapHTML = gaps.length ? gaps.map(g=>{
+      const oc = g.opportunity_score>=70?'var(--green)':g.opportunity_score>=40?'var(--amber)':'var(--red)';
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:7px 10px;margin-bottom:5px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+          <span style="font-size:0.8rem;color:var(--text)">${g.keyword}</span>
+          <span style="color:${oc};font-weight:700;font-size:0.85rem">${g.opportunity_score}</span>
+        </div>
+        <div style="font-size:0.65rem;color:var(--muted);margin-bottom:2px">${g.listing_count.toLocaleString()} listings &bull; ${g.recommendation}</div>
+        <div style="font-size:0.65rem;color:var(--cyan)">&#x2192; ${g.suggested_title}</div>
+      </div>`;
+    }).join('') : '<div style="color:var(--muted);font-size:0.78rem">No gap data — refresh to analyse keywords</div>';
+    const top = gap&&gap.top_opportunity;
+    panels.push(panel('KEYWORD GAPS','green',`<h2>&#x1F50E; Competitor Gap Analysis</h2>
+      ${top?`<div style="background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);border-radius:5px;padding:7px 10px;margin-bottom:10px;font-size:0.78rem"><span style="color:var(--green);font-weight:700">Top Keyword:</span> ${top.keyword} (score ${top.opportunity_score})</div>`:''}
+      ${gapHTML}
+      <div style="margin-top:10px"><button onclick="(async()=>{const b=this;b.disabled=true;b.textContent='REFRESHING...';try{await fetch('/competitor/refresh',{method:'POST'});loadDashboard();}finally{b.disabled=false;b.textContent='Refresh Analysis';}})()" class="quick-btn">&#x25B6; Refresh Analysis</button></div>`));
+  } catch(e) {}
+
+  /* ── SCENARIO MODELLER ── */
+  try {
+    const scenarioEl = `<h2>&#x1F3B2; Scenario Modeller</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px">Model revenue outcomes for different strategies. No AI calls — pure calculation.</p>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+        <div style="display:flex;gap:6px;align-items:center">
+          <label style="font-size:0.7rem;color:var(--muted);width:120px">Weekly listings:</label>
+          <input id="sc-listings" type="number" value="5" min="1" max="50" style="width:60px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:3px 6px;font-family:monospace;font-size:0.78rem;border-radius:3px">
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <label style="font-size:0.7rem;color:var(--muted);width:120px">Avg price (&#xa3;):</label>
+          <input id="sc-price" type="number" value="18.99" min="5" max="100" step="0.01" style="width:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:3px 6px;font-family:monospace;font-size:0.78rem;border-radius:3px">
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <label style="font-size:0.7rem;color:var(--muted);width:120px">Conv. rate (%):</label>
+          <input id="sc-conv" type="number" value="2.5" min="0.1" max="20" step="0.1" style="width:60px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:3px 6px;font-family:monospace;font-size:0.78rem;border-radius:3px">
+        </div>
+      </div>
+      <div id="scenario-result" style="display:none;background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.2);border-radius:6px;padding:10px;font-size:0.8rem"></div>
+      <button onclick="runScenario()" class="quick-btn" style="margin-top:8px">&#x25B6; Calculate Scenario</button>`;
+    panels.push(panel('SCENARIO MODELLER','',scenarioEl));
+  } catch(e) {}
+
+  /* ── WEEKLY RETRO ── */
+  try {
+    const retro = await fetchJSON('/retro/latest');
+    if (retro && retro.week_start) {
+      const wins = (retro.wins||[]).map(w=>`<div style="font-size:0.72rem;color:var(--green);padding:2px 0">&#x2705; ${w}</div>`).join('');
+      const missed = (retro.missed||[]).map(m=>`<div style="font-size:0.72rem;color:var(--amber);padding:2px 0">&#x26A0; ${m}</div>`).join('');
+      const insights = (retro.insights||[]).map(i=>`<div style="font-size:0.72rem;color:var(--cyan);padding:2px 0">&#x25B8; ${i}</div>`).join('');
+      panels.push(panel('WEEKLY RETRO','green',`<h2>&#x1F4CB; Weekly Retrospective</h2>
+        <div style="font-size:0.65rem;color:var(--muted);margin-bottom:8px">Week of ${retro.week_start} &bull; Score: <span style="color:var(--amber);font-weight:700">${retro.performance_score||'?'}/100</span></div>
+        ${wins}${missed}${insights}
+        <div style="margin-top:10px"><button onclick="(async()=>{const b=this;b.disabled=true;b.textContent='GENERATING...';try{const d=await (await fetch('/retro/generate',{method:'POST'})).json();alert(d.message||'Retro generated');loadDashboard();}catch(e){alert('Error generating retro');}finally{b.disabled=false;b.textContent='Regenerate';}})()" class="quick-btn">&#x21BA; Regenerate</button></div>`));
+    }
+  } catch(e) {}
+
+  /* ── EXPORT DOWNLOADS ── */
+  panels.push(panel('EXPORT &amp; DOWNLOADS','',`<h2>&#x1F4E5; Export Kingdom Data</h2>
+    <p style="font-size:0.72rem;color:var(--muted);margin-bottom:12px">Download your data for analysis, tax, or backup purposes.</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <a href="/export/treasury.csv" download class="quick-btn" style="text-decoration:none;display:block;text-align:left">&#x1F4BE; Treasury CSV — All revenue transactions</a>
+      <a href="/export/opportunities.csv" download class="quick-btn" style="text-decoration:none;display:block;text-align:left">&#x1F4BE; Opportunities CSV — Full scored list</a>
+      <a href="/export/weekly-report.txt" download class="quick-btn" style="text-decoration:none;display:block;text-align:left">&#x1F4C4; Weekly Report TXT — Full kingdom summary</a>
+    </div>`));
+
   document.getElementById('panels').innerHTML=panels.join('');
+}
+
+/* ── SCENARIO CALCULATOR ── */
+function runScenario() {
+  const listings = parseFloat(document.getElementById('sc-listings').value)||5;
+  const price = parseFloat(document.getElementById('sc-price').value)||18.99;
+  const conv = parseFloat(document.getElementById('sc-conv').value)||2.5;
+  const el = document.getElementById('scenario-result');
+  if (!el) return;
+  const weeklyViews = listings * 100; // estimate
+  const weeklySales = weeklyViews * (conv / 100);
+  const weeklyRev = weeklySales * price;
+  const margin = 0.38; // 38% avg margin
+  const weeklyProfit = weeklyRev * margin;
+  el.style.display = '';
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+      <div style="background:var(--surface);border-radius:4px;padding:6px;text-align:center"><div style="font-size:0.6rem;color:var(--muted)">WEEKLY REV</div><div style="font-size:1rem;font-weight:700;color:var(--green)">&#xa3;${weeklyRev.toFixed(0)}</div></div>
+      <div style="background:var(--surface);border-radius:4px;padding:6px;text-align:center"><div style="font-size:0.6rem;color:var(--muted)">WEEKLY PROFIT</div><div style="font-size:1rem;font-weight:700;color:var(--cyan)">&#xa3;${weeklyProfit.toFixed(0)}</div></div>
+      <div style="background:var(--surface);border-radius:4px;padding:6px;text-align:center"><div style="font-size:0.6rem;color:var(--muted)">MONTHLY REV</div><div style="font-size:1rem;font-weight:700;color:var(--green)">&#xa3;${(weeklyRev*4.33).toFixed(0)}</div></div>
+      <div style="background:var(--surface);border-radius:4px;padding:6px;text-align:center"><div style="font-size:0.6rem;color:var(--muted)">ANNUAL REV</div><div style="font-size:1rem;font-weight:700;color:var(--amber)">&#xa3;${(weeklyRev*52).toFixed(0)}</div></div>
+    </div>
+    <div style="font-size:0.65rem;color:var(--muted)">${listings} listings &bull; ${conv}% conv &bull; &#xa3;${price} avg &bull; 38% margin assumed</div>`;
 }
 
 /* ── COUNCIL ── */
@@ -1534,6 +1713,9 @@ setInterval(pollCharacterStates,30000);
       <option value="print_forge">Print Forge AI</option>
       <option value="opportunity_scout">Opportunity Scout</option>
       <option value="overseer">Overseer</option>
+      <option value="ai_engineer">AI Engineer</option>
+      <option value="seo_agent">SEO Agent</option>
+      <option value="content_agent">Content Agent</option>
     </select>
     <button class="chat-close" onclick="toggleChat()">&#x2715;</button>
   </div>
