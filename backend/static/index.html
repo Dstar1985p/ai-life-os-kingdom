@@ -534,6 +534,8 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
         <button onclick="triggerAgent('SEO Agent')" class="quick-btn">&#x1F50D; Run SEO Agent</button>
         <button onclick="triggerAgent('Content Agent')" class="quick-btn">&#x1F4F1; Run Content</button>
         <button onclick="triggerAgent('Revenue Forecaster')" class="quick-btn">&#x1F4C8; Run Forecaster</button>
+        <button onclick="showPanel('launch');loadChecklist()" class="quick-btn">&#x1F680; Launch Checklist</button>
+        <button onclick="showPanel('abtests');loadABTests()" class="quick-btn">&#x1F9EA; A/B Tests</button>
         <div id="action-result" style="font-size:0.7rem;color:var(--green);margin-top:4px;min-height:20px"></div>
       </div>
     </div>
@@ -1740,6 +1742,47 @@ async function loadDashboard() {
       <a href="/export/weekly-report.txt" download class="quick-btn" style="text-decoration:none;display:block;text-align:left">&#x1F4C4; Weekly Report TXT — Full kingdom summary</a>
     </div>`));
 
+
+  panels.push(`<div class="panel" id="panel-launch" style="display:none">
+    <h3>&#x1F680; Launch Checklist</h3>
+    <div style="margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="quick-btn" onclick="filterChecklist('all')">All</button>
+      <button class="quick-btn" onclick="filterChecklist('Pitwall Classics')">Pitwall Classics</button>
+      <button class="quick-btn" onclick="filterChecklist('PulseBreak')">PulseBreak</button>
+      <button class="quick-btn" onclick="filterChecklist('General')">General</button>
+    </div>
+    <div id="checklist-progress" style="margin-bottom:12px;font-size:0.85rem;color:#0ff"></div>
+    <div id="checklist-items" style="max-height:360px;overflow-y:auto"></div>
+    <div style="margin-top:12px;border-top:1px solid #333;padding-top:10px">
+      <input id="new-checklist-item" class="quick-btn" placeholder="Add custom item..." style="width:60%;background:#1a1a2e;color:#eee;border:1px solid #444">
+      <select id="new-checklist-venture" class="quick-btn" style="background:#1a1a2e;color:#eee">
+        <option>Pitwall Classics</option><option>PulseBreak</option><option>General</option>
+      </select>
+      <button class="quick-btn" onclick="addChecklistItem()">+ Add</button>
+    </div>
+  </div>`);
+
+  panels.push(`<div class="panel" id="panel-abtests" style="display:none">
+    <h3>&#x1F9EA; A/B Test Tracker</h3>
+    <div id="ab-tests-list" style="max-height:300px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="border-top:1px solid #333;padding-top:10px">
+      <h4 style="margin:0 0 8px;font-size:0.9rem">New A/B Test</h4>
+      <input id="ab-name" class="quick-btn" placeholder="Test name (e.g. Title A vs B)" style="width:100%;margin-bottom:4px;background:#1a1a2e;color:#eee;border:1px solid #444">
+      <textarea id="ab-variant-a" class="quick-btn" placeholder="Variant A (current)" rows="2" style="width:100%;margin-bottom:4px;background:#1a1a2e;color:#eee;border:1px solid #444;resize:vertical"></textarea>
+      <textarea id="ab-variant-b" class="quick-btn" placeholder="Variant B (test)" rows="2" style="width:100%;margin-bottom:4px;background:#1a1a2e;color:#eee;border:1px solid #444;resize:vertical"></textarea>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <select id="ab-venture" class="quick-btn" style="background:#1a1a2e;color:#eee">
+          <option>Pitwall Classics</option><option>PulseBreak</option>
+        </select>
+        <select id="ab-metric" class="quick-btn" style="background:#1a1a2e;color:#eee">
+          <option value="clicks">Clicks</option><option value="conversions">Conversions</option>
+          <option value="revenue">Revenue</option><option value="favourites">Favourites</option>
+        </select>
+        <button class="quick-btn" onclick="createABTest()" style="background:#0f4;color:#000">Create Test</button>
+      </div>
+    </div>
+  </div>`);
+
   document.getElementById('panels').innerHTML=panels.join('');
 }
 
@@ -2320,6 +2363,97 @@ setInterval(()=>{
 setInterval(pollCharacterStates,30000);
 initOnboarding();
 initMobileTabs();
+
+  // ── Launch Checklist ──────────────────────────────────────────────────────
+  let _checklistFilter = 'all';
+  async function loadChecklist(venture) {
+    _checklistFilter = venture || 'all';
+    const url = venture && venture !== 'all' ? `/launch/checklist?venture=${encodeURIComponent(venture)}` : '/launch/checklist';
+    try {
+      const r = await fetch(url); const d = await r.json();
+      const prog = document.getElementById('checklist-progress');
+      if (prog) prog.textContent = `${d.completed}/${d.total} complete (${d.pct}%)`;
+      const el = document.getElementById('checklist-items');
+      if (!el) return;
+      el.innerHTML = d.items.map(i => `
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #222">
+          <input type="checkbox" ${i.completed ? 'checked' : ''} onchange="toggleChecklist(${i.id},this.checked)" style="margin-top:2px;cursor:pointer">
+          <div style="flex:1">
+            <div style="${i.completed ? 'text-decoration:line-through;color:#666' : 'color:#eee'};font-size:0.88rem">${i.item}</div>
+            <div style="font-size:0.75rem;color:#888">${i.venture} · ${i.category}</div>
+          </div>
+        </div>`).join('');
+    } catch(e) { showToast('Checklist load failed','error'); }
+  }
+  function filterChecklist(v) { loadChecklist(v === 'all' ? null : v); }
+  async function toggleChecklist(id, completed) {
+    try {
+      await fetch('/launch/checklist/'+id, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({completed})});
+      loadChecklist(_checklistFilter === 'all' ? null : _checklistFilter);
+    } catch(e) {}
+  }
+  async function addChecklistItem() {
+    const item = document.getElementById('new-checklist-item').value.trim();
+    const venture = document.getElementById('new-checklist-venture').value;
+    if (!item) return;
+    try {
+      await fetch('/launch/checklist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({venture,item,category:'custom'})});
+      document.getElementById('new-checklist-item').value = '';
+      loadChecklist(null);
+      showToast('Item added','success');
+    } catch(e) { showToast('Failed to add item','error'); }
+  }
+
+  // ── A/B Tests ─────────────────────────────────────────────────────────────
+  async function loadABTests() {
+    try {
+      const r = await fetch('/launch/ab-tests'); const d = await r.json();
+      const el = document.getElementById('ab-tests-list');
+      if (!el) return;
+      if (!d.tests.length) { el.innerHTML = '<div style="color:#666;font-size:0.85rem">No tests yet — create one below.</div>'; return; }
+      el.innerHTML = d.tests.map(t => {
+        const lift = t.lift_pct !== null ? ` (${t.lift_pct > 0 ? '+' : ''}${t.lift_pct}% lift)` : '';
+        const winner = t.winner ? ` 🏆 Variant ${t.winner} wins` : '';
+        return `<div style="border:1px solid #333;border-radius:6px;padding:8px;margin-bottom:8px">
+          <div style="font-size:0.9rem;font-weight:bold;color:#0ff">${t.name}</div>
+          <div style="font-size:0.78rem;color:#888;margin-bottom:4px">${t.venture} · ${t.metric} · ${t.status}${winner}</div>
+          <div style="display:flex;gap:8px;font-size:0.82rem">
+            <div style="flex:1;background:#1a1a2e;padding:4px;border-radius:4px"><b style="color:#aaa">A:</b> ${t.variant_a.substring(0,60)}<br><b style="color:#0f4">${t.a_value}</b></div>
+            <div style="flex:1;background:#1a1a2e;padding:4px;border-radius:4px"><b style="color:#aaa">B:</b> ${t.variant_b.substring(0,60)}<br><b style="color:#f90">${t.b_value}${lift}</b></div>
+          </div>
+          ${t.status === 'running' ? `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">
+            <button class="quick-btn" style="font-size:0.75rem" onclick="concludeABTest(${t.id},'A')">Declare A wins</button>
+            <button class="quick-btn" style="font-size:0.75rem" onclick="concludeABTest(${t.id},'B')">Declare B wins</button>
+            <button class="quick-btn" style="font-size:0.75rem;color:#f66" onclick="deleteABTest(${t.id})">Delete</button>
+          </div>` : ''}
+        </div>`;
+      }).join('');
+    } catch(e) {}
+  }
+  async function createABTest() {
+    const name = document.getElementById('ab-name').value.trim();
+    const va = document.getElementById('ab-variant-a').value.trim();
+    const vb = document.getElementById('ab-variant-b').value.trim();
+    const venture = document.getElementById('ab-venture').value;
+    const metric = document.getElementById('ab-metric').value;
+    if (!name || !va || !vb) { showToast('Fill in name and both variants','warning'); return; }
+    try {
+      await fetch('/launch/ab-tests', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({venture,name,variant_a:va,variant_b:vb,metric})});
+      ['ab-name','ab-variant-a','ab-variant-b'].forEach(id => document.getElementById(id).value = '');
+      loadABTests();
+      showToast('A/B test created','success');
+    } catch(e) { showToast('Failed to create test','error'); }
+  }
+  async function concludeABTest(id, winner) {
+    await fetch('/launch/ab-tests/'+id, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({winner,status:'concluded'})});
+    loadABTests();
+    triggerCelebration('Test Concluded!', `Variant ${winner} wins!`, '🏆');
+  }
+  async function deleteABTest(id) {
+    await fetch('/launch/ab-tests/'+id, {method:'DELETE'});
+    loadABTests();
+  }
+
 </script>
 
 <!-- Celebration Overlay -->
