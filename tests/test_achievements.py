@@ -24,12 +24,13 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
 def clean_db():
+    # Re-apply override each test in case another test module changed it
+    app.dependency_overrides[get_db] = override_get_db
     db = TestingSession()
     db.query(Achievement).delete()
     db.query(Quest).delete()
