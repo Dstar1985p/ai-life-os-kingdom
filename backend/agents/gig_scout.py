@@ -273,7 +273,7 @@ class GigScoutAgent(BaseRevenueAgent):
         if not all_opps:
             result.status = "skip"
             result.lessons = ["Gig Scout: Claude unavailable, skipping this run"]
-            self._record_run(db, result)
+            self._record_run(result, db)
             return result
 
         # Step 3 — upsert top opportunities
@@ -339,7 +339,7 @@ class GigScoutAgent(BaseRevenueAgent):
         result.actions_taken.append(
             f"Created {result.opportunities_created} new + {result.opportunities_updated} updated gig opportunities"
         )
-        self._record_run(db, result)
+        self._record_run(result, db)
         return result
 
     # ──────────────────────────────────────────

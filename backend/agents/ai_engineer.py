@@ -97,8 +97,8 @@ def _get_recent_errors(db: Session, hours: int = 72) -> list[dict]:
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     runs = (
         db.query(AgentRun)
-        .filter(AgentRun.ran_at >= cutoff)
-        .order_by(AgentRun.ran_at.desc())
+        .filter(AgentRun.run_at >= cutoff)
+        .order_by(AgentRun.run_at.desc())
         .limit(200)
         .all()
     )
@@ -114,11 +114,11 @@ def _get_recent_errors(db: Session, hours: int = 72) -> list[dict]:
 
     errors: list[dict] = []
     for run in runs:
-        if run.status == "error":
+        if run.roi is not None and run.roi < 0:
             errors.append({
                 "source": f"agent:{run.agent_name}",
-                "text": f"Agent {run.agent_name} run failed",
-                "at": run.ran_at.isoformat(),
+                "text": f"Agent {run.agent_name} run had negative ROI",
+                "at": run.run_at.isoformat(),
                 "type": "agent_run",
             })
     for lesson in lessons:
@@ -138,11 +138,11 @@ def _get_performance_insights(db: Session) -> dict:
         rows = db.execute(text("""
             SELECT agent_name,
                    COUNT(*) total_runs,
-                   SUM(CASE WHEN status='error' THEN 1 ELSE 0 END) errors,
+                   SUM(CASE WHEN roi < 0 THEN 1 ELSE 0 END) errors,
                    SUM(opportunities_created) opps,
                    AVG(estimated_cost_gbp) avg_cost
             FROM agent_runs
-            WHERE ran_at >= :cutoff
+            WHERE run_at >= :cutoff
             GROUP BY agent_name
         """), {"cutoff": cutoff.isoformat()}).fetchall()
 

@@ -8,8 +8,13 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.services.treasury import (
     add_entry,
+    get_api_costs,
+    get_cost_breakdown,
     get_kingdom_treasury,
+    get_pnl_by_period,
     get_recent_entries,
+    get_revenue_breakdown,
+    get_subscriptions,
     get_venture_summary,
     import_from_etsy_orders,
 )
@@ -79,6 +84,33 @@ def create_entry(body: EntryCreate, db: Session = Depends(get_db)):
 def import_etsy(db: Session = Depends(get_db)):
     count = import_from_etsy_orders(db)
     return {"imported": count, "message": f"Imported {count} Etsy orders as income entries."}
+
+
+@router.get("/pnl/{period}")
+def pnl_for_period(period: str, db: Session = Depends(get_db)):
+    """P&L for period: 1d/7d/1m/3m/6m/1y/all."""
+    return get_pnl_by_period(db, period=period)
+
+
+@router.get("/subscriptions")
+def subscriptions(db: Session = Depends(get_db)):
+    """Known fixed costs and any logged subscription entries."""
+    return get_subscriptions(db)
+
+
+@router.get("/api-costs")
+def api_costs(days: int = Query(30), db: Session = Depends(get_db)):
+    """API spend breakdown from TokenUsageLog."""
+    return get_api_costs(db, days=days)
+
+
+@router.get("/breakdown")
+def full_breakdown(days: int = Query(30), db: Session = Depends(get_db)):
+    """Full cost + revenue breakdown by category."""
+    return {
+        "costs": get_cost_breakdown(db, days=days),
+        "revenue": get_revenue_breakdown(db, days=days),
+    }
 
 
 @router.get("/{venture}")

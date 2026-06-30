@@ -34,6 +34,9 @@ _SCHEDULE = {
     "SEO Agent": {"hours": 48},
     "Content Agent": {"hours": 24},
     "Revenue Forecaster": {"hours": 24},
+    "AI Research": {"hours": 12},
+    "AI Commander": {"hours": 4},
+    "Marketing Agent": {"hours": 24},
 }
 
 _scheduler: BackgroundScheduler | None = None
@@ -72,6 +75,12 @@ def _get_agents() -> dict[str, Any]:
         _AGENT_REGISTRY["Market Scout"] = MarketScoutAgent()
         from backend.agents.gig_scout import GigScoutAgent
         _AGENT_REGISTRY["Gig Scout"] = GigScoutAgent()
+        from backend.agents.research_agent import AIResearchAgent
+        _AGENT_REGISTRY["AI Research"] = AIResearchAgent()
+        from backend.agents.ai_commander import AICommanderAgent
+        _AGENT_REGISTRY["AI Commander"] = AICommanderAgent()
+        from backend.agents.marketing_factory import MarketingFactoryAgent
+        _AGENT_REGISTRY["Marketing Agent"] = MarketingFactoryAgent()
     return _AGENT_REGISTRY
 
 

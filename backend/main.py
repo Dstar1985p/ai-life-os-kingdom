@@ -61,6 +61,9 @@ from backend.api.routes_backup import router as backup_router
 from backend.api.routes_launch import router as launch_router
 from backend.api.routes_avatars import router as avatars_router
 from backend.api.routes_performance import router as performance_router
+from backend.api.routes_rooms import router as rooms_router
+from backend.api.routes_commander import router as commander_router
+from backend.api.routes_marketing import router as marketing_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -160,6 +163,9 @@ app.include_router(images_router)
 app.include_router(market_scout_router)
 app.include_router(gig_scout_router)
 app.include_router(livery_router)
+app.include_router(rooms_router)
+app.include_router(commander_router)
+app.include_router(marketing_router)
 
 
 @app.get("/", include_in_schema=False)

@@ -17,4 +17,8 @@ class ChatMessage(BaseModel):
 @router.post("/message")
 def send_chat_message(body: ChatMessage, db: Session = Depends(get_db)):
     """Send a message to a kingdom agent and receive a reply."""
+    agent_key = body.agent.lower().replace(" ", "_").replace("-", "_")
+    if agent_key in ("ai_commander", "commander"):
+        from backend.agents.ai_commander import chat_with_commander
+        return chat_with_commander(body.message, db)
     return chat_with_agent(body.agent, body.message, db)

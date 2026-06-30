@@ -83,7 +83,7 @@ class MarketScoutAgent(BaseRevenueAgent):
         if not etsy_auth:
             result.status = "skip"
             result.lessons = ["Market Scout skipped: Etsy not connected"]
-            self._record_run(db, result)
+            self._record_run(result, db)
             return result
 
         # Step 2 — search each keyword and aggregate market data
@@ -108,7 +108,7 @@ class MarketScoutAgent(BaseRevenueAgent):
         if not niche_data:
             result.status = "error"
             result.error = "No market data retrieved — Etsy API may be unavailable"
-            self._record_run(db, result)
+            self._record_run(result, db)
             return result
 
         # Step 3 — sort by opportunity signal (high views, lower review count = easier entry)
@@ -121,7 +121,7 @@ class MarketScoutAgent(BaseRevenueAgent):
 
         if not opps:
             result.lessons.append("Claude analysis unavailable — opportunities not scored this run")
-            self._record_run(db, result)
+            self._record_run(result, db)
             return result
 
         # Step 5 — upsert opportunities above threshold
@@ -185,7 +185,7 @@ class MarketScoutAgent(BaseRevenueAgent):
         result.actions_taken.append(
             f"Created {result.opportunities_created} new + updated {result.opportunities_updated} opportunities"
         )
-        self._record_run(db, result)
+        self._record_run(result, db)
         return result
 
     # ──────────────────────────────────────────
