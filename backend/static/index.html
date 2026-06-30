@@ -33,52 +33,15 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
 .resource-item.knowledge .resource-value { color: var(--purple); }
 .resource-item.focus .resource-value { color: var(--green); }
 
-/* ===== PIXEL WORLD ===== */
-#pixel-world {
-  width: 100%; background: #060010; border-bottom: 3px solid #1a0050;
-  padding: 24px 16px 12px; position: relative; overflow: hidden;
+/* ===== KINGDOM WORLD (canvas map) ===== */
+#kingdom-world {
+  width: 100%; height: 600px; position: relative; background: #030010;
+  border-bottom: 3px solid #0a0040; overflow: hidden;
 }
-#pixel-world::before {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background-image:
-    radial-gradient(1px 1px at 8% 20%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 22% 10%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 38% 28%, #adf 0%, transparent 100%),
-    radial-gradient(1px 1px at 53% 8%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 68% 22%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 83% 14%, #adf 0%, transparent 100%),
-    radial-gradient(1px 1px at 14% 48%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 59% 38%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 88% 44%, #adf 0%, transparent 100%),
-    radial-gradient(1px 1px at 31% 53%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 73% 58%, #fff 0%, transparent 100%),
-    radial-gradient(2px 2px at 46% 16%, rgba(0,212,255,0.5) 0%, transparent 100%),
-    radial-gradient(2px 2px at 78% 33%, rgba(180,0,255,0.4) 0%, transparent 100%);
+#kingdom-map-canvas {
+  width: 100%; height: 100%; display: block; cursor: pointer;
 }
-.pixel-row { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; position: relative; z-index: 1; }
-
-.pchar { display: flex; flex-direction: column; align-items: center; gap: 5px;
-  cursor: pointer; user-select: none; transition: filter 0.2s; }
-.pchar:hover { filter: brightness(1.25); }
-.pchar:active { transform: scale(0.95); }
-.pchar svg { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
-
-@keyframes pixelBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-.sprite-wrap { animation: pixelBounce 1.8s ease-in-out infinite; }
-.pchar:nth-child(2) .sprite-wrap { animation-delay: 0.3s; }
-.pchar:nth-child(3) .sprite-wrap { animation-delay: 0.6s; }
-.pchar:nth-child(4) .sprite-wrap { animation-delay: 0.9s; }
-.pchar:nth-child(5) .sprite-wrap { animation-delay: 1.2s; }
-.pchar:nth-child(6) .sprite-wrap { animation-delay: 1.5s; }
-
-@keyframes activeGlow { 0%,100% { filter: drop-shadow(0 0 4px var(--gc,#0f0)); } 50% { filter: drop-shadow(0 0 14px var(--gc,#0f0)); } }
-.pchar.is-active .sprite-wrap { animation: pixelBounce 1.8s ease-in-out infinite, activeGlow 1.2s ease-in-out infinite; }
-
-.pchar-platform { width: 84px; height: 10px; border-radius: 2px; margin-top: -2px; box-shadow: 0 3px 0 rgba(0,0,0,0.5); }
-.pchar-name { font-size: 0.52rem; letter-spacing: 2px; text-transform: uppercase; font-weight: bold;
-  text-align: center; max-width: 90px; line-height: 1.3; }
-.pchar-status { font-size: 0.46rem; letter-spacing: 1px; color: var(--muted); text-align: center; }
-.pchar.is-active .pchar-status { color: var(--green); }
+@media (max-width: 600px) { #kingdom-world { height: 400px; } }
 
 /* ===== MODAL ===== */
 #char-modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
@@ -249,245 +212,10 @@ header p { color: var(--muted); margin-top: 4px; font-size: 0.75rem; letter-spac
   </div>
 </div>
 
-<!-- PIXEL KINGDOM WORLD -->
-<div id="pixel-world">
-  <div class="pixel-row">
-
-    <!-- VIBES AI — cyan/purple DJ -->
-    <div class="pchar" id="pchar-vibes" onclick="openModal('vibes')" style="--gc:#00dcff">
-      <div class="sprite-wrap">
-        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
-          <!-- headphone band -->
-          <rect x="3" y="0" width="10" height="1" fill="#555"/>
-          <rect x="2" y="1" width="2" height="3" fill="#333"/>
-          <rect x="12" y="1" width="2" height="3" fill="#333"/>
-          <!-- head -->
-          <rect x="4" y="1" width="8" height="6" fill="#e8b07a"/>
-          <!-- eyes cyan -->
-          <rect x="5" y="3" width="2" height="1" fill="#00dcff"/>
-          <rect x="9" y="3" width="2" height="1" fill="#00dcff"/>
-          <rect x="6" y="5" width="4" height="1" fill="#b07050"/>
-          <!-- torso dark purple -->
-          <rect x="4" y="7" width="8" height="5" fill="#1a0050"/>
-          <rect x="4" y="9" width="8" height="1" fill="#00dcff"/>
-          <!-- arms -->
-          <rect x="1" y="7" width="3" height="3" fill="#1a0050"/>
-          <rect x="12" y="7" width="3" height="3" fill="#1a0050"/>
-          <rect x="1" y="10" width="2" height="2" fill="#e8b07a"/>
-          <rect x="13" y="10" width="2" height="2" fill="#e8b07a"/>
-          <!-- legs -->
-          <rect x="5" y="12" width="3" height="3" fill="#0d0030"/>
-          <rect x="8" y="12" width="3" height="3" fill="#0d0030"/>
-          <!-- shoes -->
-          <rect x="4" y="15" width="4" height="1" fill="#00dcff"/>
-          <rect x="8" y="15" width="4" height="1" fill="#b400ff"/>
-        </svg>
-      </div>
-      <div class="pchar-platform" style="background:#002244"></div>
-      <div class="pchar-name" style="color:#00dcff">Vibes AI</div>
-      <div class="pchar-status" id="pstatus-vibes">IDLE</div>
-    </div>
-
-    <!-- PRINT FORGE AI — orange/gold artist -->
-    <div class="pchar" id="pchar-printforge" onclick="openModal('printforge')" style="--gc:#ffd700">
-      <div class="sprite-wrap">
-        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
-          <!-- beret -->
-          <rect x="4" y="0" width="9" height="2" fill="#ff6b00"/>
-          <rect x="3" y="1" width="10" height="2" fill="#cc4400"/>
-          <rect x="11" y="0" width="2" height="1" fill="#ffd700"/>
-          <!-- head -->
-          <rect x="4" y="3" width="8" height="5" fill="#e8b07a"/>
-          <rect x="5" y="5" width="2" height="1" fill="#2a1200"/>
-          <rect x="9" y="5" width="2" height="1" fill="#2a1200"/>
-          <rect x="6" y="7" width="4" height="1" fill="#b07050"/>
-          <!-- smock -->
-          <rect x="4" y="8" width="8" height="5" fill="#4a2800"/>
-          <rect x="5" y="9" width="2" height="1" fill="#ffd700"/>
-          <rect x="9" y="10" width="2" height="1" fill="#ff6b00"/>
-          <!-- brush arm left -->
-          <rect x="1" y="8" width="3" height="2" fill="#4a2800"/>
-          <rect x="0" y="6" width="2" height="3" fill="#e8b07a"/>
-          <rect x="0" y="4" width="1" height="3" fill="#8B4513"/>
-          <rect x="0" y="3" width="2" height="2" fill="#ffd700"/>
-          <!-- right arm -->
-          <rect x="12" y="8" width="3" height="2" fill="#4a2800"/>
-          <!-- legs -->
-          <rect x="5" y="13" width="3" height="2" fill="#2a1500"/>
-          <rect x="8" y="13" width="3" height="2" fill="#2a1500"/>
-          <rect x="4" y="15" width="4" height="1" fill="#ffd700"/>
-          <rect x="8" y="15" width="4" height="1" fill="#ffd700"/>
-        </svg>
-      </div>
-      <div class="pchar-platform" style="background:#3d1a00"></div>
-      <div class="pchar-name" style="color:#ffd700">Print Forge</div>
-      <div class="pchar-status" id="pstatus-printforge">IDLE</div>
-    </div>
-
-    <!-- OVERSEER — gold/royal blue commander -->
-    <div class="pchar" id="pchar-overseer" onclick="openModal('overseer')" style="--gc:#ffd700">
-      <div class="sprite-wrap">
-        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
-          <!-- crown -->
-          <rect x="3" y="0" width="10" height="1" fill="#ffd700"/>
-          <rect x="3" y="1" width="2" height="2" fill="#ffd700"/>
-          <rect x="7" y="1" width="2" height="2" fill="#ffd700"/>
-          <rect x="11" y="1" width="2" height="2" fill="#ffd700"/>
-          <rect x="5" y="2" width="6" height="1" fill="#ffd700"/>
-          <rect x="7" y="1" width="2" height="1" fill="#00dcff"/>
-          <!-- helm -->
-          <rect x="4" y="3" width="8" height="4" fill="#1a0a5c"/>
-          <rect x="4" y="5" width="8" height="2" fill="#0a0030"/>
-          <rect x="5" y="5" width="2" height="2" fill="#ffd700"/>
-          <rect x="9" y="5" width="2" height="2" fill="#ffd700"/>
-          <!-- shoulders + cloak -->
-          <rect x="2" y="7" width="12" height="2" fill="#0047ab"/>
-          <!-- armour body -->
-          <rect x="4" y="9" width="8" height="4" fill="#0d1a6e"/>
-          <rect x="5" y="9" width="6" height="2" fill="#1a2e8c"/>
-          <rect x="5" y="9" width="6" height="1" fill="#ffd700"/>
-          <!-- arms + gauntlets -->
-          <rect x="1" y="7" width="3" height="5" fill="#0047ab"/>
-          <rect x="12" y="7" width="3" height="5" fill="#0047ab"/>
-          <rect x="1" y="12" width="3" height="2" fill="#ffd700"/>
-          <rect x="12" y="12" width="3" height="2" fill="#ffd700"/>
-          <!-- legs + boots -->
-          <rect x="5" y="13" width="3" height="2" fill="#0d1a6e"/>
-          <rect x="8" y="13" width="3" height="2" fill="#0d1a6e"/>
-          <rect x="4" y="15" width="4" height="1" fill="#0047ab"/>
-          <rect x="8" y="15" width="4" height="1" fill="#0047ab"/>
-        </svg>
-      </div>
-      <div class="pchar-platform" style="background:#00154d"></div>
-      <div class="pchar-name" style="color:#ffd700">Overseer</div>
-      <div class="pchar-status" id="pstatus-overseer">IDLE</div>
-    </div>
-
-    <!-- QUEST MASTER — purple wizard -->
-    <div class="pchar" id="pchar-questmaster" onclick="openModal('questmaster')" style="--gc:#9b59b6">
-      <div class="sprite-wrap">
-        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
-          <!-- hat tip -->
-          <rect x="7" y="0" width="2" height="1" fill="#6c3483"/>
-          <rect x="6" y="1" width="4" height="1" fill="#6c3483"/>
-          <rect x="5" y="2" width="6" height="1" fill="#7d3c98"/>
-          <rect x="4" y="3" width="8" height="1" fill="#7d3c98"/>
-          <rect x="7" y="2" width="2" height="1" fill="#ffd700"/>
-          <!-- hat brim -->
-          <rect x="3" y="4" width="10" height="2" fill="#9b59b6"/>
-          <!-- head -->
-          <rect x="4" y="6" width="8" height="4" fill="#e8c0a0"/>
-          <rect x="5" y="8" width="2" height="1" fill="#9b59b6"/>
-          <rect x="9" y="8" width="2" height="1" fill="#9b59b6"/>
-          <rect x="5" y="9" width="6" height="1" fill="#ddd"/>
-          <!-- robe -->
-          <rect x="3" y="10" width="10" height="5" fill="#4a0080"/>
-          <rect x="5" y="11" width="1" height="1" fill="#ffd700"/>
-          <rect x="10" y="12" width="1" height="1" fill="#ffd700"/>
-          <rect x="7" y="13" width="1" height="1" fill="#9b59b6"/>
-          <!-- staff -->
-          <rect x="14" y="1" width="2" height="10" fill="#8B4513"/>
-          <rect x="13" y="0" width="3" height="3" fill="#b400ff"/>
-          <rect x="14" y="0" width="2" height="3" fill="#9b59b6"/>
-          <!-- legs -->
-          <rect x="5" y="15" width="3" height="1" fill="#3a006a"/>
-          <rect x="8" y="15" width="3" height="1" fill="#3a006a"/>
-        </svg>
-      </div>
-      <div class="pchar-platform" style="background:#1a0030"></div>
-      <div class="pchar-name" style="color:#9b59b6">Quest Master</div>
-      <div class="pchar-status" id="pstatus-questmaster">IDLE</div>
-    </div>
-
-    <!-- PRINTIFY STUDIO — teal designer -->
-    <div class="pchar" id="pchar-printify" onclick="openModal('printify')" style="--gc:#00b4a0">
-      <div class="sprite-wrap">
-        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
-          <!-- hair -->
-          <rect x="4" y="0" width="8" height="2" fill="#2a1500"/>
-          <!-- head -->
-          <rect x="4" y="2" width="8" height="5" fill="#d4956a"/>
-          <!-- glasses -->
-          <rect x="4" y="4" width="4" height="2" fill="#00b4a0"/>
-          <rect x="8" y="4" width="4" height="2" fill="#00b4a0"/>
-          <rect x="5" y="5" width="2" height="1" fill="#2a1200"/>
-          <rect x="9" y="5" width="2" height="1" fill="#2a1200"/>
-          <rect x="6" y="6" width="3" height="1" fill="#b07050"/>
-          <!-- shirt -->
-          <rect x="4" y="7" width="8" height="4" fill="#0d2a28"/>
-          <rect x="6" y="7" width="4" height="1" fill="#fff"/>
-          <!-- desk/monitor -->
-          <rect x="0" y="10" width="16" height="5" fill="#0a1a1a"/>
-          <rect x="0" y="10" width="16" height="1" fill="#00b4a0"/>
-          <rect x="2" y="11" width="12" height="4" fill="#0d2020"/>
-          <!-- tshirt on screen -->
-          <rect x="4" y="12" width="2" height="2" fill="#00b4a0"/>
-          <rect x="6" y="11" width="4" height="4" fill="#00b4a0" style="opacity:0.5"/>
-          <rect x="10" y="12" width="2" height="2" fill="#00b4a0"/>
-          <!-- cursor -->
-          <rect x="11" y="14" width="1" height="1" fill="#fff"/>
-          <!-- stylus arm -->
-          <rect x="1" y="8" width="3" height="3" fill="#0d2a28"/>
-          <rect x="1" y="8" width="1" height="4" fill="#00b4a0"/>
-          <!-- legs hidden behind desk, feet only -->
-          <rect x="5" y="15" width="3" height="1" fill="#061a18"/>
-          <rect x="8" y="15" width="3" height="1" fill="#061a18"/>
-        </svg>
-      </div>
-      <div class="pchar-platform" style="background:#001a18"></div>
-      <div class="pchar-name" style="color:#00b4a0">Printify Studio</div>
-      <div class="pchar-status" id="pstatus-printify">IDLE</div>
-    </div>
-
-    <!-- MUSIC LICENSING — green producer -->
-    <div class="pchar" id="pchar-licensing" onclick="openModal('licensing')" style="--gc:#00ff88">
-      <div class="sprite-wrap">
-        <svg width="96" height="112" viewBox="0 0 16 16" style="image-rendering:pixelated">
-          <!-- headphones -->
-          <rect x="3" y="0" width="10" height="1" fill="#333"/>
-          <rect x="2" y="1" width="2" height="3" fill="#222"/>
-          <rect x="12" y="1" width="2" height="3" fill="#222"/>
-          <!-- head -->
-          <rect x="4" y="1" width="8" height="5" fill="#c8956a"/>
-          <rect x="5" y="3" width="2" height="1" fill="#00ff88"/>
-          <rect x="9" y="3" width="2" height="1" fill="#00ff88"/>
-          <rect x="6" y="5" width="4" height="1" fill="#9a7050"/>
-          <!-- jacket -->
-          <rect x="4" y="6" width="8" height="4" fill="#0d1a10"/>
-          <rect x="4" y="6" width="2" height="4" fill="#003320"/>
-          <rect x="10" y="6" width="2" height="4" fill="#003320"/>
-          <!-- arms -->
-          <rect x="1" y="7" width="3" height="3" fill="#0d1a10"/>
-          <rect x="12" y="7" width="3" height="3" fill="#0d1a10"/>
-          <rect x="0" y="9" width="2" height="2" fill="#c8956a"/>
-          <rect x="14" y="9" width="2" height="2" fill="#c8956a"/>
-          <!-- mixing desk -->
-          <rect x="0" y="11" width="16" height="4" fill="#0a1a0d"/>
-          <rect x="0" y="11" width="16" height="1" fill="#00ff88"/>
-          <!-- faders -->
-          <rect x="2" y="12" width="2" height="2" fill="#1a3320"/>
-          <rect x="2" y="12" width="2" height="1" fill="#00ff88"/>
-          <rect x="5" y="12" width="2" height="2" fill="#1a3320"/>
-          <rect x="5" y="13" width="2" height="1" fill="#00ff88"/>
-          <rect x="8" y="12" width="2" height="2" fill="#1a3320"/>
-          <rect x="8" y="12" width="2" height="1" fill="#ffd700"/>
-          <rect x="11" y="12" width="2" height="2" fill="#1a3320"/>
-          <rect x="11" y="14" width="2" height="1" fill="#00ff88"/>
-          <!-- waveform -->
-          <rect x="3" y="15" width="1" height="1" fill="#00ff88"/>
-          <rect x="5" y="15" width="1" height="1" fill="#00ff88"/>
-          <rect x="7" y="15" width="1" height="1" fill="#00ff88"/>
-          <rect x="9" y="15" width="1" height="1" fill="#ffd700"/>
-          <rect x="11" y="15" width="1" height="1" fill="#00ff88"/>
-        </svg>
-      </div>
-      <div class="pchar-platform" style="background:#001a0d"></div>
-      <div class="pchar-name" style="color:#00ff88">Music Licensing</div>
-      <div class="pchar-status" id="pstatus-licensing">IDLE</div>
-    </div>
-
-  </div>
-</div><!-- end pixel-world -->
+<!-- KINGDOM WORLD — Top-down cyberpunk canvas map -->
+<div id="kingdom-world">
+  <canvas id="kingdom-map-canvas"></canvas>
+</div>
 
 <!-- MODAL -->
 <div id="char-modal-bg" onclick="closeModalBg(event)">
@@ -759,13 +487,412 @@ function panel(title, cls, inner) {
   return `<div class="panel ${cls}"><div class="panel-title">${title}</div>${inner}<div class="last-updated">Updated: ${new Date().toLocaleTimeString()}</div></div>`;
 }
 
-/* ── PIXEL CHAR STATES ── */
+/* ── KINGDOM CANVAS MAP ── */
+(function() {
+  const canvas = document.getElementById('kingdom-map-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  // Agent active states — updated by pollCharacterStates
+  const agentActive = { vibes: false, printforge: false, overseer: false, questmaster: false, printify: false, licensing: false };
+  // Flash state for click highlight
+  const roomFlash = {};
+  // Crisis state
+  let crisisRed = false;
+  // Pending quest count for HUD
+  let hudQuestCount = 0;
+
+  // Logical canvas size (we scale for DPR)
+  const LW = 1200, LH = 600;
+
+  // Room definitions
+  const ROOMS = [
+    { key: 'vibes',       label: 'VIBES AI',    colour: '#00dcff', col: 0, row: 0, modal: 'vibes' },
+    { key: 'overseer',    label: 'OVERSEER',     colour: '#ffd700', col: 1, row: 0, modal: 'overseer' },
+    { key: 'licensing',   label: 'MUSIC LIC.',   colour: '#00ff88', col: 2, row: 0, modal: 'licensing' },
+    { key: 'printforge',  label: 'PRINT FORGE',  colour: '#ff8c00', col: 0, row: 1, modal: 'printforge' },
+    { key: 'questmaster', label: 'QUEST MASTER', colour: '#b400ff', col: 1, row: 1, modal: 'questmaster' },
+    { key: 'printify',    label: 'PRINTIFY',     colour: '#00b4a0', col: 2, row: 1, modal: 'printify' },
+  ];
+
+  const MARGIN = 40, CORRIDOR = 30;
+  const COLS = 3, ROWS = 2;
+  function roomRect(col, row) {
+    const totalW = LW - MARGIN * 2;
+    const totalH = LH - MARGIN * 2 - 40; // 40 for HUD bar
+    const cellW = totalW / COLS;
+    const cellH = totalH / ROWS;
+    const pad = CORRIDOR / 2 + 2;
+    return {
+      x: MARGIN + col * cellW + pad,
+      y: MARGIN + 40 + row * cellH + pad,
+      w: cellW - pad * 2,
+      h: cellH - pad * 2,
+    };
+  }
+
+  // Particles
+  const particles = Array.from({length: 20}, () => ({
+    x: Math.random() * LW, y: Math.random() * LH,
+    vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+    r: 0.8 + Math.random() * 0.8,
+  }));
+
+  // Data packets on corridors
+  const CORRIDORS = [
+    [0,0,1,0],[1,0,2,0],   // top horizontal
+    [0,1,1,1],[1,1,2,1],   // bottom horizontal
+    [0,0,0,1],[1,0,1,1],[2,0,2,1], // verticals
+  ];
+  const packets = CORRIDORS.map(() => ({ t: Math.random() }));
+
+  let animFrame = 0;
+  let dpr = 1;
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // Scale to fit logical LW x LH
+    const scaleX = (rect.width * dpr) / LW;
+    const scaleY = (rect.height * dpr) / LH;
+    ctx.scale(scaleX, scaleY);
+  }
+
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return [r, g, b];
+  }
+
+  function drawBackground() {
+    // Base fill
+    ctx.fillStyle = '#030010';
+    ctx.fillRect(0, 0, LW, LH);
+
+    // Grid dots every 32px
+    ctx.fillStyle = 'rgba(0,180,255,0.06)';
+    for (let x = 0; x < LW; x += 32) {
+      for (let y = 0; y < LH; y += 32) {
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+
+    // Scanlines every 3px
+    ctx.fillStyle = 'rgba(0,0,0,0.03)';
+    for (let y = 0; y < LH; y += 3) {
+      ctx.fillRect(0, y, LW, 1);
+    }
+
+    // Particles
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = LW; if (p.x > LW) p.x = 0;
+      if (p.y < 0) p.y = LH; if (p.y > LH) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,200,255,0.4)';
+      ctx.fill();
+    });
+
+    // Corner vignette
+    const vg = ctx.createRadialGradient(LW/2, LH/2, LH*0.25, LW/2, LH/2, LW*0.8);
+    vg.addColorStop(0, 'transparent');
+    vg.addColorStop(1, 'rgba(0,0,0,0.65)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, LW, LH);
+  }
+
+  function corridorEndpoints(c) {
+    const [c1,r1,c2,r2] = c;
+    const ra = roomRect(c1,r1), rb = roomRect(c2,r2);
+    // Connect centre edges
+    if (c1 === c2) { // vertical
+      return { x1: ra.x + ra.w/2, y1: ra.y + ra.h, x2: rb.x + rb.w/2, y2: rb.y };
+    } else { // horizontal
+      return { x1: ra.x + ra.w, y1: ra.y + ra.h/2, x2: rb.x, y2: rb.y + rb.h/2 };
+    }
+  }
+
+  function drawCorridors() {
+    CORRIDORS.forEach((c, i) => {
+      const ep = corridorEndpoints(c);
+      ctx.strokeStyle = 'rgba(0,180,255,0.28)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(ep.x1, ep.y1);
+      ctx.lineTo(ep.x2, ep.y2);
+      ctx.stroke();
+
+      // Data packet
+      const pk = packets[i];
+      pk.t += 0.004;
+      if (pk.t > 1) pk.t = 0;
+      const px = ep.x1 + (ep.x2 - ep.x1) * pk.t;
+      const py = ep.y1 + (ep.y2 - ep.y1) * pk.t;
+      ctx.save();
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#00dcff';
+      ctx.beginPath();
+      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#00dcff';
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  function drawRoomInterior(room, r) {
+    const cx = r.x + r.w/2, cy = r.y + r.h/2;
+    const col = room.colour;
+    const [rr, rg, rb] = hexToRgb(col);
+
+    // Floor tile grid
+    ctx.strokeStyle = `rgba(${rr},${rg},${rb},0.06)`;
+    ctx.lineWidth = 0.5;
+    for (let gx = r.x; gx < r.x + r.w; gx += 16) {
+      ctx.beginPath(); ctx.moveTo(gx, r.y); ctx.lineTo(gx, r.y + r.h); ctx.stroke();
+    }
+    for (let gy = r.y; gy < r.y + r.h; gy += 16) {
+      ctx.beginPath(); ctx.moveTo(r.x, gy); ctx.lineTo(r.x + r.w, gy); ctx.stroke();
+    }
+
+    // Interior decoration per room
+    ctx.save();
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 8;
+    ctx.strokeStyle = col;
+    ctx.fillStyle = col;
+
+    if (room.key === 'vibes') {
+      // Turntable — concentric circles
+      for (let ri = 3; ri <= 5; ri++) {
+        ctx.beginPath();
+        ctx.arc(cx, cy + 10, ri * 10, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.4 - ri * 0.06;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(cx, cy+10, 5, 0, Math.PI*2);
+      ctx.globalAlpha = 0.7; ctx.fill();
+    } else if (room.key === 'overseer') {
+      // Holo-table: hexagon + radiating lines
+      const sides = 6, hexR = 28;
+      ctx.beginPath();
+      for (let s = 0; s < sides; s++) {
+        const a = (Math.PI/3)*s - Math.PI/6;
+        s === 0 ? ctx.moveTo(cx + hexR*Math.cos(a), cy+10 + hexR*Math.sin(a))
+                : ctx.lineTo(cx + hexR*Math.cos(a), cy+10 + hexR*Math.sin(a));
+      }
+      ctx.closePath(); ctx.globalAlpha = 0.35; ctx.stroke();
+      ctx.globalAlpha = 0.15; ctx.fill();
+      ctx.globalAlpha = 0.3;
+      for (let s = 0; s < sides; s++) {
+        const a = (Math.PI/3)*s;
+        ctx.beginPath(); ctx.moveTo(cx, cy+10); ctx.lineTo(cx + hexR*1.5*Math.cos(a), cy+10 + hexR*1.5*Math.sin(a)); ctx.stroke();
+      }
+    } else if (room.key === 'licensing') {
+      // Mixing board: horizontal fader lines
+      for (let fi = 0; fi < 4; fi++) {
+        const fy = cy - 20 + fi * 14;
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx - 35, fy); ctx.lineTo(cx + 35, fy); ctx.stroke();
+        // Fader knob
+        const kx = cx - 25 + Math.random() * 0 + fi * 16;
+        ctx.globalAlpha = 0.7;
+        ctx.fillRect(kx - 3, fy - 4, 6, 8);
+      }
+    } else if (room.key === 'printforge') {
+      // Easel triangle
+      ctx.globalAlpha = 0.4; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx, cy - 30); ctx.lineTo(cx - 22, cy + 20); ctx.lineTo(cx + 22, cy + 20); ctx.closePath(); ctx.stroke();
+      // Canvas square
+      ctx.globalAlpha = 0.2;
+      ctx.fillRect(cx - 14, cy - 22, 28, 22);
+      ctx.globalAlpha = 0.5; ctx.strokeRect(cx - 14, cy - 22, 28, 22);
+    } else if (room.key === 'questmaster') {
+      // Scroll spiral
+      ctx.globalAlpha = 0.4; ctx.lineWidth = 1.5;
+      for (let sp = 0; sp < 3; sp++) {
+        ctx.beginPath();
+        ctx.arc(cx, cy + 8, 10 + sp * 9, 0, Math.PI * 1.6);
+        ctx.stroke();
+      }
+      // Potion
+      ctx.globalAlpha = 0.5;
+      ctx.fillRect(cx + 20, cy - 10, 8, 16);
+      ctx.beginPath(); ctx.arc(cx + 24, cy - 14, 5, 0, Math.PI*2); ctx.fill();
+    } else if (room.key === 'printify') {
+      // Grid of product squares
+      for (let gi = 0; gi < 3; gi++) {
+        for (let gj = 0; gj < 2; gj++) {
+          ctx.globalAlpha = 0.3;
+          ctx.strokeRect(cx - 32 + gi * 22, cy - 8 + gj * 22, 16, 16);
+          ctx.globalAlpha = 0.1;
+          ctx.fillRect(cx - 32 + gi * 22, cy - 8 + gj * 22, 16, 16);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  function drawAgentSprite(room, r) {
+    const col = room.colour;
+    const [rr, rg, rb] = hexToRgb(col);
+    const bob = Math.floor(animFrame / 60) % 2 === 0 ? 0 : -1;
+    const sx = r.x + r.w * 0.72, sy = r.y + 22 + bob;
+
+    ctx.save();
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 6;
+
+    // Head
+    ctx.fillStyle = col;
+    ctx.globalAlpha = 0.9;
+    ctx.fillRect(sx - 4, sy, 8, 6);
+    // Body
+    ctx.globalAlpha = 0.7;
+    ctx.fillRect(sx - 3, sy + 6, 6, 6);
+    // Legs
+    ctx.globalAlpha = 0.6;
+    ctx.fillRect(sx - 3, sy + 12, 2, 4);
+    ctx.fillRect(sx + 1, sy + 12, 2, 4);
+    // Status dot on sprite
+    const isActive = agentActive[room.key];
+    ctx.shadowBlur = isActive ? 12 : 4;
+    ctx.shadowColor = isActive ? '#00ff88' : '#444444';
+    ctx.fillStyle = isActive ? '#00ff88' : '#555555';
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(sx + 6, sy + 1, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  function drawRooms() {
+    ROOMS.forEach(room => {
+      const r = roomRect(room.col, room.row);
+      const col = room.colour;
+      const [rr, rg, rb] = hexToRgb(col);
+      const isActive = agentActive[room.key];
+      const flashAlpha = roomFlash[room.key] || 0;
+
+      // Pulse: breathe border between 70% and 100% opacity
+      const pulseSpeed = isActive ? 0.05 : 0.02;
+      const pulse = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(animFrame * pulseSpeed));
+      const pulseIntensity = isActive ? 24 : 12;
+
+      // Room background
+      ctx.fillStyle = `rgba(${rr},${rg},${rb},0.05)`;
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+
+      // Interior decoration
+      drawRoomInterior(room, r);
+
+      // Room border with glow
+      ctx.save();
+      ctx.shadowBlur = pulseIntensity * pulse;
+      ctx.shadowColor = col;
+      ctx.strokeStyle = flashAlpha > 0
+        ? `rgba(255,255,255,${flashAlpha})`
+        : `rgba(${rr},${rg},${rb},${pulse})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(r.x, r.y, r.w, r.h);
+      ctx.restore();
+
+      // Room label
+      ctx.save();
+      ctx.fillStyle = col;
+      ctx.font = 'bold 11px "Courier New", monospace';
+      ctx.textAlign = 'left';
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 8;
+      ctx.fillText(room.label, r.x + 6, r.y + 14);
+      ctx.restore();
+
+      // Decay flash
+      if (roomFlash[room.key] > 0) {
+        roomFlash[room.key] = Math.max(0, roomFlash[room.key] - 0.05);
+      }
+
+      // Draw agent sprite
+      drawAgentSprite(room, r);
+    });
+  }
+
+  function drawHUD() {
+    // HUD bar at top of canvas
+    ctx.fillStyle = 'rgba(3,0,16,0.85)';
+    ctx.fillRect(0, 0, LW, 38);
+    ctx.strokeStyle = 'rgba(0,180,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, 38); ctx.lineTo(LW, 38); ctx.stroke();
+
+    const activeCount = Object.values(agentActive).filter(Boolean).length;
+    const crisisStr = crisisRed ? 'CRISIS: RED !' : 'CRISIS: GREEN ✓';
+    const crisisCol = crisisRed ? '#ff3355' : '#00ff88';
+    const hudText = `  KINGDOM v1.3  |  AGENTS: ${activeCount}/6 ACTIVE  |  QUESTS: ${hudQuestCount}  |  ${crisisStr}`;
+
+    ctx.save();
+    ctx.font = '12px "Courier New", monospace';
+    ctx.fillStyle = '#00dcff';
+    ctx.shadowColor = '#00dcff';
+    ctx.shadowBlur = 6;
+    ctx.textAlign = 'left';
+    ctx.fillText('⚔ ' + hudText.slice(2), 10, 24);
+
+    // Crisis indicator colour
+    const crisisX = ctx.measureText('⚔   KINGDOM v1.3  |  AGENTS: ' + activeCount + '/6 ACTIVE  |  QUESTS: ' + hudQuestCount + '  |  ').width + 10;
+    ctx.fillStyle = crisisCol;
+    ctx.shadowColor = crisisCol;
+    ctx.fillText(crisisStr, crisisX, 24);
+    ctx.restore();
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, LW, LH);
+    drawBackground();
+    drawCorridors();
+    drawRooms();
+    drawHUD();
+    animFrame++;
+    requestAnimationFrame(animate);
+  }
+
+  // Click handler — map canvas click to room
+  canvas.addEventListener('click', function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = LW / rect.width;
+    const scaleY = LH / rect.height;
+    const lx = (e.clientX - rect.left) * scaleX;
+    const ly = (e.clientY - rect.top) * scaleY;
+    ROOMS.forEach(room => {
+      const r = roomRect(room.col, room.row);
+      if (lx >= r.x && lx <= r.x + r.w && ly >= r.y && ly <= r.y + r.h) {
+        roomFlash[room.key] = 1.0;
+        openModal(room.modal);
+      }
+    });
+  });
+
+  window.addEventListener('resize', () => { resize(); });
+  resize();
+  animate();
+
+  // Expose state setter for pollCharacterStates
+  window._setAgentActive = function(key, active) { agentActive[key] = active; };
+  window._setKingdomCrisis = function(red) { crisisRed = red; };
+  window._setHudQuestCount = function(n) { hudQuestCount = n; };
+})();
+
+/* ── PIXEL CHAR STATES (now drives canvas) ── */
 function setPChar(key, active) {
-  const el = document.getElementById('pchar-'+key);
-  const st = document.getElementById('pstatus-'+key);
-  if (!el||!st) return;
-  el.classList.toggle('is-active', active);
-  st.textContent = active ? 'ACTIVE' : 'IDLE';
+  if (window._setAgentActive) window._setAgentActive(key, active);
 }
 
 async function pollCharacterStates() {
@@ -776,7 +903,9 @@ async function pollCharacterStates() {
   setPChar('vibes', vPlan && (vPlan.total_tracks > 0));
   const pending = Array.isArray(actions) ? actions : (actions?.items||[]);
   setPChar('overseer', pending.length > 0);
+  if (window._setKingdomCrisis) window._setKingdomCrisis(pending.length > 3);
   const qList = Array.isArray(quests) ? quests : (quests?.quests||[]);
+  if (window._setHudQuestCount) window._setHudQuestCount(qList.length);
   setPChar('questmaster', qList.some(q => q.status==='active'||q.status==='in_progress'));
   const opps = Array.isArray(lb) ? lb : [];
   setPChar('printforge', opps.length > 0);
