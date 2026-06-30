@@ -1,7 +1,5 @@
 """Tests for the web-based Setup Wizard endpoints."""
-import json
 import io
-import pytest
 from fastapi.testclient import TestClient
 from backend.main import app
 

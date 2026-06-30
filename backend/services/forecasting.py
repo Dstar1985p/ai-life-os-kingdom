@@ -155,15 +155,20 @@ def get_regret_score(opportunity_id: int, db) -> dict:
     regret_score = 0
     factors = []
     if opp.revenue_score >= 70:
-        regret_score += 30; factors.append("High revenue potential")
+        regret_score += 30
+        factors.append("High revenue potential")
     if opp.strategic_alignment_score >= 70:
-        regret_score += 25; factors.append("Strongly aligned with goals")
+        regret_score += 25
+        factors.append("Strongly aligned with goals")
     if opp.complexity_score <= 30:
-        regret_score += 20; factors.append("Low complexity — easy win")
+        regret_score += 20
+        factors.append("Low complexity — easy win")
     if opp.competition_score <= 40:
-        regret_score += 15; factors.append("Competitive window may close")
+        regret_score += 15
+        factors.append("Competitive window may close")
     if opp.kingdom_score >= 70:
-        regret_score += 10; factors.append("Top-tier overall score")
+        regret_score += 10
+        factors.append("Top-tier overall score")
     regret_score = min(100, regret_score)
     verdict = "act_now" if regret_score >= 70 else "act_soon" if regret_score >= 40 else "safe_to_defer"
     if regret_score >= 70:

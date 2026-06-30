@@ -85,7 +85,7 @@ class PriceOptimizerAgent(BaseRevenueAgent):
             elif current_price > targets["max_gbp"] and current_margin > targets["margin_target_pct"] + 10:
                 action = "test_lower"
                 new_price = targets["sweet_spot_gbp"]
-                reason = f"Premium price may limit volume; test at sweet spot"
+                reason = "Premium price may limit volume; test at sweet spot"
             else:
                 action = "hold"
                 new_price = current_price
@@ -120,7 +120,6 @@ class PriceOptimizerAgent(BaseRevenueAgent):
 
         # Persist recommendations as a lesson
         if recommendations:
-            from backend.models.tables import Lesson
             recs_summary = [r for r in recommendations if r["action"] != "hold"][:5]
             recs_created = len(recs_summary)
             lesson_text = (

@@ -28,11 +28,11 @@ def get_price_recommendations(db: Session = Depends(get_db)):
         .all()
     )
     results = []
-    for l in lessons:
-        entry = {"id": l.id, "lesson": l.lesson, "created_at": l.created_at.isoformat()}
-        if l.evidence:
+    for lesson in lessons:
+        entry = {"id": lesson.id, "lesson": lesson.lesson, "created_at": lesson.created_at.isoformat()}
+        if lesson.evidence:
             try:
-                entry["detail"] = json.loads(l.evidence)
+                entry["detail"] = json.loads(lesson.evidence)
             except Exception:
                 pass
         results.append(entry)
@@ -58,11 +58,11 @@ def get_seo_briefs(db: Session = Depends(get_db)):
         .all()
     )
     results = []
-    for l in lessons:
-        entry = {"id": l.id, "lesson": l.lesson, "created_at": l.created_at.isoformat()}
-        if l.evidence:
+    for lesson in lessons:
+        entry = {"id": lesson.id, "lesson": lesson.lesson, "created_at": lesson.created_at.isoformat()}
+        if lesson.evidence:
             try:
-                entry["detail"] = json.loads(l.evidence)
+                entry["detail"] = json.loads(lesson.evidence)
             except Exception:
                 pass
         results.append(entry)
@@ -88,11 +88,11 @@ def get_content_briefs(db: Session = Depends(get_db)):
         .all()
     )
     results = []
-    for l in lessons:
-        entry = {"id": l.id, "lesson": l.lesson, "created_at": l.created_at.isoformat()}
-        if l.evidence:
+    for lesson in lessons:
+        entry = {"id": lesson.id, "lesson": lesson.lesson, "created_at": lesson.created_at.isoformat()}
+        if lesson.evidence:
             try:
-                entry["detail"] = json.loads(l.evidence)
+                entry["detail"] = json.loads(lesson.evidence)
             except Exception:
                 pass
         results.append(entry)

@@ -99,7 +99,7 @@ def get_health_trend(db: Session) -> dict:
             "history": [],
         }
 
-    scores = [h["score"] for h in history]
+    [h["score"] for h in history]
     best = max(history, key=lambda h: h["score"])
     worst = min(history, key=lambda h: h["score"])
 

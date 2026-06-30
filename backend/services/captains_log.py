@@ -1,7 +1,6 @@
 """Captain's Log — narrative summary of Kingdom activity over a time period."""
 
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy.orm import Session
 

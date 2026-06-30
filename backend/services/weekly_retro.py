@@ -44,9 +44,9 @@ def _rule_based_retro(db: Session, week: str) -> dict:
     misses_count = sum(1 for o in outcomes if "failure" in o.lesson)
 
     wins = [q.title for q in completed_quests[:3]] + (
-        [f"Outcome win recorded" for _ in range(min(wins_count, 2))]
+        ["Outcome win recorded" for _ in range(min(wins_count, 2))]
     )
-    misses = [f"Outcome failure recorded" for _ in range(min(misses_count, 2))]
+    misses = ["Outcome failure recorded" for _ in range(min(misses_count, 2))]
 
     trend = "growing" if net > 0 else ("declining" if net < 0 else "stable")
     key_metric = f"Net revenue this week: £{net:.2f}"

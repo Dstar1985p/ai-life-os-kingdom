@@ -218,7 +218,7 @@ def get_orders(limit: int = 20) -> Optional[list[dict]]:
         return None
     try:
         r = requests.get(
-            f"{_BASE}/shops/{shop_id}/orders.json?limit={limit}",
+            f"{PRINTIFY_BASE}/shops/{shop_id}/orders.json?limit={limit}",
             headers=_headers(),
             timeout=10,
         )
@@ -237,7 +237,7 @@ def get_order_detail(order_id: str) -> Optional[dict]:
         return None
     try:
         r = requests.get(
-            f"{_BASE}/shops/{shop_id}/orders/{order_id}.json",
+            f"{PRINTIFY_BASE}/shops/{shop_id}/orders/{order_id}.json",
             headers=_headers(),
             timeout=10,
         )

@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from backend.database import Base, get_db
 from backend.main import app
-from backend.models.tables import Quest, Opportunity, Lesson, Decision, Agent
+from backend.models.tables import Quest, Opportunity, Lesson, Decision
 
 TEST_DB = "sqlite:///./test_captains_log.db"
 engine_test = create_engine(TEST_DB, connect_args={"check_same_thread": False})
@@ -68,8 +68,8 @@ def _add_opportunity(title="Test Opp", days_ago=2):
 def _add_lesson(days_ago=2):
     db = TestingSession()
     created_at = datetime.utcnow() - timedelta(days=days_ago)
-    l = Lesson(lesson="Test lesson", created_at=created_at)
-    db.add(l)
+    log_obj = Lesson(lesson="Test lesson", created_at=created_at)
+    db.add(log_obj)
     db.commit()
     db.close()
 

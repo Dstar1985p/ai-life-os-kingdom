@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 import json
-import os
 import secrets
 import hashlib
 import base64
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, Request
+from fastapi import APIRouter, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -284,7 +283,6 @@ def youtube_token(req: YouTubeTokenRequest):
 
         try:
             from google_auth_oauthlib.flow import InstalledAppFlow
-            from google.oauth2.credentials import Credentials
 
             SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
             flow = InstalledAppFlow.from_client_secrets_file(
@@ -422,7 +420,7 @@ def etsy_token(req: EtsyTokenRequest):
 
             _path(".etsy_token.json").write_text(json.dumps(token_data, indent=2))
             return {"success": True, "message": "Etsy connected successfully!"}
-        except Exception as e:
+        except Exception:
             # Save placeholder token so status shows connected for testing
             _path(".etsy_token.json").write_text(json.dumps({"auth_code": req.code.strip(), "manual": True}, indent=2))
             return {"success": True, "message": "Code saved. Etsy connection partially set up."}

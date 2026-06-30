@@ -87,7 +87,7 @@ def run_scenario(db: Session, scenario_type: str, params: dict[str, Any]) -> dic
             "assumptions": [
                 f"Track: '{track_title}'",
                 f"Price per license: £{price_per_license}",
-                f"1,000 licenses sold in month of virality",
+                "1,000 licenses sold in month of virality",
                 "Viral event probability is not modelled here",
                 "Assumes non-exclusive licensing",
             ],
@@ -179,7 +179,7 @@ def run_scenario(db: Session, scenario_type: str, params: dict[str, Any]) -> dic
 
 
 def get_scenario_presets(db: Session) -> list[dict]:
-    listing_count = db.query(EtsyListing).filter(EtsyListing.status == "active").count()
+    db.query(EtsyListing).filter(EtsyListing.status == "active").count()
     return [
         run_scenario(db, "double_listings", {}),
         run_scenario(db, "viral_track", {"track_title": "Midnight Rally", "price_per_license": 25.0}),

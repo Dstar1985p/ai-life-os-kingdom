@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Session

@@ -5,7 +5,6 @@ downloads the zip, and replaces the running installation.
 import logging
 import os
 import sys
-import shutil
 import zipfile
 import subprocess
 import threading
@@ -15,7 +14,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-from backend.version import VERSION as CURRENT_VERSION
+from backend.version import VERSION as CURRENT_VERSION  # noqa: E402
 GITHUB_REPO = "Dstar1985p/ai-life-os-kingdom"
 RELEASES_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 

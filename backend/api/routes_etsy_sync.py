@@ -37,14 +37,14 @@ def etsy_sync_listings(db: Session = Depends(get_db)):
         "total": len(listings),
         "listings": [
             {
-                "id": l.id,
-                "listing_id": l.listing_id,
-                "title": l.title,
-                "category": l.category,
-                "price": l.price,
-                "status": l.status,
-                "imported_at": l.imported_at.isoformat() if l.imported_at else None,
+                "id": lesson.id,
+                "listing_id": lesson.listing_id,
+                "title": lesson.title,
+                "category": lesson.category,
+                "price": lesson.price,
+                "status": lesson.status,
+                "imported_at": lesson.imported_at.isoformat() if lesson.imported_at else None,
             }
-            for l in listings
+            for lesson in listings
         ],
     }

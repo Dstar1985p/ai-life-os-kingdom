@@ -1,7 +1,7 @@
 """Tests for Achievement System feature."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -156,8 +156,8 @@ def test_first_lesson_achievement():
     from backend.services.achievements import check_and_unlock_achievements
     db = TestingSession()
     try:
-        l = Lesson(lesson="Learn something")
-        db.add(l)
+        lesson_obj = Lesson(lesson="Learn something")
+        db.add(lesson_obj)
         db.commit()
         newly = check_and_unlock_achievements(db)
         keys = [a["key"] for a in newly]
@@ -203,8 +203,8 @@ def test_achievements_idempotent():
     from backend.services.achievements import check_and_unlock_achievements
     db = TestingSession()
     try:
-        l = Lesson(lesson="Learn something")
-        db.add(l)
+        lesson_obj = Lesson(lesson="Learn something")
+        db.add(lesson_obj)
         db.commit()
         newly1 = check_and_unlock_achievements(db)
         newly2 = check_and_unlock_achievements(db)
@@ -239,8 +239,8 @@ def test_unlocked_list_grows_after_check():
     from backend.services.achievements import check_and_unlock_achievements, get_unlocked_achievements
     db = TestingSession()
     try:
-        l = Lesson(lesson="Wisdom")
-        db.add(l)
+        lesson_obj = Lesson(lesson="Wisdom")
+        db.add(lesson_obj)
         db.commit()
         check_and_unlock_achievements(db)
         unlocked = get_unlocked_achievements(db)

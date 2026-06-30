@@ -18,7 +18,6 @@ Base.metadata.create_all(bind=engine)
 
 @pytest.fixture
 def db():
-    conn = engine.connect()
     engine2 = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(bind=engine2)
     Session = sessionmaker(bind=engine2)
@@ -108,7 +107,7 @@ def test_printify_creates_lesson(db):
     agent.run(db)
     lessons = db.query(Lesson).filter(Lesson.source == "agent:Print Forge AI").all()
     assert len(lessons) > 0
-    assert any("PrintifyAgent" in l.lesson for l in lessons)
+    assert any("PrintifyAgent" in lesson_item.lesson for lesson_item in lessons)
 
 
 def test_printify_records_agent_run(db):

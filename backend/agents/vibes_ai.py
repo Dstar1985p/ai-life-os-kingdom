@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from backend.agents.base_agent import AgentRunResult, BaseRevenueAgent
-from backend.models.tables import Lesson, Opportunity
+from backend.models.tables import Opportunity
 
 
 _FALLBACK_CONCEPTS = [

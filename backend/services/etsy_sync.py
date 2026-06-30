@@ -1,7 +1,6 @@
 """Etsy Live Sync — pulls real data from Etsy API and stores in EtsyListing table."""
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime
 from typing import Optional
@@ -114,10 +113,10 @@ def get_shop_stats(db: Session) -> dict:
         }
 
     total_listings = len(listings)
-    avg_price = round(sum(l.price for l in listings) / total_listings, 2) if total_listings else 0
+    avg_price = round(sum(item.price for item in listings) / total_listings, 2) if total_listings else 0
 
     # Top listing by price (views/favorers not in current schema)
-    top = max(listings, key=lambda l: l.price)
+    top = max(listings, key=lambda item: item.price)
 
     return {
         "status": "ok",
@@ -129,5 +128,5 @@ def get_shop_stats(db: Session) -> dict:
             "price": top.price,
             "status": top.status,
         },
-        "last_synced": max(l.imported_at for l in listings).isoformat() if listings else None,
+        "last_synced": max(item.imported_at for item in listings).isoformat() if listings else None,
     }

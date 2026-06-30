@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from backend.main import app
-from backend.database import get_db, Base
+from backend.database import Base
 from backend.services.council import run_council_session
 
 client = TestClient(app)

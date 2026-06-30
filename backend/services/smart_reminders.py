@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -119,7 +118,7 @@ def get_active_reminders(db: Session) -> list[dict]:
                 reminders.append(_make_reminder(
                     rid, "agent_idle",
                     f"{pretty} hasn't run in {days} days",
-                    f"Keep your agents active to maintain competitive intelligence.",
+                    "Keep your agents active to maintain competitive intelligence.",
                     "info", "Kingdom", "/docs#/Agents",
                 ))
 
@@ -153,7 +152,7 @@ def get_active_reminders(db: Session) -> list[dict]:
             reminders.append(_make_reminder(
                 rid, "quest_overdue",
                 f"Quest stalling: {q.title[:50]}",
-                f"This quest has been active for over 30 days. Review or close it.",
+                "This quest has been active for over 30 days. Review or close it.",
                 "info", "Kingdom", "/docs#/Quests",
             ))
 

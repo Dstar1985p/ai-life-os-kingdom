@@ -4,12 +4,11 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from backend.models.tables import (
-    AgentRun, Decision, EtsyListing, Lesson, Opportunity, Quest, RevenueEntry,
+    Decision, Lesson, Opportunity, Quest, RevenueEntry,
 )
 from backend.services.ai_brain import call_claude, get_kingdom_context, HAIKU_MODEL
 

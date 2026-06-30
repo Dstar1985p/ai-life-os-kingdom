@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -90,7 +89,7 @@ def chat_with_agent(agent: str, message: str, db: Session) -> dict:
     recent_ctx = ""
     if recent_lessons:
         recent_ctx = "\nRecent chat history:\n" + "\n".join(
-            f"- {l.lesson[:120]}" for l in recent_lessons
+            f"- {lesson.lesson[:120]}" for lesson in recent_lessons
         )
 
     # Recent opportunities for context

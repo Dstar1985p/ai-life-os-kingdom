@@ -5,7 +5,6 @@ dependency so all test modules that import `app` use the same DB session.
 Individual test modules that create their own engine/session are unaffected
 as long as they call their DB functions directly (not via TestClient).
 """
-import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 

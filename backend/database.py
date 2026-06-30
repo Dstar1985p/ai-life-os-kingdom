@@ -5,7 +5,7 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 logger = logging.getLogger(__name__)
 
-import os
+import os  # noqa: E402
 # On Railway, use /data volume for persistence; locally use current dir
 _data_dir = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", ".")
 DATABASE_URL = f"sqlite:///{_data_dir}/kingdom_alpha.db"

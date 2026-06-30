@@ -216,7 +216,7 @@ def get_token_budget_report(db: Session, days: int = 7) -> dict:
     try:
         cutoff = datetime.utcnow() - timedelta(days=days)
         logs = db.query(TokenUsageLog).filter(TokenUsageLog.recorded_at >= cutoff).all()
-        total = sum(l.estimated_tokens for l in logs)
+        total = sum(log.estimated_tokens for log in logs)
         by_feature: dict[str, int] = {}
         for log in logs:
             by_feature[log.feature] = by_feature.get(log.feature, 0) + log.estimated_tokens
