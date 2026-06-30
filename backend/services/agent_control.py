@@ -37,7 +37,11 @@ def set_paused(agent_name: str, paused: bool, db: Session, reason: str = "", by:
     row.paused_by = by if paused else ""
     row.paused_at = datetime.utcnow() if paused else None
     row.updated_at = datetime.utcnow()
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return get_control(agent_name, db)
 
 

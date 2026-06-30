@@ -2547,8 +2547,8 @@ async function loadReviewQueue() {
   const el = document.getElementById('review-queue');
   if (!el) return;
   try {
-    const data = await fetchJSON('/pulsebreak/review-queue');
-    const queue = data?.queue || data || [];
+    const data = await fetchJSON('/vibes/review');
+    const queue = data?.tracks || data?.queue || data || [];
     if (!queue.length) {
       el.innerHTML = '<div style="color:var(--muted);font-size:0.75rem;padding:8px 0">Review queue empty — upload a track to get started</div>';
       return;
@@ -2556,12 +2556,12 @@ async function loadReviewQueue() {
     el.innerHTML = queue.slice(0,5).map(t => `<div class="track-card">
       <div class="track-art">🎵</div>
       <div class="track-info">
-        <div class="track-title">${t.title||t.filename||'Track'}</div>
-        <div class="track-genre">${t.genre||'DnB'} · ${t.bpm||'?'} BPM</div>
+        <div class="track-title">${t.track_name||t.title||t.filename||'Track'}</div>
+        <div class="track-genre">${t.sub_genre||t.genre||'DnB'} · ${t.bpm||'?'} BPM</div>
         <div class="track-meta">Quality: ${t.quality_score||'pending'}</div>
         <div class="track-actions">
-          <button class="btn btn-green btn-xs" onclick="approveTrack(${t.id},this)">✓ Approve</button>
-          <button class="btn btn-red btn-xs" onclick="rejectTrack(${t.id},this)">✗ Reject</button>
+          <button class="btn btn-green btn-xs" onclick="approveTrack('${t.track_name||t.id}',this)">✓ Approve</button>
+          <button class="btn btn-red btn-xs" onclick="rejectTrack('${t.track_name||t.id}',this)">✗ Reject</button>
         </div>
       </div>
     </div>`).join('');
@@ -2574,14 +2574,14 @@ async function loadTrackLibrary() {
   const el = document.getElementById('track-library');
   if (!el) return;
   try {
-    const data = await fetchJSON('/pulsebreak/tracks');
+    const data = await fetchJSON('/vibes/library');
     const tracks = data?.tracks || data || [];
     if (!tracks.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.75rem;padding:8px 0">No tracks yet</div>'; return; }
     el.innerHTML = tracks.slice(0,6).map(t => `<div class="track-card">
       <div class="track-art" style="background:linear-gradient(135deg,#1a0533,#0a1a33)">🎵</div>
       <div class="track-info">
-        <div class="track-title">${t.title||t.filename||'Track'}</div>
-        <div class="track-genre">${t.genre||'DnB'} · ${t.bpm||'?'} BPM</div>
+        <div class="track-title">${t.track_name||t.title||t.filename||'Track'}</div>
+        <div class="track-genre">${t.sub_genre||t.genre||'DnB'} · ${t.bpm||'?'} BPM</div>
         <div class="track-meta">${t.status||''}</div>
       </div>
       <div class="track-score">${t.quality_score||'—'}</div>
@@ -2594,7 +2594,7 @@ async function loadTrackLibrary() {
 async function approveTrack(id, btn) {
   if (btn) btn.disabled = true;
   try {
-    await fetch(`/pulsebreak/approve/${id}`, {method:'POST'});
+    await fetch(`/vibes/review/${encodeURIComponent(id)}/approve`, {method:'POST'});
     showToast('Track approved', 'success');
     loadReviewQueue(); loadTrackLibrary();
   } catch(e) { showToast('Error', 'error'); if(btn) btn.disabled=false; }
@@ -2603,7 +2603,7 @@ async function approveTrack(id, btn) {
 async function rejectTrack(id, btn) {
   if (btn) btn.disabled = true;
   try {
-    await fetch(`/pulsebreak/reject/${id}`, {method:'POST'});
+    await fetch(`/vibes/review/${encodeURIComponent(id)}/reject`, {method:'POST'});
     showToast('Track rejected', 'info');
     loadReviewQueue();
   } catch(e) { showToast('Error', 'error'); if(btn) btn.disabled=false; }
@@ -2653,7 +2653,7 @@ function uploadTrack(file) {
     if (progressEl) progressEl.style.display = 'none';
   };
   xhr.onerror = () => { showToast('Upload failed', 'error'); if(progressEl) progressEl.style.display='none'; };
-  xhr.open('POST', '/pulsebreak/upload');
+  xhr.open('POST', '/vibes/library/upload');
   xhr.send(formData);
 }
 

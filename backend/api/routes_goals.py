@@ -59,7 +59,11 @@ def delete_goal(goal_id: int, db: Session = Depends(get_db)):
         if not goal:
             raise HTTPException(status_code=404, detail="Goal not found")
         db.delete(goal)
-        db.commit()
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
         return {"status": "ok", "deleted_id": goal_id}
     except HTTPException:
         raise

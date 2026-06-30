@@ -26,6 +26,10 @@ def list_knowledge(
 def create_knowledge_link(payload: KnowledgeLinkCreate, db: Session = Depends(get_db)):
     link = KnowledgeLink(**payload.model_dump())
     db.add(link)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(link)
     return link

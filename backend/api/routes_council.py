@@ -64,6 +64,9 @@ def list_council_sessions(db: Session = Depends(get_db)):
 @router.get("/sessions/{session_id}")
 def get_council_session(session_id: str, db: Session = Depends(get_db)):
     """Return all votes for a specific council session."""
+    import re
+    if not re.match(r'^[A-Za-z0-9_-]+$', session_id):
+        raise HTTPException(status_code=400, detail="Invalid session_id")
     rows = (
         db.query(CouncilVote)
         .filter(CouncilVote.proposal.like(f"[SESSION:{session_id}]%"))

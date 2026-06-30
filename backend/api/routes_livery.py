@@ -122,7 +122,11 @@ def create_commission(body: CommissionCreate, db: Session = Depends(get_db)):
         updated_at=datetime.utcnow(),
     )
     db.add(commission)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(commission)
     return _serialise(commission)
 
@@ -159,7 +163,11 @@ def generate_preview(commission_id: int, db: Session = Depends(get_db)):
     commission.preview_generated_at = datetime.utcnow()
     commission.status = "preview_ready"
     commission.updated_at = datetime.utcnow()
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(commission)
     return {**_serialise(commission), "preview_url": result["url"]}
 
@@ -187,7 +195,11 @@ def approve_commission(commission_id: int, db: Session = Depends(get_db)):
     commission = _get_or_404(commission_id, db)
     commission.status = "approved"
     commission.updated_at = datetime.utcnow()
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return _serialise(commission)
 
 
@@ -197,7 +209,11 @@ def mark_delivered(commission_id: int, db: Session = Depends(get_db)):
     commission.status = "delivered"
     commission.delivered_at = datetime.utcnow()
     commission.updated_at = datetime.utcnow()
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return _serialise(commission)
 
 
@@ -211,7 +227,11 @@ def update_commission(commission_id: int, body: CommissionUpdate, db: Session = 
     if body.status is not None:
         commission.status = body.status
     commission.updated_at = datetime.utcnow()
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return _serialise(commission)
 
 

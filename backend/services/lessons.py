@@ -61,7 +61,11 @@ def auto_generate_lesson(source_type: str, source_id: int, db: Session) -> dict 
         confidence_score=confidence,
     )
     db.add(lesson)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(lesson)
 
     return _lesson_to_dict(lesson)
@@ -76,6 +80,10 @@ def create_lesson(db: Session, lesson: str, source: str, confidence_score: float
         confidence_score=confidence_score,
     )
     db.add(obj)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(obj)
     return _lesson_to_dict(obj)

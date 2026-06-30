@@ -41,8 +41,10 @@ def _save_draft(db: Session, venture: str, content_type: str, platform: str, dat
         )
         db.add(draft)
         db.commit()
-    except Exception:
-        pass
+    except Exception as exc:
+        db.rollback()
+        import logging
+        logging.getLogger(__name__).warning("_save_draft failed (%s/%s): %s", venture, content_type, exc)
 
 
 @router.post("/generate/instagram")

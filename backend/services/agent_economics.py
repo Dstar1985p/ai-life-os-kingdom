@@ -25,7 +25,11 @@ def record_agent_run(data: dict, db: Session) -> dict:
         run_at=data.get("run_at", datetime.utcnow()),
     )
     db.add(run)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(run)
 
     return {
