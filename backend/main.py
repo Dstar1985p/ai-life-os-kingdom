@@ -6,14 +6,13 @@ import os
 
 from backend.database import Base, engine, _apply_migrations
 from backend.api.routes_agents import router as agents_router
-# routes_quests: RPG layer — kept for API backwards compat but not wired in
-# from backend.api.routes_quests import router as quests_router
+from backend.api.routes_quests import router as quests_router
 from backend.api.routes_opportunities import router as opportunities_router
 from backend.api.routes_decisions import router as decisions_router
 from backend.api.routes_council import router as council_router
 from backend.api.routes_brief import router as brief_router
 from backend.api.routes_knowledge import router as knowledge_router
-# from backend.api.routes_assumptions import router as assumptions_router  # RPG layer stub
+from backend.api.routes_assumptions import router as assumptions_router
 from backend.api.routes_lessons import router as lessons_router
 from backend.api.routes_kingdom import router as kingdom_router
 from backend.api.routes_revenue import router as revenue_router
@@ -111,11 +110,13 @@ if os.path.isdir(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 app.include_router(agents_router)
+app.include_router(quests_router)
 app.include_router(opportunities_router)
 app.include_router(decisions_router)
 app.include_router(council_router)
 app.include_router(brief_router)
 app.include_router(knowledge_router)
+app.include_router(assumptions_router)
 app.include_router(lessons_router)
 app.include_router(kingdom_router)
 app.include_router(revenue_router)
