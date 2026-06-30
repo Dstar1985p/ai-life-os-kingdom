@@ -26,6 +26,11 @@ _SCHEDULE = {
     "ROI Reaper": {"hours": 24},
     "Trend Watcher": {"hours": 4},
     "Music Licensing": {"hours": 24},
+    "AI Engineer": {"hours": 12},
+    "Price Optimizer": {"hours": 24},
+    "SEO Agent": {"hours": 48},
+    "Content Agent": {"hours": 24},
+    "Revenue Forecaster": {"hours": 24},
 }
 
 _scheduler: BackgroundScheduler | None = None
@@ -48,6 +53,16 @@ def _get_agents() -> dict[str, Any]:
         _AGENT_REGISTRY["Trend Watcher"] = TrendWatcherAgent()
         from backend.agents.music_licensing import MusicLicensingAgent
         _AGENT_REGISTRY["Music Licensing"] = MusicLicensingAgent()
+        from backend.agents.ai_engineer import AIEngineerAgent
+        _AGENT_REGISTRY["AI Engineer"] = AIEngineerAgent()
+        from backend.agents.price_optimizer import PriceOptimizerAgent
+        _AGENT_REGISTRY["Price Optimizer"] = PriceOptimizerAgent()
+        from backend.agents.seo_agent import SEOAgent
+        _AGENT_REGISTRY["SEO Agent"] = SEOAgent()
+        from backend.agents.content_agent import ContentAgent
+        _AGENT_REGISTRY["Content Agent"] = ContentAgent()
+        from backend.agents.revenue_forecaster import RevenueForecastAgent
+        _AGENT_REGISTRY["Revenue Forecaster"] = RevenueForecastAgent()
     return _AGENT_REGISTRY
 
 

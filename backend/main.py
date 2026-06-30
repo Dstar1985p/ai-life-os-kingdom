@@ -49,6 +49,8 @@ from backend.api.routes_health_history import router as health_history_router
 from backend.api.routes_celebration import router as celebration_router
 from backend.api.routes_competitor import router as competitor_router
 from backend.api.routes_export import router as export_router
+from backend.api.routes_engineer import router as engineer_router
+from backend.api.routes_new_agents import router as new_agents_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -136,6 +138,8 @@ app.include_router(health_history_router)
 app.include_router(celebration_router)
 app.include_router(competitor_router)
 app.include_router(export_router)
+app.include_router(engineer_router)
+app.include_router(new_agents_router)
 
 
 @app.get("/", include_in_schema=False)
