@@ -120,6 +120,10 @@ def get_revenue_forecast(db: Session) -> dict:
         "total_estimated_monthly_low": f"£{monthly_low:.0f}",
         "total_estimated_monthly_high": f"£{monthly_high:.0f}",
         "forecast_period": "next 3 months",
+        "estimates": [
+            {"venture": v["venture"], "forecast_90d_gbp": v["forecast_90d_gbp"]}
+            for v in ventures
+        ],
     }
 
 
