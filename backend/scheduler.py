@@ -19,6 +19,7 @@ _AGENT_REGISTRY: dict[str, Any] = {}
 _SCHEDULE = {
     "Print Forge AI": {"hours": 6},
     "Image Forge": {"hours": 8},
+    "Market Scout": {"hours": 24},
     "Vibes AI": {"hours": 12},
     "Printify Studio": {"hours": 8},
     "Opportunity Scout": {"hours": 4},
@@ -66,6 +67,8 @@ def _get_agents() -> dict[str, Any]:
         _AGENT_REGISTRY["Revenue Forecaster"] = RevenueForecastAgent()
         from backend.agents.image_forge import ImageForgeAgent
         _AGENT_REGISTRY["Image Forge"] = ImageForgeAgent()
+        from backend.agents.market_scout import MarketScoutAgent
+        _AGENT_REGISTRY["Market Scout"] = MarketScoutAgent()
     return _AGENT_REGISTRY
 
 

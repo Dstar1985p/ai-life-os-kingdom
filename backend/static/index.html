@@ -1315,10 +1315,32 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
       <h2 style="font-size:1.2rem;font-weight:700;color:var(--text)">Opportunity Leaderboard</h2>
       <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">AI-scored opportunities across all ventures</p>
     </div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-sm" onclick="triggerAgent('Opportunity Scout')">▶ Scout</button>
       <button class="btn btn-sm" onclick="triggerAgent('ROI Reaper')">🔪 ROI Reaper</button>
       <button class="btn btn-sm" onclick="triggerAgent('Trend Watcher')">📡 Trends</button>
+      <button class="btn btn-sm btn-green" onclick="runMarketScout()" id="market-scout-btn">🔍 Market Scout</button>
+    </div>
+  </div>
+
+  <!-- Market Scout Panel -->
+  <div class="card" style="margin-bottom:16px;border-color:rgba(0,255,136,0.2)">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(0,200,100,0.1))">🔍</div>
+      <div>
+        <div class="card-title">Market Scout — Live Niche Intelligence</div>
+        <div class="card-subtitle">Real Etsy market data → Claude gap analysis → scored opportunities</div>
+      </div>
+      <div class="card-action">
+        <button class="btn btn-sm btn-green" onclick="runMarketScout()" id="market-scout-btn2">▶ Run Scan</button>
+      </div>
+    </div>
+    <div id="market-scout-status" style="padding:8px 0;font-size:0.72rem;color:var(--muted)">
+      Searches Etsy API for 25 keywords across your ventures — scores each niche by demand vs competition.
+      Runs automatically every 24h. Click "Run Scan" to scan now.
+    </div>
+    <div id="market-scout-results" style="display:none">
+      <div id="market-scout-niches" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:10px"></div>
     </div>
   </div>
 
@@ -2469,6 +2491,68 @@ async function loadOpportunitiesTab() {
   renderRecon(recon);
   renderForecast(forecast);
   renderGoals(goals);
+  loadMarketScoutResults();
+}
+
+/* ─── MARKET SCOUT ─── */
+async function runMarketScout() {
+  const btn = document.getElementById('market-scout-btn');
+  const btn2 = document.getElementById('market-scout-btn2');
+  const status = document.getElementById('market-scout-status');
+  [btn, btn2].forEach(b => { if(b){b.disabled=true; b.textContent='Scanning…';} });
+  if (status) status.innerHTML = '🔍 Scanning Etsy market data across 25 keywords… this takes ~30–60 seconds.';
+
+  try {
+    const r = await fetch('/market-scout/run', {method:'POST'});
+    const d = await r.json();
+    if (status) {
+      if (d.status === 'ok' || d.opportunities_created >= 0) {
+        status.innerHTML = `✅ Scan complete — <strong style="color:var(--green)">${d.opportunities_created} new</strong> + ${d.opportunities_updated} updated opportunities found.`;
+        loadMarketScoutResults();
+        loadOpportunitiesTab();
+      } else {
+        status.innerHTML = `⚠️ ${d.error || 'Scan finished with no results — check Etsy connection.'}`;
+      }
+    }
+  } catch(e) {
+    if (status) status.innerHTML = `❌ Scan failed: ${e.message}`;
+  } finally {
+    [btn, btn2].forEach(b => { if(b){b.disabled=false; b.textContent=b.id==='market-scout-btn'?'🔍 Market Scout':'▶ Run Scan';} });
+  }
+}
+
+async function loadMarketScoutResults() {
+  const container = document.getElementById('market-scout-niches');
+  const wrapper = document.getElementById('market-scout-results');
+  if (!container) return;
+  try {
+    const d = await fetchJSON('/market-scout/opportunities?limit=12');
+    const opps = d.opportunities || [];
+    if (!opps.length) return;
+    wrapper.style.display = 'block';
+    container.innerHTML = opps.map(o => {
+      const score = o.kingdom_score || 0;
+      const col = score >= 70 ? 'var(--green)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
+      const compCol = o.competition_level === 'Low' ? 'var(--green)' : o.competition_level === 'Medium' ? 'var(--amber)' : 'var(--red)';
+      return `<div class="card" style="padding:14px;border-color:rgba(0,255,136,0.1)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div style="font-size:0.78rem;font-weight:700;color:var(--text);flex:1;margin-right:8px;line-height:1.3">${o.title}</div>
+          <div style="font-size:1.3rem;font-weight:800;color:${col};flex-shrink:0">${score}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="font-size:0.65rem;padding:2px 6px;border-radius:4px;background:rgba(0,255,136,0.1);color:var(--green)">${o.venture || o.category}</span>
+          <span style="font-size:0.65rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--muted)">${o.effort || ''} effort</span>
+          <span style="font-size:0.65rem;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:${compCol}">${o.competition_level || ''} competition</span>
+        </div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px">${o.market_gap || ''}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:0.7rem;color:var(--cyan)">Est. ${o.estimated_revenue || '?'}</div>
+          <div style="font-size:0.65rem;color:var(--muted)">Avg £${o.avg_price_gbp || 0} · ${o.avg_views || 0} views</div>
+        </div>
+        ${o.next_action ? `<div style="font-size:0.68rem;color:var(--amber);margin-top:6px;padding:6px 8px;background:rgba(255,179,0,0.07);border-radius:4px;border-left:2px solid var(--amber)">▶ ${o.next_action}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) { /* silent — results may not exist yet */ }
 }
 
 function renderLeaderboard(data) {
