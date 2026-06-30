@@ -1623,7 +1623,19 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
       <button class="btn btn-sm cc-subtab" data-cc="treasury" onclick="showCCSub('treasury')">💰 Treasury</button>
       <button class="btn btn-sm cc-subtab" data-cc="commander" onclick="showCCSub('commander')">⚡ Commander</button>
       <button class="btn btn-sm cc-subtab" data-cc="marketing" onclick="showCCSub('marketing')">📣 Marketing</button>
+      <button class="btn btn-sm cc-subtab" data-cc="content-drafts" onclick="showCCSub('content-drafts');loadContentDrafts()">✏ Content Drafts</button>
     </div>
+  </div>
+
+  <!-- CONTENT DRAFTS -->
+  <div class="cc-section" id="cc-content-drafts" style="display:none">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="loadContentDrafts('draft')">Pending</button>
+      <button class="btn btn-sm" onclick="loadContentDrafts('approved')">Approved</button>
+      <button class="btn btn-sm" onclick="loadContentDrafts('published')">Published</button>
+      <button class="btn btn-sm" onclick="loadContentDrafts('')">All</button>
+    </div>
+    <div id="content-drafts-list"><div class="loading">Loading drafts…</div></div>
   </div>
 
   <!-- ROOMS -->
@@ -3038,10 +3050,13 @@ async function loadRooms() {
       <div style="display:flex;flex-direction:column;gap:6px">
         ${r.agents.map(a => `
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.72rem;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.02)">
-            <span>${a.agent}${a.paused ? ` <span style="color:var(--muted);font-size:0.65rem">(${a.paused_by || 'paused'})</span>` : ''}</span>
+            <span style="display:flex;flex-direction:column;gap:2px">
+              <span>${a.agent}${a.paused ? ` <span style="color:var(--muted);font-size:0.65rem">(${a.paused_by || 'paused'})</span>` : ''}</span>
+              ${a.paused && a.paused_reason ? `<span style="color:var(--amber);font-size:0.6rem;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${a.paused_reason}">⚠ ${a.paused_reason}</span>` : ''}
+            </span>
             <span style="display:flex;align-items:center;gap:6px">
               <span style="color:${statusColour(a.status)}">${statusDot(a.status)} ${a.status}</span>
-              <button class="btn btn-sm" style="padding:2px 6px;font-size:0.65rem" onclick="toggleAgentPause('${a.agent}', ${a.paused})">${a.paused ? '▶' : '⏸'}</button>
+              <button class="btn btn-sm" style="padding:2px 6px;font-size:0.65rem" onclick="toggleAgentPause('${a.agent}', ${a.paused})">${a.paused ? '▶ Resume' : '⏸'}</button>
             </span>
           </div>`).join('')}
       </div>
@@ -3067,6 +3082,53 @@ async function toggleAgentPause(agentName, isPaused) {
     await fetch(`/rooms/agent/${encodeURIComponent(agentName)}/${path}`, opts);
     loadRooms();
   } catch (e) {}
+}
+
+/* Content Drafts */
+async function loadContentDrafts(status = 'draft') {
+  const el = document.getElementById('content-drafts-list');
+  el.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const params = status ? `?status=${status}&limit=50` : '?limit=50';
+    const r = await fetch('/content-drafts' + params);
+    const data = await r.json();
+    if (!data.drafts || !data.drafts.length) {
+      el.innerHTML = `<div class="card" style="padding:20px;color:var(--muted)">No ${status || ''} drafts found.</div>`;
+      return;
+    }
+    el.innerHTML = data.drafts.map(d => {
+      let content = {};
+      try { content = JSON.parse(d.content_json); } catch {}
+      const text = content.content || content.text || content.optimised_title || JSON.stringify(content).slice(0, 200);
+      const platform = d.platform || content.platform || '';
+      const statusColor = d.status === 'approved' ? 'var(--green)' : d.status === 'published' ? 'var(--cyan)' : d.status === 'rejected' ? 'var(--red)' : 'var(--amber)';
+      return `<div class="card" style="margin-bottom:10px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:0.72rem;color:var(--muted)">${d.venture}${platform ? ' · ' + platform : ''} · ${d.content_type} · ${d.source_agent || 'AI'}</span>
+          <span style="font-size:0.7rem;color:${statusColor};font-weight:600">${d.status}</span>
+        </div>
+        <p style="font-size:0.8rem;margin:0 0 10px;line-height:1.5;color:#ccc">${text}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${d.status === 'draft' || d.status === 'approved' ? `<button class="btn btn-sm" style="background:var(--green);color:#000" onclick="approveDraft(${d.id})">✓ Approve</button>` : ''}
+          ${d.status === 'approved' ? `<button class="btn btn-sm" style="background:var(--cyan);color:#000" onclick="publishDraft(${d.id})">↑ Mark Published</button>` : ''}
+          ${d.status === 'draft' ? `<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="rejectDraft(${d.id})">✕ Reject</button>` : ''}
+          <button class="btn btn-sm" onclick="navigator.clipboard.writeText(${JSON.stringify(text)}).then(()=>alert('Copied!'))" style="background:#333">⎘ Copy</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { el.innerHTML = `<div class="card" style="color:var(--red)">Error: ${e.message}</div>`; }
+}
+async function approveDraft(id) {
+  await fetch(`/content-drafts/${id}/approve`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  loadContentDrafts();
+}
+async function rejectDraft(id) {
+  await fetch(`/content-drafts/${id}/reject`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  loadContentDrafts();
+}
+async function publishDraft(id) {
+  await fetch(`/content-drafts/${id}/publish`, {method:'POST'});
+  loadContentDrafts('approved');
 }
 
 /* Treasury */

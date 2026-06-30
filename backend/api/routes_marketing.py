@@ -5,8 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+import json
+
 from backend.database import get_db
-from backend.models.tables import Lesson
+from backend.models.tables import ContentDraft, Lesson
 
 router = APIRouter(prefix="/marketing", tags=["Marketing"])
 
@@ -27,12 +29,29 @@ class EmailRequest(BaseModel):
     campaign_type: str = "promo"
 
 
+def _save_draft(db: Session, venture: str, content_type: str, platform: str, data: dict | list) -> None:
+    try:
+        draft = ContentDraft(
+            venture=venture,
+            content_type=content_type,
+            platform=platform,
+            content_json=json.dumps(data, default=str),
+            status="draft",
+            source_agent="Marketing Factory",
+        )
+        db.add(draft)
+        db.commit()
+    except Exception:
+        pass
+
+
 @router.post("/generate/instagram")
 def generate_instagram_route(body: InstagramRequest, db: Session = Depends(get_db)):
     from backend.agents.marketing_factory import generate_instagram
     data = generate_instagram(body.venture, body.product_title, body.tone, db)
     if data is None:
         raise HTTPException(status_code=503, detail="AI generation unavailable — check API keys")
+    _save_draft(db, body.venture, "social_post", "Instagram", data)
     return data
 
 
@@ -42,6 +61,7 @@ def generate_tiktok_route(body: TikTokRequest, db: Session = Depends(get_db)):
     data = generate_tiktok(body.venture, body.hook_type, db)
     if data is None:
         raise HTTPException(status_code=503, detail="AI generation unavailable — check API keys")
+    _save_draft(db, body.venture, "social_post", "TikTok", data)
     return data
 
 
@@ -51,6 +71,7 @@ def generate_email_route(body: EmailRequest, db: Session = Depends(get_db)):
     data = generate_email(body.venture, body.campaign_type, db)
     if data is None:
         raise HTTPException(status_code=503, detail="AI generation unavailable — check API keys")
+    _save_draft(db, body.venture, "email", "Email", data)
     return data
 
 

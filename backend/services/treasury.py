@@ -57,13 +57,12 @@ def add_entry(
     return entry
 
 
-def get_venture_summary(venture: str, db: Session, days: int = 30) -> dict:
-    cutoff = datetime.utcnow() - timedelta(days=days)
-    entries = (
-        db.query(RevenueEntry)
-        .filter(RevenueEntry.venture == venture, RevenueEntry.recorded_at >= cutoff)
-        .all()
-    )
+def get_venture_summary(venture: str, db: Session, days: Optional[int] = 30) -> dict:
+    q = db.query(RevenueEntry).filter(RevenueEntry.venture == venture)
+    if days:
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        q = q.filter(RevenueEntry.recorded_at >= cutoff)
+    entries = q.all()
 
     total_income = sum(e.amount for e in entries if e.entry_type == "income")
     total_expenses = sum(e.amount for e in entries if e.entry_type == "expense")

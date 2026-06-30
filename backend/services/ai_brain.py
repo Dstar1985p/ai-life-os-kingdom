@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -72,20 +73,32 @@ def call_claude(
     if not _budget_ok(db):
         logger.warning("AI Brain: weekly token budget exhausted — skipping LLM call")
         return None
-    try:
-        response = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = response.content[0].text if response.content else ""
-        used = response.usage.input_tokens + response.usage.output_tokens
-        _log_tokens(feature, used, db)
-        return text
-    except Exception as exc:
-        logger.warning("AI Brain call failed (%s): %s", feature, exc)
-        return None
+    _RETRY_DELAYS = [2, 4, 8]
+    last_exc: Exception | None = None
+    for attempt, delay in enumerate([0] + _RETRY_DELAYS):
+        if delay:
+            time.sleep(delay)
+        try:
+            response = client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            text = response.content[0].text if response.content else ""
+            used = response.usage.input_tokens + response.usage.output_tokens
+            _log_tokens(feature, used, db)
+            return text
+        except Exception as exc:
+            last_exc = exc
+            exc_str = str(exc).lower()
+            # Only retry on rate limit or transient network errors
+            if "429" in exc_str or "rate_limit" in exc_str or "timeout" in exc_str or "connection" in exc_str:
+                logger.warning("AI Brain transient error (attempt %d/%d) (%s): %s", attempt + 1, len(_RETRY_DELAYS) + 1, feature, exc)
+                continue
+            break
+    logger.warning("AI Brain call failed (%s): %s", feature, last_exc)
+    return None
 
 
 def get_kingdom_context(db) -> dict:

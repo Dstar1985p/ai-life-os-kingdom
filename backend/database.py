@@ -170,6 +170,49 @@ def _apply_migrations(eng) -> None:
                 )
             """))
             conn.commit()
+
+            # AgentRun: add status, error_message, duration_seconds columns
+            ar_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(agent_runs)"))]
+            for col, defn in [("status", "VARCHAR(20) DEFAULT 'ok'"), ("error_message", "TEXT DEFAULT ''"), ("duration_seconds", "FLOAT DEFAULT 0")]:
+                if col not in ar_cols:
+                    conn.execute(text(f"ALTER TABLE agent_runs ADD COLUMN {col} {defn}"))
+                    logger.info("Migration applied: agent_runs.%s column added", col)
+            conn.commit()
+
+            # TokenUsageLog: add model, actual_cost_usd columns
+            tul_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(token_usage_log)"))]
+            for col, defn in [("model", "VARCHAR(80) DEFAULT ''"), ("actual_cost_usd", "FLOAT DEFAULT 0")]:
+                if col not in tul_cols:
+                    conn.execute(text(f"ALTER TABLE token_usage_log ADD COLUMN {col} {defn}"))
+                    logger.info("Migration applied: token_usage_log.%s column added", col)
+            conn.commit()
+
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS content_drafts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    venture VARCHAR(120) NOT NULL DEFAULT '',
+                    content_type VARCHAR(80) DEFAULT 'social_post',
+                    platform VARCHAR(80) DEFAULT '',
+                    content_json TEXT DEFAULT '{}',
+                    status VARCHAR(50) DEFAULT 'draft',
+                    generated_at DATETIME,
+                    approved_at DATETIME,
+                    founder_notes TEXT DEFAULT '',
+                    source_agent VARCHAR(120) DEFAULT ''
+                )
+            """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS system_errors (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    agent_name VARCHAR(120) DEFAULT '',
+                    error_type VARCHAR(120) DEFAULT '',
+                    message TEXT DEFAULT '',
+                    traceback TEXT DEFAULT '',
+                    context TEXT DEFAULT '',
+                    recorded_at DATETIME
+                )
+            """))
+            conn.commit()
     except Exception:
         logger.exception("Migration step failed (non-fatal)")
 

@@ -21,6 +21,14 @@ _MONITORED_AGENTS = [
     "Revenue Forecaster", "AI Research", "Marketing Agent",
 ]
 
+# Support agents that have no direct revenue path — exempt from the ROI throttle.
+# These are infrastructure/intelligence agents; pausing them would break discovery.
+_SUPPORT_AGENTS = {
+    "Market Scout", "Gig Scout", "Trend Watcher", "AI Research",
+    "ROI Reaper", "SEO Agent", "Content Agent", "Revenue Forecaster",
+    "AI Engineer", "Marketing Agent",
+}
+
 COMMANDER_SYSTEM = """You are the AI Commander — the master AI running the Kingdom autonomously for the founder ("Boss").
 You are tactical, direct, ex-military in tone. Brief, no fluff. You call the founder "Boss."
 You have full visibility into agent status, revenue, opportunities, and recent lessons.
@@ -125,6 +133,10 @@ def _throttle_unprofitable_agents(db: Session) -> list[str]:
     controls = get_all_controls(db)
 
     for agent_name in _MONITORED_AGENTS:
+        # Support/infrastructure agents are exempt — they drive revenue indirectly
+        if agent_name in _SUPPORT_AGENTS:
+            continue
+
         runs = (
             db.query(AgentRun)
             .filter(AgentRun.agent_name == agent_name, AgentRun.run_at >= cutoff)
@@ -142,9 +154,10 @@ def _throttle_unprofitable_agents(db: Session) -> list[str]:
                 by="ai_commander",
             )
             actions.append(f"Throttled {agent_name}: cost £{cost:.2f} > revenue £{revenue:.2f} ({_THROTTLE_WINDOW_DAYS}d)")
-        elif currently_paused and paused_by_commander and (cost <= revenue or cost <= _THROTTLE_MIN_COST_GBP):
+        elif currently_paused and paused_by_commander and cost > 0 and revenue >= cost:
+            # Only auto-resume if revenue genuinely covers cost (not just cost is tiny)
             set_paused(agent_name, False, db, by="ai_commander")
-            actions.append(f"Resumed {agent_name}: now within budget")
+            actions.append(f"Resumed {agent_name}: revenue £{revenue:.2f} now covers cost £{cost:.2f}")
 
     return actions
 
@@ -169,7 +182,7 @@ class AICommanderAgent(BaseRevenueAgent):
         if status["stalled_agents"]:
             try:
                 from backend.scheduler import trigger_agent
-                for agent_name in status["stalled_agents"][:5]:  # cap to avoid runaway triggering
+                for agent_name in status["stalled_agents"][:2]:  # max 2 per cycle to avoid API rate hammering
                     try:
                         trigger_agent(agent_name)
                         triggered.append(agent_name)
@@ -189,8 +202,10 @@ class AICommanderAgent(BaseRevenueAgent):
             f"Kingdom context: {context}\n\n"
             f"Kingdom status (last 24h):\n{json.dumps(status, default=str)}\n\n"
             f"Agents auto-triggered this cycle: {triggered or 'none'}\n\n"
-            f"Write a concise Commander Report (under 200 words) covering: "
-            f"what's working, what needs attention, and 1-2 recommended actions for the Boss."
+            f"Write a Commander Report. Start with a TL;DR section of exactly 3 bullet points "
+            f"(prefix each with '• ') labelled '**TL;DR — Do This Now:**' telling the Boss the top 3 "
+            f"concrete actions to take right now. Then in under 150 words cover what's working, "
+            f"what needs attention, and why any auto-pauses or triggers happened (plain English, no jargon)."
         )
         report_text = call_claude(
             prompt, COMMANDER_SYSTEM, "ai_commander_report", db,
@@ -230,9 +245,10 @@ class AICommanderAgent(BaseRevenueAgent):
             )
 
         if critical_issues:
+            alert_title = f"Commander Alert {datetime.utcnow().strftime('%Y-%m-%d')}: Kingdom needs attention"
             opp, is_new = self._upsert_opportunity(
                 db,
-                title="Commander Alert: Kingdom needs attention",
+                title=alert_title,
                 category="Operations",
                 source="ai_commander",
                 scores={

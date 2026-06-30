@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import traceback as _traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -9,7 +10,24 @@ from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.models.tables import AgentRun, Lesson, Opportunity
+from backend.models.tables import AgentRun, Lesson, Opportunity, SystemError
+
+
+def log_error(db: Session, agent_name: str, exc: Exception, context: str = "") -> None:
+    """Record an exception to system_errors for later review."""
+    try:
+        import json
+        err = SystemError(
+            agent_name=agent_name,
+            error_type=type(exc).__name__,
+            message=str(exc)[:2000],
+            traceback=_traceback.format_exc()[:4000],
+            context=context[:1000] if context else "",
+        )
+        db.add(err)
+        db.commit()
+    except Exception:
+        pass
 
 
 @dataclass
@@ -94,13 +112,15 @@ class BaseRevenueAgent:
         db.add(opp)
         return opp, True
 
-    def _record_run(self, result: AgentRunResult, db: Session) -> dict[str, Any]:
+    def _record_run(self, result: AgentRunResult, db: Session, started_at: datetime | None = None) -> dict[str, Any]:
         """Save AgentRun record and any lessons to DB."""
         roi = (
             result.revenue_generated_gbp / result.estimated_cost_gbp
             if result.estimated_cost_gbp > 0
             else 0.0
         )
+        now = datetime.utcnow()
+        duration = (now - started_at).total_seconds() if started_at else 0.0
         run = AgentRun(
             agent_name=self.name,
             ai_calls=result.ai_calls,
@@ -109,7 +129,10 @@ class BaseRevenueAgent:
             estimated_cost_gbp=result.estimated_cost_gbp,
             revenue_generated_gbp=result.revenue_generated_gbp,
             roi=roi,
-            run_at=datetime.utcnow(),
+            run_at=now,
+            status=result.status,
+            error_message=result.error or "",
+            duration_seconds=round(duration, 2),
         )
         db.add(run)
 
@@ -132,9 +155,11 @@ class BaseRevenueAgent:
             "estimated_cost_gbp": run.estimated_cost_gbp,
             "revenue_generated_gbp": run.revenue_generated_gbp,
             "roi": run.roi,
+            "duration_seconds": run.duration_seconds,
             "opportunities_created": result.opportunities_created,
             "opportunities_updated": result.opportunities_updated,
             "actions_taken": result.actions_taken,
+            "lessons": result.lessons,
             "run_at": run.run_at.isoformat(),
         }
 

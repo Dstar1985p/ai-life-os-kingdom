@@ -224,6 +224,10 @@ class AgentRun(Base):
     revenue_generated_gbp: Mapped[float] = mapped_column(Float, default=0.0)
     roi: Mapped[float] = mapped_column(Float, default=0.0)
     run_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Error tracking
+    status: Mapped[str] = mapped_column(String(20), default="ok")
+    error_message: Mapped[str] = mapped_column(Text, default="")
+    duration_seconds: Mapped[float] = mapped_column(Float, default=0.0)
 
 
 class Achievement(Base):
@@ -267,6 +271,8 @@ class TokenUsageLog(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     feature: Mapped[str] = mapped_column(String(120))
     estimated_tokens: Mapped[int] = mapped_column(Integer)
+    model: Mapped[str] = mapped_column(String(80), default="")
+    actual_cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
@@ -351,3 +357,32 @@ class AgentControl(Base):
     paused_by: Mapped[str] = mapped_column(String(50), default="")  # "founder" or "ai_commander"
     paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ContentDraft(Base):
+    """Generated marketing content awaiting founder review and publish."""
+    __tablename__ = "content_drafts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    venture: Mapped[str] = mapped_column(String(120), index=True)
+    content_type: Mapped[str] = mapped_column(String(80), default="social_post")  # social_post|seo_brief|email
+    platform: Mapped[str] = mapped_column(String(80), default="")  # Instagram|Pinterest|TikTok|etc
+    content_json: Mapped[str] = mapped_column(Text, default="{}")  # full AI-generated content as JSON
+    status: Mapped[str] = mapped_column(String(50), default="draft")  # draft|approved|published|rejected
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    founder_notes: Mapped[str] = mapped_column(Text, default="")
+    source_agent: Mapped[str] = mapped_column(String(120), default="")
+
+
+class SystemError(Base):
+    """Error log for failed agent runs and service exceptions."""
+    __tablename__ = "system_errors"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    agent_name: Mapped[str] = mapped_column(String(120), index=True, default="")
+    error_type: Mapped[str] = mapped_column(String(120), default="")
+    message: Mapped[str] = mapped_column(Text, default="")
+    traceback: Mapped[str] = mapped_column(Text, default="")
+    context: Mapped[str] = mapped_column(Text, default="")  # JSON extra context
+    recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
