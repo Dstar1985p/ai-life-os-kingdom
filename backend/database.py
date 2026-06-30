@@ -132,6 +132,32 @@ def _apply_migrations(eng) -> None:
                 )
             """))
             conn.commit()
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS livery_commissions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    client_name VARCHAR(120) DEFAULT '',
+                    car_class VARCHAR(50) DEFAULT 'gt3',
+                    style VARCHAR(50) DEFAULT 'clean',
+                    primary_colour VARCHAR(20) DEFAULT '',
+                    secondary_colour VARCHAR(20) DEFAULT '',
+                    accent_colour VARCHAR(20) DEFAULT '',
+                    racing_number VARCHAR(10) DEFAULT '1',
+                    driver_name VARCHAR(60) DEFAULT '',
+                    sponsor_text VARCHAR(40) DEFAULT '',
+                    game VARCHAR(60) DEFAULT '',
+                    notes TEXT DEFAULT '',
+                    preview_url TEXT DEFAULT '',
+                    preview_generated_at DATETIME,
+                    status VARCHAR(50) DEFAULT 'draft',
+                    price_gbp FLOAT DEFAULT 40.0,
+                    platform VARCHAR(50) DEFAULT 'Fiverr',
+                    delivered_at DATETIME,
+                    founder_notes TEXT DEFAULT '',
+                    created_at DATETIME,
+                    updated_at DATETIME
+                )
+            """))
+            conn.commit()
     except Exception:
         logger.exception("Migration step failed (non-fatal)")
 

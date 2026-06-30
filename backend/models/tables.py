@@ -5,6 +5,36 @@ from sqlalchemy.orm import Mapped, mapped_column
 from backend.database import Base
 
 
+class LiveryCommission(Base):
+    """A sim racing livery commission — brief in, SVG preview out, founder approves before delivery."""
+    __tablename__ = "livery_commissions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    # Commission brief
+    client_name: Mapped[str] = mapped_column(String(120), default="")
+    car_class: Mapped[str] = mapped_column(String(50), default="gt3")   # gt3|formula|rally|touring|lmp
+    style: Mapped[str] = mapped_column(String(50), default="clean")
+    primary_colour: Mapped[str] = mapped_column(String(20), default="")
+    secondary_colour: Mapped[str] = mapped_column(String(20), default="")
+    accent_colour: Mapped[str] = mapped_column(String(20), default="")
+    racing_number: Mapped[str] = mapped_column(String(10), default="1")
+    driver_name: Mapped[str] = mapped_column(String(60), default="")
+    sponsor_text: Mapped[str] = mapped_column(String(40), default="")
+    game: Mapped[str] = mapped_column(String(60), default="")  # iRacing|ACC|GT7|Assetto Corsa
+    notes: Mapped[str] = mapped_column(Text, default="")
+    # Generated output
+    preview_url: Mapped[str] = mapped_column(Text, default="")
+    preview_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Workflow: draft → preview_ready → approved → delivered
+    status: Mapped[str] = mapped_column(String(50), default="draft")
+    price_gbp: Mapped[float] = mapped_column(Float, default=40.0)
+    platform: Mapped[str] = mapped_column(String(50), default="Fiverr")
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    founder_notes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class Agent(Base):
     __tablename__ = "agents"
 

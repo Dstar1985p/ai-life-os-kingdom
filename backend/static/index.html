@@ -926,6 +926,7 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
   <button class="nav-tab" data-tab="pulsebreak" onclick="showTab('pulsebreak')"><span class="tab-dot" style="background:var(--purple)"></span> PulseBreak</button>
   <button class="nav-tab" data-tab="agents" onclick="showTab('agents')"><span class="tab-dot" style="background:var(--green)"></span> Agents</button>
   <button class="nav-tab" data-tab="opportunities" onclick="showTab('opportunities')"><span class="tab-dot" style="background:var(--cyan)"></span> Opportunities</button>
+  <button class="nav-tab" data-tab="livery" onclick="showTab('livery')"><span class="tab-dot" style="background:#f97316"></span> Livery Forge</button>
   <button class="nav-tab" data-tab="intelligence" onclick="showTab('intelligence')"><span class="tab-dot" style="background:var(--pink)"></span> Intelligence</button>
   <button class="nav-tab" data-tab="tools" onclick="showTab('tools')"><span class="tab-dot"></span> Tools</button>
 </nav>
@@ -1409,6 +1410,152 @@ input[type=number]::-webkit-inner-spin-button{opacity:0.4}
 </div>
 </div>
 
+<!-- ══════════════════════════ PAGE: LIVERY FORGE ══════════════════════════ -->
+<div class="page" id="page-livery">
+<div class="content-area">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;color:var(--text)">🏎 Livery Forge — Sim Racing Livery Studio</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">Custom racing liveries for iRacing · ACC · GT7 · Assetto Corsa · £35–£80 per commission</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="loadLiveryDemoGallery()" style="background:rgba(249,115,22,0.2);border-color:rgba(249,115,22,0.4);color:#f97316">🎨 Style Gallery</button>
+      <button class="btn btn-sm" onclick="loadGigDescription()" style="background:rgba(0,229,255,0.1);border-color:rgba(0,229,255,0.3);color:var(--cyan)">📋 Gig Copy</button>
+      <button class="btn btn-sm btn-green" onclick="showNewCommissionForm()">+ New Commission</button>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px" id="livery-stats">
+    <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.6rem;font-weight:800;color:#f97316" id="lv-total">0</div><div style="font-size:0.65rem;color:var(--muted)">Total Commissions</div></div>
+    <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.6rem;font-weight:800;color:var(--green)" id="lv-revenue">£0</div><div style="font-size:0.65rem;color:var(--muted)">Revenue Earned</div></div>
+    <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.6rem;font-weight:800;color:var(--amber)" id="lv-pipeline">£0</div><div style="font-size:0.65rem;color:var(--muted)">In Pipeline</div></div>
+    <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.6rem;font-weight:800;color:var(--cyan)" id="lv-pending">0</div><div style="font-size:0.65rem;color:var(--muted)">Awaiting Approval</div></div>
+  </div>
+
+  <!-- New Commission Form (hidden by default) -->
+  <div class="card" id="new-commission-card" style="margin-bottom:16px;display:none;border-color:rgba(249,115,22,0.3)">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(249,115,22,0.3),rgba(239,68,68,0.1))">🏎</div>
+      <div class="card-title">New Commission Brief</div>
+      <div class="card-action"><button class="btn btn-sm" onclick="document.getElementById('new-commission-card').style.display='none'">✕</button></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Client Name</label>
+        <input id="lv-client" class="input" placeholder="e.g. RacerX92" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Game / Sim</label>
+        <input id="lv-game" class="input" placeholder="iRacing / ACC / GT7 / AC" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Car Class</label>
+        <select id="lv-car" class="input" style="width:100%">
+          <option value="gt3">GT3 Coupe</option>
+          <option value="formula">Formula / Open Wheel</option>
+          <option value="rally">Rally Car</option>
+          <option value="touring">Touring / BTCC Saloon</option>
+          <option value="lmp">LMP Prototype</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Style Preset</label>
+        <select id="lv-style" class="input" style="width:100%">
+          <option value="clean">Clean</option>
+          <option value="aggressive">Aggressive</option>
+          <option value="retro">Retro</option>
+          <option value="neon">Neon</option>
+          <option value="stealth">Stealth</option>
+          <option value="gulf">Gulf (classic blue/orange)</option>
+          <option value="martini">Martini (white/tricolour)</option>
+          <option value="jps">JPS (black/gold)</option>
+          <option value="rothmans">Rothmans (blue/white)</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Racing Number</label>
+        <input id="lv-number" class="input" value="17" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Driver Name (optional)</label>
+        <input id="lv-driver" class="input" placeholder="e.g. K. HAMILTON" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Primary Colour (hex, optional)</label>
+        <input id="lv-primary" class="input" placeholder="#1e3a5f" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Secondary Colour (hex, optional)</label>
+        <input id="lv-secondary" class="input" placeholder="#e94560" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Sponsor Text (optional)</label>
+        <input id="lv-sponsor" class="input" placeholder="KINGDOM" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Price (£)</label>
+        <input id="lv-price" class="input" type="number" value="40" style="width:100%"/>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Client Notes / Brief</label>
+      <textarea id="lv-notes" class="input" rows="3" placeholder="e.g. Want a retro Gulf look with my number 23 prominently displayed..." style="width:100%;resize:vertical"></textarea>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px">
+      <button class="btn btn-green" onclick="createCommission()">Create Commission</button>
+      <button class="btn" onclick="previewLiveryDraft()">👁 Quick Preview</button>
+    </div>
+  </div>
+
+  <!-- Preview panel -->
+  <div id="livery-preview-panel" style="display:none;margin-bottom:16px">
+    <div class="card" style="border-color:rgba(249,115,22,0.3)">
+      <div class="card-header">
+        <div class="card-title">Livery Preview</div>
+        <div class="card-action" id="livery-preview-actions"></div>
+      </div>
+      <div id="livery-preview-svg" style="margin-top:12px;text-align:center;background:#050505;border-radius:8px;padding:16px;overflow:hidden"></div>
+    </div>
+  </div>
+
+  <!-- Style Gallery -->
+  <div id="livery-gallery" style="display:none;margin-bottom:16px">
+    <div class="card" style="border-color:rgba(249,115,22,0.2)">
+      <div class="card-header">
+        <div class="card-title">Style Gallery — GT3 Demo</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="document.getElementById('livery-gallery').style.display='none'">✕</button></div>
+      </div>
+      <div id="gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- Gig Copy -->
+  <div id="gig-copy-panel" style="display:none;margin-bottom:16px">
+    <div class="card" style="border-color:rgba(0,229,255,0.2)">
+      <div class="card-header">
+        <div class="card-title">📋 Fiverr Gig Description (Claude-Generated)</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="document.getElementById('gig-copy-panel').style.display='none'">✕</button></div>
+      </div>
+      <div id="gig-copy-content" style="margin-top:12px"><div class="loading">Generating…</div></div>
+    </div>
+  </div>
+
+  <!-- Commissions List -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(249,115,22,0.2),rgba(239,68,68,0.1))">📋</div>
+      <div class="card-title">Commission Queue</div>
+      <div class="card-action"><button class="btn btn-sm" onclick="loadLiveryTab()">↻</button></div>
+    </div>
+    <div id="commission-list" style="margin-top:8px"><div class="loading">Loading commissions…</div></div>
+  </div>
+
+</div>
+</div>
+
 <!-- ══════════════════════════ PAGE: INTELLIGENCE ══════════════════════════ -->
 <div class="page" id="page-intelligence">
 <div class="content-area">
@@ -1600,6 +1747,7 @@ function showTab(tab) {
   if (tab === 'pulsebreak') loadPulsebreakTab();
   if (tab === 'agents') loadAgentsTab();
   if (tab === 'opportunities') loadOpportunitiesTab();
+  if (tab === 'livery') loadLiveryTab();
   if (tab === 'intelligence') loadIntelligenceTab();
   if (tab === 'tools') loadToolsTab();
 }
@@ -3077,6 +3225,189 @@ function checkOnboarding() {
     document.getElementById('onboarding-overlay').classList.remove('hidden');
     renderOBStep();
   }
+}
+
+/* ─── LIVERY FORGE ─── */
+async function loadLiveryTab() {
+  const r = await fetchJSON('/livery/commissions');
+  document.getElementById('lv-total').textContent = r.total || 0;
+  document.getElementById('lv-revenue').textContent = '£' + (r.total_revenue_gbp || 0).toFixed(0);
+  document.getElementById('lv-pipeline').textContent = '£' + (r.pipeline_value_gbp || 0).toFixed(0);
+  document.getElementById('lv-pending').textContent = (r.by_status?.preview_ready || 0) + (r.by_status?.approved || 0);
+  renderCommissions(r.commissions || []);
+}
+
+function renderCommissions(list) {
+  const el = document.getElementById('commission-list');
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:0.75rem;padding:16px 0;text-align:center">No commissions yet — click "+ New Commission" to add your first brief.</div>';
+    return;
+  }
+  const statusCol = {draft:'var(--muted)',preview_ready:'var(--cyan)',approved:'var(--green)',delivered:'#f97316'};
+  const statusLabel = {draft:'Draft',preview_ready:'Preview Ready',approved:'✅ Approved',delivered:'🏁 Delivered'};
+  el.innerHTML = list.map(c => `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="width:42px;height:42px;border-radius:8px;background:rgba(249,115,22,0.15);border:1px solid rgba(249,115,22,0.3);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:900;color:#f97316;flex-shrink:0">${c.racing_number||'?'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:0.8rem;font-weight:700;color:var(--text)">${c.client_name||'Anonymous'} — ${(c.car_class||'').toUpperCase()} · ${(c.style||'').toUpperCase()}</div>
+        <div style="font-size:0.68rem;color:var(--muted);margin-top:2px">${c.game||''} ${c.driver_name ? '· '+c.driver_name : ''} ${c.notes ? '· '+c.notes.slice(0,50) : ''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:0.75rem;font-weight:700;color:${statusCol[c.status]||'var(--muted)'}">${statusLabel[c.status]||c.status}</div>
+        <div style="font-size:0.7rem;color:var(--green);margin-top:2px">£${c.price_gbp||0}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        ${c.preview_url
+          ? `<button class="btn btn-sm" onclick="viewCommissionPreview(${c.id})" style="font-size:0.65rem;padding:4px 8px">👁 Preview</button>`
+          : `<button class="btn btn-sm" onclick="generateCommissionPreview(${c.id})" style="font-size:0.65rem;padding:4px 8px;background:rgba(249,115,22,0.15);border-color:rgba(249,115,22,0.4);color:#f97316">🎨 Generate</button>`}
+        ${c.status === 'preview_ready' ? `<button class="btn btn-sm btn-green" onclick="approveCommission(${c.id})" style="font-size:0.65rem;padding:4px 8px">✅ Approve</button>` : ''}
+        ${c.status === 'approved' ? `<button class="btn btn-sm" onclick="deliverCommission(${c.id})" style="font-size:0.65rem;padding:4px 8px;background:rgba(249,115,22,0.2);border-color:rgba(249,115,22,0.5);color:#f97316">🏁 Mark Delivered</button>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function showNewCommissionForm() {
+  const el = document.getElementById('new-commission-card');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function createCommission() {
+  const body = {
+    client_name: document.getElementById('lv-client').value,
+    car_class: document.getElementById('lv-car').value,
+    style: document.getElementById('lv-style').value,
+    racing_number: document.getElementById('lv-number').value || '17',
+    driver_name: document.getElementById('lv-driver').value,
+    primary_colour: document.getElementById('lv-primary').value,
+    secondary_colour: document.getElementById('lv-secondary').value,
+    sponsor_text: document.getElementById('lv-sponsor').value,
+    game: document.getElementById('lv-game').value,
+    notes: document.getElementById('lv-notes').value,
+    price_gbp: parseFloat(document.getElementById('lv-price').value) || 40,
+  };
+  try {
+    const r = await fetch('/livery/commissions', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const d = await r.json();
+    showToast(`Commission #${d.id} created — click Generate to make the preview`, 'success');
+    document.getElementById('new-commission-card').style.display = 'none';
+    loadLiveryTab();
+  } catch(e) { showToast('Failed to create commission', 'error'); }
+}
+
+async function previewLiveryDraft() {
+  const car = document.getElementById('lv-car').value;
+  const style = document.getElementById('lv-style').value;
+  const num = document.getElementById('lv-number').value || '17';
+  const panel = document.getElementById('livery-preview-panel');
+  const svg_el = document.getElementById('livery-preview-svg');
+  panel.style.display = 'block';
+  svg_el.innerHTML = '<div class="loading">Generating preview…</div>';
+  try {
+    const r = await fetch(`/livery/demo?car_class=${car}&style=${style}&number=${encodeURIComponent(num)}`);
+    const svg = await r.text();
+    svg_el.innerHTML = svg;
+    document.getElementById('livery-preview-actions').innerHTML = `<span style="font-size:0.7rem;color:var(--muted)">Draft preview — ${car.toUpperCase()} · ${style.toUpperCase()}</span>`;
+  } catch(e) { svg_el.innerHTML = '<div style="color:var(--red)">Preview failed</div>'; }
+}
+
+async function generateCommissionPreview(id) {
+  showToast('Generating livery…', 'info');
+  try {
+    const r = await fetch(`/livery/commissions/${id}/generate`, {method:'POST'});
+    const d = await r.json();
+    if (d.preview_url) {
+      showToast('Livery generated — click Preview to review', 'success');
+      loadLiveryTab();
+    }
+  } catch(e) { showToast('Generation failed', 'error'); }
+}
+
+async function viewCommissionPreview(id) {
+  const panel = document.getElementById('livery-preview-panel');
+  const svgEl = document.getElementById('livery-preview-svg');
+  const actions = document.getElementById('livery-preview-actions');
+  panel.style.display = 'block';
+  svgEl.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const r = await fetch(`/livery/commissions/${id}/preview`);
+    const svg = await r.text();
+    svgEl.innerHTML = svg;
+    actions.innerHTML = `
+      <a href="/livery/commissions/${id}/preview" download="livery_${id}.svg" class="btn btn-sm" style="font-size:0.68rem">💾 Download SVG</a>
+      <button class="btn btn-sm btn-green" onclick="approveCommission(${id})" style="font-size:0.68rem">✅ Approve</button>`;
+    panel.scrollIntoView({behavior:'smooth', block:'start'});
+  } catch(e) { svgEl.innerHTML = '<div style="color:var(--red)">Preview unavailable</div>'; }
+}
+
+async function approveCommission(id) {
+  await fetch(`/livery/commissions/${id}/approve`, {method:'POST'});
+  showToast('Commission approved — ready to deliver!', 'success');
+  loadLiveryTab();
+}
+
+async function deliverCommission(id) {
+  await fetch(`/livery/commissions/${id}/deliver`, {method:'POST'});
+  showToast('Marked as delivered 🏁 — revenue recorded!', 'success');
+  loadLiveryTab();
+}
+
+async function loadLiveryDemoGallery() {
+  const gallery = document.getElementById('livery-gallery');
+  const grid = document.getElementById('gallery-grid');
+  gallery.style.display = 'block';
+  grid.innerHTML = '<div class="loading">Loading style gallery…</div>';
+  const styles = ['gulf','martini','jps','rothmans','neon','aggressive','retro','clean','stealth'];
+  const previews = await Promise.allSettled(
+    styles.map(s => fetch(`/livery/demo?car_class=gt3&style=${s}&number=1`).then(r => r.text()).then(svg => ({style:s, svg})))
+  );
+  grid.innerHTML = previews.map(p => {
+    if (p.status !== 'fulfilled') return '';
+    const {style, svg} = p.value;
+    return `<div style="background:#050505;border-radius:8px;padding:8px;border:1px solid rgba(249,115,22,0.15);cursor:pointer"
+      onclick="document.getElementById('lv-style').value='${style}';showNewCommissionForm()">
+      <div style="overflow:hidden;border-radius:4px">${svg}</div>
+      <div style="text-align:center;font-size:0.7rem;font-weight:700;color:#f97316;margin-top:6px;text-transform:uppercase">${style}</div>
+    </div>`;
+  }).join('');
+  gallery.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+async function loadGigDescription() {
+  const panel = document.getElementById('gig-copy-panel');
+  const content = document.getElementById('gig-copy-content');
+  panel.style.display = 'block';
+  content.innerHTML = '<div class="loading">Claude is writing your Fiverr gig…</div>';
+  try {
+    const d = await fetchJSON('/livery/gig-description');
+    if (d.error) { content.innerHTML = `<div style="color:var(--red)">${d.error}</div>`; return; }
+    content.innerHTML = `
+      <div style="margin-bottom:14px">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Gig Title</div>
+        <div style="font-size:0.9rem;font-weight:700;color:var(--cyan);padding:10px;background:rgba(0,229,255,0.08);border-radius:6px;border-left:3px solid var(--cyan)">${d.title||''}</div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Description</div>
+        <div style="font-size:0.75rem;color:var(--text);padding:10px;background:var(--surface);border-radius:6px;white-space:pre-wrap;line-height:1.6">${d.description||''}</div>
+      </div>
+      ${d.packages ? `<div style="margin-bottom:14px">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Packages</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          ${(d.packages||[]).map(p=>`<div style="padding:10px;background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.15);border-radius:6px">
+            <div style="font-weight:700;color:var(--green);font-size:0.75rem">${p.name||''}</div>
+            <div style="color:var(--amber);font-weight:800;font-size:1rem;margin:4px 0">${p.price||''}</div>
+            <div style="font-size:0.65rem;color:var(--muted)">${p.includes||p.description||''}</div>
+          </div>`).join('')}
+        </div>
+      </div>` : ''}
+      ${d.faqs ? `<div>
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">FAQs</div>
+        ${(d.faqs||[]).map(f=>`<div style="margin-bottom:8px;padding:8px;background:var(--surface);border-radius:6px">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--text)">${f.question||f.q||''}</div>
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">${f.answer||f.a||''}</div>
+        </div>`).join('')}
+      </div>` : ''}`;
+  } catch(e) { content.innerHTML = '<div style="color:var(--red)">Generation failed</div>'; }
 }
 
 /* ─── GIG SCOUT ─── */
