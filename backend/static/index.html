@@ -2630,9 +2630,11 @@ function initCanvas() {
         ctx.fillStyle=room.colour; ctx.fill(); ctx.restore();
       }
     });
-    _animFrame = requestAnimationFrame(draw);
+    // Throttle to ~30fps on mobile to avoid draining battery/locking up
+    const delay = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 33 : 16;
+    _animFrame = setTimeout(() => { _animFrame = requestAnimationFrame(draw); }, delay);
   }
-  if(_animFrame) cancelAnimationFrame(_animFrame);
+  if(_animFrame) { clearTimeout(_animFrame); cancelAnimationFrame(_animFrame); }
   draw();
 
   // Click handling
@@ -4542,6 +4544,10 @@ async function loadGigScoutResults() {
 }
 
 /* ─── PWA SERVICE WORKER ─── */
+// Clear any stale caches from old SW versions on first load
+if ('caches' in window) {
+  caches.keys().then(keys => keys.filter(k => k !== 'kingdom-v2').forEach(k => caches.delete(k)));
+}
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW reg failed:', err));
