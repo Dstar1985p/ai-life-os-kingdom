@@ -21,7 +21,7 @@ from backend.api.routes_agent_economics import router as agent_economics_router
 from backend.api.routes_kingdom_map import router as kingdom_map_router
 from backend.api.routes_scheduler import router as scheduler_router
 from backend.seed.seed_data import seed_defaults
-from backend.api.routes_vibes import router as vibes_router
+from backend.api.routes_vibes import router as vibes_router, youtube_router
 from backend.api.routes_action_queue import router as action_queue_router
 from backend.api.routes_digest import router as digest_router
 from backend.api.routes_intelligence import router as intelligence_router
@@ -64,7 +64,7 @@ from backend.api.routes_performance import router as performance_router
 from backend.api.routes_rooms import router as rooms_router
 from backend.api.routes_commander import router as commander_router
 from backend.api.routes_marketing import router as marketing_router
-from backend.api.routes_content_drafts import router as content_drafts_router
+from backend.api.routes_content_drafts import router as content_drafts_router, content_router
 
 # Create all tables immediately at import time (supports TestClient without context manager)
 Base.metadata.create_all(bind=engine)
@@ -125,6 +125,7 @@ app.include_router(agent_economics_router)
 app.include_router(kingdom_map_router)
 app.include_router(scheduler_router)
 app.include_router(vibes_router)
+app.include_router(youtube_router)
 app.include_router(action_queue_router)
 app.include_router(digest_router)
 app.include_router(intelligence_router)
@@ -165,6 +166,7 @@ app.include_router(rooms_router)
 app.include_router(commander_router)
 app.include_router(marketing_router)
 app.include_router(content_drafts_router)
+app.include_router(content_router)
 
 
 @app.get("/", include_in_schema=False)

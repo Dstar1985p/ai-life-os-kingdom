@@ -69,3 +69,21 @@ def retire(name: str, payload: RetirePayload, db: Session = Depends(get_db)):
     if not profile:
         raise HTTPException(status_code=404, detail="Agent not found")
     return profile
+
+
+class TriggerPayload(BaseModel):
+    agent: str = ""
+    agent_name: str = ""
+
+
+@router.post("/trigger")
+def trigger_agent_alias(payload: TriggerPayload, db: Session = Depends(get_db)):
+    """Frontend-friendly alias — accepts {agent} or {agent_name}."""
+    name = payload.agent_name or payload.agent
+    if not name:
+        raise HTTPException(status_code=422, detail="Provide agent or agent_name")
+    try:
+        from backend.scheduler import trigger_agent
+        return trigger_agent(name)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

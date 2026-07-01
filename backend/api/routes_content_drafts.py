@@ -11,6 +11,7 @@ from backend.database import get_db
 from backend.models.tables import ContentDraft
 
 router = APIRouter(prefix="/content-drafts", tags=["Content Drafts"])
+content_router = APIRouter(prefix="/content", tags=["Content"])
 
 
 class ApproveRequest(BaseModel):
@@ -79,6 +80,32 @@ def publish_draft(draft_id: int, db: Session = Depends(get_db)):
     draft.status = "published"
     db.commit()
     return {"status": "published", "id": draft_id}
+
+
+@content_router.get("/posts")
+def list_content_posts(venture: str = "", limit: int = 20, db: Session = Depends(get_db)):
+    """Social posts view — returns approved/published content formatted as posts."""
+    import json as _json
+    q = db.query(ContentDraft).filter(ContentDraft.content_type == "social_post")
+    if venture:
+        q = q.filter(ContentDraft.venture == venture)
+    drafts = q.order_by(ContentDraft.generated_at.desc()).limit(limit).all()
+    posts = []
+    for d in drafts:
+        try:
+            body = _json.loads(d.content_json or "{}")
+        except Exception:
+            body = {}
+        posts.append({
+            "id": d.id,
+            "venture": d.venture,
+            "platform": d.platform or body.get("platform", "Social"),
+            "content": body.get("content") or body.get("caption") or d.content_json or "",
+            "hashtags": body.get("hashtags", ""),
+            "status": d.status,
+            "generated_at": d.generated_at.isoformat() if d.generated_at else None,
+        })
+    return {"posts": posts, "total": len(posts)}
 
 
 @router.get("/stats")

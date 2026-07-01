@@ -3373,7 +3373,7 @@ async function loadABTests() {
   const el = document.getElementById('ab-tests-list');
   if (!el) return;
   try {
-    const data = await fetchJSON('/ab-tests');
+    const data = await fetchJSON('/launch/ab-tests');
     if (!data || !data.length) {
       el.innerHTML = '<div style="color:var(--muted);font-size:0.75rem">No A/B tests yet — create your first test below</div>';
       return;
@@ -3418,7 +3418,7 @@ async function createABTest() {
   const metric = document.getElementById('ab-metric')?.value;
   if (!name || !vA || !vB) { showToast('Fill in all fields', 'warning'); return; }
   try {
-    const res = await fetch('/ab-tests', {method:'POST',headers:{'Content-Type':'application/json'},
+    const res = await fetch('/launch/ab-tests', {method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({name,variant_a_text:vA,variant_b_text:vB,venture,metric})});
     const d = await res.json();
     showToast('A/B Test created', 'success');
@@ -3642,9 +3642,16 @@ async function generateLicensingConcepts() {
 
 function pitchConcept(idx, titleEnc) {
   const title = decodeURIComponent(titleEnc);
-  showToast(`Pitching "${title}" — agent drafting submission…`, 'info');
+  showToast(`Pitching "${title}" — drafting…`, 'info');
   fetch('/music-licensing/pitch', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({title, index: idx})})
-    .catch(() => {});
+    .then(r => r.json())
+    .then(data => {
+      if (data?.pitch_draft) {
+        navigator.clipboard.writeText(data.pitch_draft).catch(() => {});
+        showToast('Pitch drafted & copied to clipboard!', 'success');
+      }
+    })
+    .catch(() => showToast('Pitch failed', 'error'));
 }
 
 function copyConceptBrief(idx, evEnc) {
@@ -4326,7 +4333,7 @@ function runScenario() {
 let _allChecklist = [];
 async function loadChecklist() {
   try {
-    const data = await fetchJSON('/checklist');
+    const data = await fetchJSON('/launch/checklist');
     _allChecklist = data?.items || data || [];
     renderChecklist(_allChecklist);
   } catch(e) {}
@@ -4341,7 +4348,7 @@ function renderChecklist(items) {
   el.innerHTML = items.map((item,i) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
     <input type="checkbox" ${item.completed?'checked':''} onchange="toggleChecklistItem(${item.id||i},this)" style="cursor:pointer;accent-color:var(--green)">
     <div style="flex:1">
-      <div style="font-size:0.78rem;color:${item.completed?'var(--muted)':'var(--text)'};text-decoration:${item.completed?'line-through':'none'}">${item.title}</div>
+      <div style="font-size:0.78rem;color:${item.completed?'var(--muted)':'var(--text)'};text-decoration:${item.completed?'line-through':'none'}">${item.item||item.title||''}</div>
       <div style="font-size:0.62rem;color:var(--muted)">${item.venture||''}</div>
     </div>
   </div>`).join('');
@@ -4352,7 +4359,7 @@ function filterChecklist(venture) {
 }
 async function toggleChecklistItem(id, el) {
   try {
-    await fetch(`/checklist/${id}/toggle`, {method:'POST'});
+    await fetch(`/launch/checklist/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({completed: !el.checked ? false : true})});
     loadChecklist();
   } catch(e) { el.checked = !el.checked; }
 }
@@ -4361,7 +4368,7 @@ async function addChecklistItem() {
   const venture = document.getElementById('new-checklist-venture')?.value;
   if (!title) return;
   try {
-    await fetch('/checklist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,venture})});
+    await fetch('/launch/checklist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item: title, venture})});
     document.getElementById('new-checklist-item').value = '';
     loadChecklist();
     showToast('Item added', 'success');

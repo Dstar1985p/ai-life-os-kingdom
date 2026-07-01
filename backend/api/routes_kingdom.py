@@ -104,3 +104,29 @@ def hall_of_heroes(db: Session = Depends(get_db)):
 @router.get("/kingdom/agent-leaderboard")
 def agent_leaderboard(db: Session = Depends(get_db)):
     return get_leaderboard(db)
+
+
+@router.get("/api/overview")
+def api_overview(db: Session = Depends(get_db)):
+    """HUD overview — revenue snapshot and active agent count."""
+    try:
+        from backend.models.tables import RevenueEntry
+        from sqlalchemy import func
+        from datetime import date
+        today = date.today()
+        revenue_today = db.query(func.sum(RevenueEntry.amount)).filter(
+            func.date(RevenueEntry.created_at) == today
+        ).scalar() or 0.0
+        monthly_revenue = db.query(func.sum(RevenueEntry.amount)).filter(
+            func.extract('month', RevenueEntry.created_at) == today.month,
+            func.extract('year', RevenueEntry.created_at) == today.year,
+        ).scalar() or 0.0
+    except Exception:
+        revenue_today = 0.0
+        monthly_revenue = 0.0
+    active_agents = db.query(Agent).filter(Agent.retired == False).count()  # noqa: E712
+    return {
+        "revenue_today": round(float(revenue_today), 2),
+        "monthly_revenue": round(float(monthly_revenue), 2),
+        "active_agents": active_agents,
+    }

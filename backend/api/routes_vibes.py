@@ -18,6 +18,7 @@ from backend.services.pulsebreak_watch import (
 )
 
 router = APIRouter(prefix="/vibes", tags=["Vibes AI"])
+youtube_router = APIRouter(prefix="/youtube", tags=["YouTube"])
 
 AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".flac"}
 
@@ -458,5 +459,35 @@ def performance_dashboard(db: Session = Depends(get_db)) -> dict:
             "Performance learning active — Vibes AI is weighting sub-genres by engagement."
             if summary else
             "No performance data yet. Upload and release tracks to start learning."
+        ),
+    }
+
+
+@youtube_router.get("/performance")
+def youtube_performance(db: Session = Depends(get_db)) -> dict:
+    """YouTube performance data — alias route for frontend compatibility."""
+    from backend.services.youtube_analytics import get_performance_summary
+    try:
+        summary = get_performance_summary(db)
+    except Exception:
+        summary = {}
+    from backend.models.tables import TrackRelease as _TR
+    recent = db.query(_TR).order_by(_TR.released_at.desc()).limit(10).all()
+    tracks = [
+        {
+            "track_name": t.track_name,
+            "status": t.status,
+            "score": t.score,
+            "released_at": t.released_at.isoformat() if t.released_at else None,
+        }
+        for t in recent
+    ]
+    return {
+        "genre_summary": summary,
+        "recent_tracks": tracks,
+        "track_count": len(tracks),
+        "message": (
+            "YouTube performance data active." if summary
+            else "No YouTube data yet. Release tracks to start tracking."
         ),
     }

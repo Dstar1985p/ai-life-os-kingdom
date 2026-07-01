@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
@@ -41,3 +41,15 @@ def trigger_update(db: Session = Depends(get_db)):
 @router.get("/context")
 def context(db: Session = Depends(get_db)):
     return {"context": compress_kingdom_context(db)}
+
+
+@router.post("/reset")
+def reset_weights(db: Session = Depends(get_db)):
+    """Reset all learning weights to defaults."""
+    try:
+        db.query(LearningWeight).delete()
+        db.commit()
+        return {"status": "reset", "message": "Learning weights cleared. They will rebuild from new data."}
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

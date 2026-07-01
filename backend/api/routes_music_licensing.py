@@ -80,6 +80,56 @@ def list_platforms() -> dict:
     return {"platforms": PLATFORMS, "total": len(PLATFORMS)}
 
 
+from pydantic import BaseModel
+
+
+class PitchRequest(BaseModel):
+    title: str
+    index: int = 0
+
+
+@router.post("/pitch")
+def pitch_concept(body: PitchRequest, db: Session = Depends(get_db)) -> dict:
+    """Generate a pitch email draft for a licensing concept."""
+    opp = (
+        db.query(Opportunity)
+        .filter(Opportunity.source == "music_licensing", Opportunity.title == body.title)
+        .first()
+    )
+    if not opp:
+        opp = (
+            db.query(Opportunity)
+            .filter(Opportunity.source == "music_licensing")
+            .order_by(Opportunity.id.desc())
+            .offset(body.index)
+            .first()
+        )
+    if not opp:
+        raise HTTPException(status_code=404, detail="Concept not found")
+
+    try:
+        ev = json.loads(opp.evidence or "{}")
+    except (json.JSONDecodeError, TypeError):
+        ev = {}
+
+    platforms = ev.get("recommended_platforms", ["Music licensing platforms"])
+    pitch_body = (
+        f"Subject: Music Licensing Enquiry — {opp.title}\n\n"
+        f"Hi,\n\n"
+        f"I'm reaching out regarding sync licensing opportunities for my track '{opp.title}'.\n\n"
+        f"The track fits well with {', '.join(platforms[:2])} and similar placements.\n\n"
+        f"I'd love to discuss how we can work together.\n\n"
+        f"Best regards,\nPulseBreak"
+    )
+    return {
+        "concept_id": opp.id,
+        "title": opp.title,
+        "pitch_draft": pitch_body,
+        "platforms": platforms,
+        "status": "draft_ready",
+    }
+
+
 @router.get("/revenue-estimate")
 def revenue_estimate(db: Session = Depends(get_db)) -> dict:
     """Sum estimated monthly revenue across all concepts, with per-platform breakdown."""
