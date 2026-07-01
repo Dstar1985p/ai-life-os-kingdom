@@ -1008,6 +1008,40 @@ header{
   position:fixed;bottom:max(80px,calc(70px + env(safe-area-inset-bottom)));
   right:max(20px,env(safe-area-inset-right));
 }
+
+/* ─── MOBILE DASHBOARD TIDY ─── */
+@media(max-width:768px){
+  /* Hide kingdom map canvas — too small to be useful on phone */
+  #kingdom-map-canvas{ display:none; }
+  .card:has(#kingdom-map-canvas){ display:none; }
+
+  /* District grid: 2 columns on phone */
+  .district-grid{ grid-template-columns:repeat(2,1fr); gap:8px; }
+  .district-card{ padding:10px; }
+  .district-emoji{ font-size:1.4rem; margin-bottom:4px; }
+  .district-name{ font-size:0.68rem; }
+  .district-desc{ display:none; }
+
+  /* Cards: less padding on mobile */
+  .card{ padding:12px; }
+  .card-header{ margin-bottom:10px; }
+
+  /* Resources bar: scroll horizontally, don't wrap */
+  .resources-bar{ overflow-x:auto; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; }
+  .resource-item{ flex-shrink:0; min-width:80px; padding:6px 10px; }
+  .resource-label{ font-size:0.5rem; }
+  .resource-value{ font-size:0.85rem; }
+
+  /* Overview grid: single column */
+  #page-overview .grid-2,
+  #page-overview .grid-3{ grid-template-columns:1fr; }
+
+  /* Quest cards: more readable */
+  .quest-card{ padding:12px; }
+
+  /* KPI strip labels shorter on very small screens */
+  .kpi-label{ letter-spacing:1px; }
+}
 </style>
 </head>
 <body>
@@ -4223,15 +4257,20 @@ const OB_STEPS = [
     btnText:'Add API Keys →',
   },
   {
-    title:'API Keys',
-    body:`<p style="color:var(--muted);margin-bottom:14px">Required for AI-powered features. Keys are stored locally and never shared.</p>
-    <label class="ob-label">ANTHROPIC_API_KEY <span style="color:var(--red)">*required</span></label>
-    <div class="ob-key-field"><input type="password" class="settings-input ob-input" id="ob-anthropic-key" placeholder="sk-ant-..."><button class="ob-key-show" onclick="toggleKeyVisibility('ob-anthropic-key',this)">SHOW</button></div>
-    <label class="ob-label">PRINTIFY_API_TOKEN</label>
-    <div class="ob-key-field"><input type="password" class="settings-input ob-input" id="ob-printify-key" placeholder="API token..."><button class="ob-key-show" onclick="toggleKeyVisibility('ob-printify-key',this)">SHOW</button></div>
-    <label class="ob-label">ETSY_CLIENT_ID</label>
-    <div class="ob-key-field"><input type="password" class="settings-input ob-input" id="ob-etsy-key" placeholder="Client ID..."><button class="ob-key-show" onclick="toggleKeyVisibility('ob-etsy-key',this)">SHOW</button></div>`,
-    btnText:"Let's Go! 🚀",
+    title:'API Keys — Set in Railway',
+    body:`<p style="color:var(--muted);margin-bottom:14px">Keys are set as <strong style="color:var(--cyan)">Railway environment variables</strong> — they persist across deploys and are never lost.</p>
+    <div style="background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:10px;padding:12px;font-size:0.78rem;line-height:1.8">
+      <div>1. Go to <strong>railway.app</strong> → your service</div>
+      <div>2. Tap <strong>Variables</strong> tab</div>
+      <div>3. Add these variables:</div>
+      <div style="margin-top:8px;font-family:monospace;font-size:0.72rem;display:flex;flex-direction:column;gap:4px">
+        <div style="color:var(--green)">ANTHROPIC_API_KEY = sk-ant-...</div>
+        <div style="color:var(--amber)">PRINTIFY_API_TOKEN = your token</div>
+        <div style="color:var(--purple)">ETSY_CLIENT_ID = your keystring</div>
+      </div>
+    </div>
+    <p style="margin-top:10px;font-size:0.75rem;color:var(--muted)">Railway auto-restarts when you save. Keys are secure and never wiped.</p>`,
+    btnText:"Got it! Let's Go 🚀",
   },
   {
     title:'Kingdom OS is Ready!',
