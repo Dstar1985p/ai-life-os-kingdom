@@ -95,23 +95,26 @@ var KingdomISO = (function () {
 
   function getScale() {
     const { w, h } = getSize();
-    // Scale so the map fills ~85% of the smaller dimension
+    // The actual bounding box of all 6 buildings (cols 0-10, rows 0-7)
     const mapW = (GRID_COLS + GRID_ROWS) * (TW / 2);
-    const mapH = (GRID_COLS + GRID_ROWS) * (TH / 2) + BH * 3;
-    const scaleX = (w * 0.85) / mapW;
-    const scaleY = (h * 0.75) / mapH;
-    return Math.min(scaleX, scaleY, 2.2);
+    const mapH = (GRID_COLS + GRID_ROWS) * (TH / 2) + BH * 2;
+    // Fill 90% width or 78% height (leave room for HUD), whichever is tighter
+    const scaleX = (w * 0.90) / mapW;
+    const scaleY = (h * 0.78) / mapH;
+    return Math.min(scaleX, scaleY, 2.8);
   }
 
   function getOffset() {
     const { w, h } = getSize();
     const s = getScale();
-    const mapH = (GRID_COLS + GRID_ROWS) * (TH / 2) * s + BH * s * 3;
-    // Center vertically in the middle 80% of screen (leave room for HUD bars)
-    const topPad = h * 0.12;
-    const availH = h * 0.8;
-    const startY = topPad + (availH - mapH) / 2 + BH * s;
-    return { x: w / 2, y: Math.max(startY, topPad + BH * s) };
+    // Actual rendered map height
+    const mapH = ((GRID_COLS + GRID_ROWS) * (TH / 2) + BH * 2) * s;
+    // Center vertically between HUD top bar (12%) and bottom bar (48px)
+    const topPad  = h * 0.13;
+    const botPad  = 56;
+    const usableH = h - topPad - botPad;
+    const y = topPad + (usableH - mapH) / 2 + BH * s;
+    return { x: w / 2, y: Math.max(y, topPad + BH * s * 0.5) };
   }
 
   function resize() {
