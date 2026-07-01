@@ -1,6 +1,10 @@
-/* Kingdom AI Service Worker — v1.0 */
-const CACHE_NAME = 'kingdom-v1';
-const STATIC_ASSETS = ['/', '/manifest.json', '/icon-192.svg', '/icon-512.svg'];
+/* Kingdom AI Service Worker — v1.1 */
+const CACHE_NAME = 'kingdom-v2';
+const STATIC_ASSETS = [
+  '/', '/manifest.json',
+  '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png',
+  '/icon-192.svg', '/icon-512.svg',
+];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(

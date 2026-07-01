@@ -182,3 +182,27 @@ def health() -> dict:
         "service": "Kingdom — AI Life OS",
         "version": "1.3.0",
     }
+
+
+# PWA / static assets served at root — must be registered LAST so it doesn't
+# shadow any named API routes (manifest.json, sw.js, icons).
+_PWA_FILES = {
+    "manifest.json": "application/manifest+json",
+    "sw.js": "application/javascript",
+    "icon-192.svg": "image/svg+xml",
+    "icon-512.svg": "image/svg+xml",
+    "icon-192.png": "image/png",
+    "icon-512.png": "image/png",
+    "apple-touch-icon.png": "image/png",
+}
+
+@app.get("/{filename}", include_in_schema=False)
+def serve_pwa_file(filename: str):
+    if filename not in _PWA_FILES:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404)
+    path = os.path.join(static_dir, filename)
+    if not os.path.exists(path):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404)
+    return FileResponse(path, media_type=_PWA_FILES[filename])

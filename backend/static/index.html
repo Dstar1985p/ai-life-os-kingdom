@@ -2,14 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#060818">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Kingdom">
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.svg">
+<!-- iOS home screen icons (must be PNG — iOS Safari ignores SVG) -->
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<!-- Standard favicon -->
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <title>Kingdom OS — AI Revenue Command Centre</title>
 <style>
 :root {
@@ -887,6 +892,119 @@ body::before{
   #kpi-strip{display:grid;grid-template-columns:1fr 1fr 1fr;overflow:visible}
   .kpi-cell{min-width:0;padding:6px 10px}
   .kpi-value{font-size:0.82rem}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE — iOS & Android
+   ══════════════════════════════════════════════════════════════ */
+
+/* Safe area insets for iPhone notch / Dynamic Island / home bar */
+body{
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+/* Sticky header must also respect top safe area */
+header{
+  padding-top: max(16px, calc(12px + env(safe-area-inset-top)));
+}
+
+/* Nav tabs — always horizontally scrollable, never wrap */
+.nav-tabs{
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  white-space: nowrap;
+}
+.nav-tab{
+  scroll-snap-align: start;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Tables and wide grids get a scroll wrapper on small screens */
+@media(max-width:640px){
+  table{ display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .grid-2,.grid-3,.grid-4{ grid-template-columns:1fr !important; }
+  .ab-variants{ grid-template-columns:1fr !important; }
+}
+
+/* Larger tap targets on mobile — min 44×44px (Apple HIG) */
+@media(max-width:768px){
+  .btn, .quick-btn, .hdr-btn, .nav-tab{
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Content breathes more on narrow screens */
+  .content-area{ padding: 12px 12px; }
+  .card{ padding: 14px; }
+  /* Hide decorative elements that waste space */
+  body::after{ display:none; } /* grid underlay off on mobile (battery/perf) */
+  /* Slightly smaller text for dense info */
+  .resource-value{ font-size: 0.9rem; }
+  /* KPI strip: 2 columns on medium phones, 3 on landscape */
+  #kpi-strip{
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    overflow: visible;
+    position: sticky;
+    top: 0;
+  }
+  .kpi-cell{ min-width:0; padding:5px 8px; }
+  .kpi-value{ font-size: 0.78rem; }
+  .kpi-label{ font-size: 0.46rem; letter-spacing:1.5px; }
+}
+
+@media(max-width:480px){
+  /* 2-column KPI on very small phones */
+  #kpi-strip{ grid-template-columns: repeat(2,1fr); }
+  .kpi-cell{ border-bottom: 1px solid rgba(255,255,255,0.05); }
+  /* Full-width pages, minimal padding */
+  .content-area{ padding: 8px; }
+  /* Ticker smaller */
+  #ticker{ font-size: 0.65rem; }
+  /* Header compact */
+  header{ padding: 10px 12px 8px; }
+  .header-logo{ width: 28px; height: 28px; }
+  .header-title h1{ font-size: 1rem; }
+  /* Chat drawer full-screen on phone */
+  #chat-drawer{ width: 100vw !important; right: 0 !important; border-radius: 0 !important; height: 85dvh; }
+}
+
+/* Landscape phones — use the horizontal space */
+@media(max-width:900px) and (orientation:landscape){
+  #kpi-strip{ grid-template-columns: repeat(7,1fr); }
+  header{ padding-top: max(8px, calc(4px + env(safe-area-inset-top))); padding-bottom: 8px; }
+  .content-area{ padding: 10px 16px; }
+}
+
+/* iOS "Add to Home Screen" nudge banner — shown only on iOS Safari outside standalone */
+#ios-install-banner{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:9999;
+  background:linear-gradient(135deg,rgba(6,8,24,0.97),rgba(10,13,30,0.97));
+  border-top:1px solid rgba(0,229,255,0.25);
+  padding: 14px 20px max(14px, env(safe-area-inset-bottom));
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  display:flex;align-items:center;gap:14px;
+}
+#ios-install-banner.show{ display:flex; }
+.ios-banner-icon{ width:48px;height:48px;border-radius:12px;flex-shrink:0; }
+.ios-banner-text{ flex:1;font-size:0.8rem;color:var(--text);line-height:1.5; }
+.ios-banner-text strong{ display:block;font-size:0.9rem;margin-bottom:2px; }
+.ios-banner-close{
+  background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;
+  padding:4px;-webkit-tap-highlight-color:transparent;
+}
+
+/* PWA install button — better mobile sizing */
+#pwa-install-btn{
+  display:none;
+  position:fixed;bottom:max(80px,calc(70px + env(safe-area-inset-bottom)));
+  right:max(20px,env(safe-area-inset-right));
 }
 </style>
 </head>
@@ -4447,6 +4565,25 @@ function pwaInstall() {
   _pwaInstallPrompt.userChoice.then(() => { _pwaInstallPrompt = null; });
 }
 
+/* ─── iOS INSTALL NUDGE ─── */
+(function() {
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  const dismissed = localStorage.getItem('ios-banner-dismissed');
+  if (isIos && !isStandalone && !dismissed) {
+    // Show after a short delay so the page loads first
+    setTimeout(() => {
+      const banner = document.getElementById('ios-install-banner');
+      if (banner) banner.classList.add('show');
+    }, 3000);
+  }
+})();
+function dismissIosBanner() {
+  const banner = document.getElementById('ios-install-banner');
+  if (banner) banner.classList.remove('show');
+  localStorage.setItem('ios-banner-dismissed', '1');
+}
+
 /* ─── PIPELINE STATUS ─── */
 async function loadPipelineStatus() {
   const el = document.getElementById('pipeline-status-grid');
@@ -4617,9 +4754,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<!-- PWA Install Button (hidden until browser fires beforeinstallprompt) -->
+<!-- PWA Install Button (Android Chrome — beforeinstallprompt) -->
 <div id="pwa-install-btn" onclick="pwaInstall()" style="display:none;position:fixed;bottom:80px;right:20px;z-index:999;background:linear-gradient(135deg,#00ff88,#00ccff);color:#000;border:none;border-radius:12px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,255,136,0.4)">
   📲 Add to Home Screen
+</div>
+
+<!-- iOS "Add to Home Screen" nudge (iOS Safari doesn't fire beforeinstallprompt) -->
+<div id="ios-install-banner">
+  <img src="/apple-touch-icon.png" class="ios-banner-icon" alt="Kingdom">
+  <div class="ios-banner-text">
+    <strong>Add Kingdom to your Home Screen</strong>
+    Tap <strong>⎙ Share</strong> then <strong>Add to Home Screen</strong> for the full app experience.
+  </div>
+  <button class="ios-banner-close" onclick="dismissIosBanner()" aria-label="Dismiss">✕</button>
 </div>
 
 </body>
