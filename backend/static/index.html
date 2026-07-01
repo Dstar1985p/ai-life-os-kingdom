@@ -4253,7 +4253,10 @@ function renderOBStep() {
   document.getElementById('ob-body').innerHTML = `<h3 style="font-size:1rem;font-weight:700;margin-bottom:10px;color:var(--text)">${step.title}</h3>${step.body}`;
   document.getElementById('ob-footer').innerHTML = `
     ${obStep>1&&!step.last?'<button class="btn" onclick="obStep--;renderOBStep()">← Back</button>':'<span></span>'}
-    <button class="btn btn-primary" onclick="obNext()">${step.btnText}</button>`;
+    <div style="display:flex;gap:8px;align-items:center">
+      ${!step.last?'<button class="btn" style="color:var(--muted);font-size:0.75rem" onclick="skipOnboarding()">Skip setup →</button>':''}
+      <button class="btn btn-primary" onclick="obNext()">${step.btnText}</button>
+    </div>`;
 }
 async function obNext() {
   if (obStep===4) {
@@ -4264,6 +4267,10 @@ async function obNext() {
   }
   obStep++;
   renderOBStep();
+}
+function skipOnboarding() {
+  document.getElementById('onboarding-overlay').classList.add('hidden');
+  localStorage.setItem('kingdom_onboarded','1');
 }
 function checkOnboarding() {
   if (!localStorage.getItem('kingdom_onboarded')) {
