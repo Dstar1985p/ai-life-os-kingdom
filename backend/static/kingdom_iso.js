@@ -105,7 +105,13 @@ var KingdomISO = (function () {
 
   function getOffset() {
     const { w, h } = getSize();
-    return { x: w / 2, y: h * 0.12 + BH * getScale() };
+    const s = getScale();
+    const mapH = (GRID_COLS + GRID_ROWS) * (TH / 2) * s + BH * s * 3;
+    // Center vertically in the middle 80% of screen (leave room for HUD bars)
+    const topPad = h * 0.12;
+    const availH = h * 0.8;
+    const startY = topPad + (availH - mapH) / 2 + BH * s;
+    return { x: w / 2, y: Math.max(startY, topPad + BH * s) };
   }
 
   function resize() {
