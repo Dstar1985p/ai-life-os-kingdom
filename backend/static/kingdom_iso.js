@@ -31,6 +31,15 @@ var KingdomISO = (function () {
     { id: 'livery',     label: 'WORKSHOP',     col: 6, row: 3, cols: 2, rows: 2, color: '#ff1a4a', glow: 'rgba(255,26,74,0.6)',   tab: 'livery',     icon: '🏁' },
   ];
 
+  // ── Agent → Building mapping (mirrors backend) ────────────────────────────
+  const AGENT_TO_BUILDING = {
+    'Vibes AI': 'pulsebreak', 'Music Licensing': 'pulsebreak', 'Content Agent': 'pulsebreak',
+    'Print Forge AI': 'printforge', 'Printify Studio': 'printforge',
+    'Price Optimizer': 'pitwall', 'SEO Agent': 'pitwall', 'Etsy Scout': 'pitwall',
+    'Opportunity Scout': 'command', 'AI Engineer': 'command', 'Market Scout': 'command',
+    'Treasury Agent': 'treasury',
+  };
+
   // ── Agent types ────────────────────────────────────────────────────────────
   const AGENT_TYPES = [
     { color: '#ff9500', name: 'Driver'    },  // 0 Pitwall — Racing Driver
@@ -61,6 +70,8 @@ var KingdomISO = (function () {
   let stars = null;
   let activeAgentData = [];
   let revenueToday = '—';
+  let _buildingStates = {};  // building_id → {status, running_agent, last_action, pending_count, activity_level}
+  let _liveBubbles   = [];   // {buildingId, text, color, life, maxLife}
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   function shadeColor(hex, amount) {
@@ -644,25 +655,29 @@ var KingdomISO = (function () {
     const cx = ox + (tr.x + br.x) / 2;
     const cy = oy + (tr.y + br.y) / 2 - BH / 2;
 
+    const bst = _buildingStates[b.id] || {};
+    const ts = bst.status === 'running' ? 2.4 : bst.status === 'idle' ? 0.45 : 1.0;
+    const pose = bst.status === 'waiting' ? 'waiting' : bst.status === 'running' ? 'active' : 'idle';
+
     switch (b.id) {
-      case 'pulsebreak': _interiorClub(cx, cy);    break;
-      case 'pitwall':    _interiorGarage(cx, cy);  break;
-      case 'command':    _interiorCommand(cx, cy); break;
-      case 'printforge': _interiorForge(cx, cy);   break;
-      case 'treasury':   _interiorBank(cx, cy);    break;
-      case 'livery':     _interiorWorkshop(cx, cy); break;
+      case 'pulsebreak': _interiorClub(cx, cy, ts, pose);    break;
+      case 'pitwall':    _interiorGarage(cx, cy, ts, pose);  break;
+      case 'command':    _interiorCommand(cx, cy, ts, pose); break;
+      case 'printforge': _interiorForge(cx, cy, ts, pose);   break;
+      case 'treasury':   _interiorBank(cx, cy, ts, pose);    break;
+      case 'livery':     _interiorWorkshop(cx, cy, ts, pose); break;
     }
 
     ctx.restore();
   }
 
   // Interior: THE CLUB (pulsebreak)
-  function _interiorClub(cx, cy) {
+  function _interiorClub(cx, cy, ts=1, pose='idle') {
     // Spotlight cones from ceiling
     const spotColors = ['rgba(160,0,255,0.18)', 'rgba(0,220,255,0.15)', 'rgba(255,0,200,0.15)'];
     const spotOffsets = [-18, 0, 18];
     spotOffsets.forEach((dx, i) => {
-      const sway = Math.sin(tick * 0.02 + i * 1.2) * 8;
+      const sway = Math.sin(tick * 0.02 * ts + i * 1.2) * 8;
       const sx = cx + dx + sway;
       const topY = cy - BH * 0.42;
       const botY = cy + BH * 0.3;
@@ -679,7 +694,7 @@ var KingdomISO = (function () {
     });
 
     // Strobe flash
-    if (tick % 180 < 3) {
+    if (Math.floor(tick * ts) % 180 < 3) {
       ctx.save();
       ctx.globalAlpha = 0.3;
       ctx.fillStyle = '#fff';
@@ -691,7 +706,7 @@ var KingdomISO = (function () {
     const eqY = cy + BH * 0.28;
     const eqColors = ['#bf5fff','#dd44ff','#ff00cc','#aa00ff','#ff44dd','#cc00ff','#e060ff'];
     for (let i = 0; i < 7; i++) {
-      const bh2 = 8 + 10 * Math.abs(Math.sin(tick * 0.12 + i * 0.9));
+      const bh2 = 8 + 10 * Math.abs(Math.sin(tick * 0.12 * ts + i * 0.9));
       ctx.fillStyle = eqColors[i % eqColors.length];
       ctx.globalAlpha = 0.85;
       ctx.fillRect(cx - 22 + i * 7, eqY - bh2, 5, bh2);
@@ -709,7 +724,7 @@ var KingdomISO = (function () {
       ctx.fill();
       ctx.stroke();
       // Spinning crosshair
-      const angle = tick * 0.06 * (di === 0 ? 1 : -1);
+      const angle = tick * 0.06 * ts * (di === 0 ? 1 : -1);
       ctx.save();
       ctx.strokeStyle = '#bf5fff';
       ctx.lineWidth = 1;
@@ -736,36 +751,11 @@ var KingdomISO = (function () {
 
     // DJ figure
     const djX = cx, djY = cy - 8;
-    // Headphones
-    ctx.strokeStyle = '#bf5fff';
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = '#bf5fff';
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.arc(djX, djY - 12, 5, Math.PI, 0);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    // Head
-    ctx.fillStyle = '#f4a460';
-    ctx.beginPath();
-    ctx.arc(djX, djY - 12, 4, 0, Math.PI * 2);
-    ctx.fill();
-    // Torso
-    ctx.fillStyle = '#1a0033';
-    ctx.fillRect(djX - 4, djY - 8, 8, 8);
-    // Arms reaching forward
-    ctx.strokeStyle = '#f4a460';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(djX - 4, djY - 6);
-    ctx.lineTo(djX - 10, djY - 4);
-    ctx.moveTo(djX + 4, djY - 6);
-    ctx.lineTo(djX + 10, djY - 4);
-    ctx.stroke();
+    _drawDJ(djX, djY, Math.sin(tick * 0.18 * ts), pose);
   }
 
   // Interior: PIT GARAGE (pitwall)
-  function _interiorGarage(cx, cy) {
+  function _interiorGarage(cx, cy, ts=1, pose='idle') {
     // Dark grey floor
     ctx.fillStyle = 'rgba(30,30,30,0.7)';
     ctx.fillRect(cx - 50, cy + 10, 100, 30);
@@ -796,7 +786,7 @@ var KingdomISO = (function () {
     ctx.fillRect(cx - 28, carY - 8, 6, 3);
     ctx.fillRect(cx - 28, carY + 5, 6, 3);
     // Wheels
-    const wheelSpin = tick * 0.15;
+    const wheelSpin = tick * 0.15 * ts;
     [cx - 14, cx + 12].forEach(wx => {
       ctx.strokeStyle = '#333';
       ctx.lineWidth = 3;
@@ -829,11 +819,12 @@ var KingdomISO = (function () {
     ctx.stroke();
     ctx.restore();
 
-    // Sparks near wheel
+    // Sparks near wheel (more frequent when running)
+    const sparkCount = pose === 'active' ? 12 : 5;
     ctx.save();
-    for (let s = 0; s < 5; s++) {
-      const sx = cx + 12 + Math.sin(tick * 0.3 + s * 1.5) * 6;
-      const sy = carY + 5 + Math.cos(tick * 0.4 + s * 2.1) * 4;
+    for (let s = 0; s < sparkCount; s++) {
+      const sx = cx + 12 + Math.sin(tick * 0.3 * ts + s * 1.5) * 6;
+      const sy = carY + 5 + Math.cos(tick * 0.4 * ts + s * 2.1) * 4;
       ctx.fillStyle = '#ffdd00';
       ctx.globalAlpha = 0.7;
       ctx.beginPath();
@@ -844,25 +835,7 @@ var KingdomISO = (function () {
 
     // Mechanic figure crouching
     const mX = cx + 14, mY = carY - 6;
-    ctx.fillStyle = '#334';
-    ctx.fillRect(mX, mY, 6, 7); // body
-    ctx.fillStyle = '#e0d0c0';
-    ctx.beginPath();
-    ctx.arc(mX + 3, mY - 3, 3, 0, Math.PI * 2); // head
-    ctx.fill();
-    // Arm with wrench
-    ctx.strokeStyle = '#e0d0c0';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(mX, mY + 2);
-    ctx.lineTo(mX - 5, mY + 4);
-    ctx.stroke();
-    ctx.strokeStyle = '#aaa';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(mX - 5, mY + 4);
-    ctx.lineTo(mX - 9, mY + 2);
-    ctx.stroke();
+    _drawDriver(mX, mY, Math.sin(tick * 0.18 * ts), pose);
 
     // Tool cabinet
     ctx.fillStyle = '#222';
@@ -878,11 +851,11 @@ var KingdomISO = (function () {
   }
 
   // Interior: COMMAND HQ
-  function _interiorCommand(cx, cy) {
+  function _interiorCommand(cx, cy, ts=1, pose='idle') {
     // Status strip at top
     const statusColors = ['#00ff66','#ff3300','#00ff66','#ffaa00'];
     for (let i = 0; i < 4; i++) {
-      const on = Math.floor(tick * 0.05 + i) % 2 === 0;
+      const on = Math.floor(tick * 0.05 * ts + i) % 2 === 0;
       ctx.fillStyle = on ? statusColors[i] : '#222';
       ctx.beginPath();
       ctx.arc(cx - 12 + i * 8, cy - BH * 0.38, 3, 0, Math.PI * 2);
@@ -913,7 +886,7 @@ var KingdomISO = (function () {
       if (si === 0) {
         // Bar chart
         for (let bi = 0; bi < 5; bi++) {
-          const bh3 = 3 + 8 * Math.abs(Math.sin(tick * 0.05 + bi * 0.8));
+          const bh3 = 3 + 8 * Math.abs(Math.sin(tick * 0.05 * ts + bi * 0.8));
           ctx.fillStyle = '#00f0ff';
           ctx.globalAlpha = 0.8;
           ctx.fillRect(sx - screenW / 2 + 2 + bi * 4, screenY + screenH / 2 - bh3, 3, bh3);
@@ -925,7 +898,7 @@ var KingdomISO = (function () {
         ctx.globalAlpha = 0.9;
         ctx.beginPath();
         for (let xi = 0; xi <= screenW; xi++) {
-          const wy = screenY + Math.sin((xi + tick * 2) * 0.25) * 5;
+          const wy = screenY + Math.sin((xi + tick * 2 * ts) * 0.25) * 5;
           xi === 0 ? ctx.moveTo(sx - screenW / 2 + xi, wy) : ctx.lineTo(sx - screenW / 2 + xi, wy);
         }
         ctx.stroke();
@@ -938,7 +911,7 @@ var KingdomISO = (function () {
         ctx.arc(sx, screenY, radarR, 0, Math.PI * 2);
         ctx.stroke();
         // Sweep line
-        const sweepA = (tick * 0.06) % (Math.PI * 2);
+        const sweepA = (tick * 0.06 * ts) % (Math.PI * 2);
         ctx.strokeStyle = '#00f0ff';
         ctx.lineWidth = 1;
         ctx.globalAlpha = 0.9;
@@ -979,19 +952,11 @@ var KingdomISO = (function () {
 
     // Commander seated figure
     const cmdX = cx, cmdY = cy + 2;
-    ctx.fillStyle = '#0d2233';
-    ctx.fillRect(cmdX - 5, cmdY - 8, 10, 8); // torso
-    ctx.fillStyle = '#1a3a55';
-    ctx.fillRect(cmdX - 8, cmdY - 6, 3, 5); // left arm
-    ctx.fillRect(cmdX + 5, cmdY - 6, 3, 5); // right arm
-    ctx.fillStyle = '#e0c8a0';
-    ctx.beginPath();
-    ctx.arc(cmdX, cmdY - 12, 4, 0, Math.PI * 2);
-    ctx.fill();
+    _drawCommander(cmdX, cmdY, Math.sin(tick * 0.18 * ts), pose);
   }
 
   // Interior: PRINT FORGE
-  function _interiorForge(cx, cy) {
+  function _interiorForge(cx, cy, ts=1, pose='idle') {
     // Easel
     const easelX = cx + 6, easelY = cy;
     ctx.strokeStyle = '#886644';
@@ -1015,7 +980,7 @@ var KingdomISO = (function () {
     ctx.strokeRect(easelX - canW / 2, easelY - 16, canW, canH);
 
     // Progressively drawn car outline (tick % 300 drives progress)
-    const progress = (tick % 300) / 300;
+    const progress = (Math.floor(tick * ts) % 300) / 300;
     ctx.save();
     ctx.beginPath();
     ctx.rect(easelX - canW / 2, easelY - 16, canW, canH);
@@ -1045,7 +1010,7 @@ var KingdomISO = (function () {
     ctx.save();
     for (let pi = 0; pi < 8; pi++) {
       const angle = (pi / 8) * Math.PI * 2;
-      const dist = 3 + ((tick * 0.5 + pi * 37) % 12);
+      const dist = 3 + ((tick * 0.5 * ts + pi * 37) % 12);
       ctx.fillStyle = '#ff7020';
       ctx.globalAlpha = 0.6;
       ctx.beginPath();
@@ -1056,36 +1021,7 @@ var KingdomISO = (function () {
 
     // Artist figure
     const artX = cx - 12, artY = cy - 2;
-    ctx.fillStyle = '#2a1a0a';
-    ctx.fillRect(artX - 4, artY - 8, 8, 8);
-    ctx.fillStyle = '#d4a070';
-    ctx.beginPath();
-    ctx.arc(artX, artY - 12, 4, 0, Math.PI * 2);
-    ctx.fill();
-    // Arm with brush toward canvas
-    ctx.strokeStyle = '#d4a070';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(artX + 4, artY - 4);
-    ctx.lineTo(artX + 10, artY - 6);
-    ctx.stroke();
-    // Brush tip
-    ctx.fillStyle = '#ff7020';
-    ctx.beginPath();
-    ctx.arc(artX + 11, artY - 6, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-    // Palette in other hand
-    ctx.fillStyle = '#8b6914';
-    ctx.beginPath();
-    ctx.ellipse(artX - 8, artY - 4, 5, 3, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-    const palColors = ['#ff7020','#00ff66','#00f0ff','#fff'];
-    palColors.forEach((c, i) => {
-      ctx.fillStyle = c;
-      ctx.beginPath();
-      ctx.arc(artX - 10 + i * 2.5, artY - 4, 0.8, 0, Math.PI * 2);
-      ctx.fill();
-    });
+    _drawForger(artX, artY, Math.sin(tick * 0.18 * ts), pose);
 
     // Printing press roller
     ctx.fillStyle = '#333';
@@ -1103,7 +1039,7 @@ var KingdomISO = (function () {
   }
 
   // Interior: THE BANK (treasury)
-  function _interiorBank(cx, cy) {
+  function _interiorBank(cx, cy, ts=1, pose='idle') {
     // Vault door (large circular)
     const vX = cx + 4, vY = cy - 4;
     const vR = 18;
@@ -1118,7 +1054,7 @@ var KingdomISO = (function () {
     ctx.fill();
     ctx.stroke();
     // Middle ring (rotates)
-    const vRot = tick * 0.01;
+    const vRot = tick * 0.01 * ts;
     ctx.save();
     ctx.translate(vX, vY);
     ctx.rotate(vRot);
@@ -1154,21 +1090,7 @@ var KingdomISO = (function () {
 
     // Merchant figure behind counter
     const mX = cx - 10, mY = cy + 14;
-    ctx.fillStyle = '#1a2a0a';
-    ctx.fillRect(mX - 4, mY - 8, 8, 8);
-    ctx.fillStyle = '#d4c090';
-    ctx.beginPath();
-    ctx.arc(mX, mY - 11, 4, 0, Math.PI * 2);
-    ctx.fill();
-    // Arms on counter
-    ctx.strokeStyle = '#d4c090';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(mX - 4, mY - 4);
-    ctx.lineTo(mX - 10, mY - 2);
-    ctx.moveTo(mX + 4, mY - 4);
-    ctx.lineTo(mX + 10, mY - 2);
-    ctx.stroke();
+    _drawMerchant(mX, mY, Math.sin(tick * 0.18 * ts), pose);
 
     // Gold coin stack on counter
     const coinX = cx + 12, coinY = cy + 15;
@@ -1183,8 +1105,9 @@ var KingdomISO = (function () {
     }
 
     // Raining coins
+    const coinRainSpeed = pose === 'active' ? 3.0 : 1.5;
     for (let ri = 0; ri < 5; ri++) {
-      const phase = (tick * 1.5 + ri * 60) % 90;
+      const phase = (tick * coinRainSpeed * ts + ri * 60) % 90;
       const rx = cx - 20 + ri * 10 + Math.sin(ri * 2.3) * 5;
       const ry = cy - BH * 0.4 + phase;
       if (ry < cy + 20) {
@@ -1199,7 +1122,7 @@ var KingdomISO = (function () {
 
     // Digital £ display
     const dispY = cy - BH * 0.3;
-    const amount = Math.floor(Math.sin(tick * 0.05) * 5000 + 15000);
+    const amount = Math.floor(Math.sin(tick * 0.05 * ts) * 5000 + 15000);
     ctx.fillStyle = '#001a00';
     ctx.fillRect(cx - 20, dispY - 6, 40, 10);
     ctx.font = 'bold 6px monospace';
@@ -1212,7 +1135,7 @@ var KingdomISO = (function () {
   }
 
   // Interior: LIVERY WORKSHOP
-  function _interiorWorkshop(cx, cy) {
+  function _interiorWorkshop(cx, cy, ts=1, pose='idle') {
     // Checkered floor
     for (let fi = 0; fi < 6; fi++) {
       for (let fj = 0; fj < 3; fj++) {
@@ -1223,7 +1146,7 @@ var KingdomISO = (function () {
 
     // Car body side-view silhouette
     const carY = cy + 4;
-    const paintProgress = (Math.sin(tick * 0.02) + 1) / 2;
+    const paintProgress = (Math.sin(tick * 0.02 * ts) + 1) / 2;
     const saturation = Math.floor(40 + paintProgress * 60);
     ctx.fillStyle = `hsl(350, ${saturation}%, 45%)`;
     ctx.beginPath();
@@ -1255,32 +1178,15 @@ var KingdomISO = (function () {
 
     // Paint spray artist
     const artX = cx + 28, artY = cy + 2;
-    // Respirator mask
-    ctx.fillStyle = '#d0c8b8';
-    ctx.beginPath();
-    ctx.arc(artX, artY - 12, 4, 0, Math.PI * 2);
-    ctx.fill();
-    // Mask filters
-    ctx.fillStyle = '#888';
-    ctx.fillRect(artX - 3, artY - 10, 2, 3);
-    ctx.fillRect(artX + 1, artY - 10, 2, 3);
-    // Body
-    ctx.fillStyle = '#223';
-    ctx.fillRect(artX - 4, artY - 8, 8, 8);
-    // Arm with spray can
-    ctx.strokeStyle = '#d0c8b8';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(artX - 4, artY - 5);
-    ctx.lineTo(artX - 10, artY - 8);
-    ctx.stroke();
-    // Spray can
+    _drawEngineer(artX, artY, Math.sin(tick * 0.18 * ts), pose);
+    // Spray can held in hand (additional detail)
     ctx.fillStyle = '#666';
     ctx.fillRect(artX - 14, artY - 10, 4, 6);
     // Spray cone particles
-    for (let pi = 0; pi < 12; pi++) {
+    const sprayCount = pose === 'active' ? 20 : 12;
+    for (let pi = 0; pi < sprayCount; pi++) {
       const angle = Math.PI + (pi - 6) * 0.08;
-      const dist = 3 + ((tick * 0.5 + pi * 17) % 18);
+      const dist = 3 + ((tick * 0.5 * ts + pi * 17) % 18);
       const alpha = Math.max(0, 0.7 - dist / 18);
       ctx.globalAlpha = alpha;
       ctx.fillStyle = '#ff1a4a';
@@ -1303,7 +1209,9 @@ var KingdomISO = (function () {
 
     const isActive = b.active;
     const pulse = 0.5 + 0.5 * Math.sin(tick * 0.065);
-    const glowStrength = isActive ? 30 + 30 * pulse : 8;
+    const st = _buildingStates[b.id] || {};
+    const stateGlow = st.status === 'running' ? 1.8 : st.status === 'waiting' ? 1.3 : 1.0;
+    const glowStrength = (isActive ? 30 + 30 * pulse : 8) * stateGlow;
 
     const { r, g, b: bv } = hexToRgb(b.color);
 
@@ -1444,6 +1352,9 @@ var KingdomISO = (function () {
     if (b.agentCount > 0) {
       drawAgentBadge(center.x, center.y - 34, b.agentCount, b.color);
     }
+    if (st.status === 'running' || st.status === 'waiting') {
+      drawActivityBadge(b, ox, oy, st);
+    }
 
     // ── HOLOGRAPHIC PANEL when active ──
     if (isActive) {
@@ -1452,6 +1363,116 @@ var KingdomISO = (function () {
 
     // ── ROOF SIGN ──
     drawBuildingSign(b, ox, oy);
+    drawLiveActionBubble(b, ox, oy, st);
+  }
+
+  function drawActivityBadge(b, ox, oy, state) {
+    const { tl, tr } = buildingCorners(b);
+    const cx = ox + (tl.x + tr.x) / 2;
+    const cy = oy + tl.y - BH - 18;
+
+    ctx.save();
+    if (state.status === 'running') {
+      // Spinning cyan circle
+      const spinA = tick * 0.12;
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 8, spinA, spinA + Math.PI * 1.5);
+      ctx.stroke();
+      // Dot at tip
+      ctx.fillStyle = '#00e5ff';
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(spinA) * 8, cy + Math.sin(spinA) * 8, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      // RUNNING text
+      ctx.shadowBlur = 6;
+      ctx.font = '5px "Press Start 2P", monospace';
+      ctx.fillStyle = '#00e5ff';
+      ctx.textAlign = 'center';
+      ctx.fillText('▶ RUNNING', cx, cy + 18);
+    } else if (state.status === 'waiting') {
+      // Pulsing amber circle
+      const pulseA = 0.6 + 0.4 * Math.abs(Math.sin(tick * 0.1));
+      ctx.globalAlpha = pulseA;
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 14;
+      ctx.strokeStyle = '#ffaa00';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+      ctx.stroke();
+      // ❗ icon
+      ctx.fillStyle = '#ffaa00';
+      ctx.font = '10px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('❗', cx, cy + 4);
+      ctx.globalAlpha = 1;
+      ctx.font = '5px "Press Start 2P", monospace';
+      ctx.fillStyle = '#ffaa00';
+      ctx.fillText('WAITING', cx, cy + 18);
+    } else if (state.status === 'error') {
+      ctx.shadowColor = '#ff3300';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = '#ff3300';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('✗', cx, cy + 4);
+    }
+    ctx.restore();
+  }
+
+  function drawLiveActionBubble(b, ox, oy, state) {
+    const { tl, tr } = buildingCorners(b);
+    const cx = ox + (tl.x + tr.x) / 2;
+    const cy = oy + tl.y - BH - 38;
+
+    // Find matching live bubble
+    const lb = _liveBubbles.find(lb => lb.buildingId === b.id && lb.life > 0);
+    if (!lb) return;
+
+    const alpha = Math.min(lb.life / lb.maxLife * 3, 1) * Math.min((1 - lb.life / lb.maxLife) * 6 + 0.1, 1);
+    const text = lb.text.length > 28 ? lb.text.slice(0, 27) + '…' : lb.text;
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.font = '6px "JetBrains Mono", monospace';
+    const tw = ctx.measureText(text).width;
+    const bw = tw + 16;
+    const bh = 16;
+    const bx = cx - bw / 2;
+    const by = cy - bh;
+
+    // Background rounded rect
+    roundRect(ctx, bx, by, bw, bh, 4);
+    ctx.fillStyle = 'rgba(3,4,16,0.92)';
+    ctx.fill();
+    ctx.strokeStyle = lb.color;
+    ctx.lineWidth = 1;
+    ctx.shadowColor = lb.color;
+    ctx.shadowBlur = 8;
+    ctx.stroke();
+
+    // Triangle pointer
+    ctx.beginPath();
+    ctx.moveTo(cx - 4, by + bh);
+    ctx.lineTo(cx + 4, by + bh);
+    ctx.lineTo(cx, by + bh + 5);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(3,4,16,0.92)';
+    ctx.fill();
+    ctx.strokeStyle = lb.color;
+    ctx.stroke();
+
+    // Text
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = lb.color;
+    ctx.textAlign = 'center';
+    ctx.fillText(text, cx, by + bh - 4);
+
+    ctx.restore();
   }
 
   function drawAgentBadge(x, y, count, color) {
@@ -1510,14 +1531,19 @@ var KingdomISO = (function () {
 
     const ay = y + bob;
 
+    // Determine agent's building state for pose
+    const agentBuildingId = agent.toBuilding ? agent.toBuilding.id : null;
+    const agentBSt = agentBuildingId ? (_buildingStates[agentBuildingId] || {}) : {};
+    const agentPose = agentBSt.status === 'waiting' ? 'waiting' : agentBSt.status === 'running' ? 'active' : 'idle';
+
     switch (typeIdx) {
-      case 0: _drawDriver(x, ay, walk); break;    // Pitwall — Racing Driver
-      case 1: _drawDJ(x, ay, walk); break;         // PulseBreak — DJ
-      case 2: _drawCommander(x, ay, walk); break;  // Command — Commander
-      case 3: _drawForger(x, ay, walk); break;     // PrintForge — Forge Worker
-      case 4: _drawMerchant(x, ay, walk); break;   // Treasury — Merchant
-      case 5: _drawEngineer(x, ay, walk); break;   // Livery — Engineer
-      default: _drawDriver(x, ay, walk); break;
+      case 0: _drawDriver(x, ay, walk, agentPose); break;    // Pitwall — Racing Driver
+      case 1: _drawDJ(x, ay, walk, agentPose); break;         // PulseBreak — DJ
+      case 2: _drawCommander(x, ay, walk, agentPose); break;  // Command — Commander
+      case 3: _drawForger(x, ay, walk, agentPose); break;     // PrintForge — Forge Worker
+      case 4: _drawMerchant(x, ay, walk, agentPose); break;   // Treasury — Merchant
+      case 5: _drawEngineer(x, ay, walk, agentPose); break;   // Livery — Engineer
+      default: _drawDriver(x, ay, walk, agentPose); break;
     }
 
     // Name label with glow
@@ -1531,7 +1557,7 @@ var KingdomISO = (function () {
     ctx.restore();
   }
 
-  function _drawDriver(x, y, walk) {
+  function _drawDriver(x, y, walk, pose='idle') {
     // Legs
     ctx.fillStyle = '#111';
     ctx.fillRect(x - 3, y - 4 + walk * 2, 2.5, 5);
@@ -1543,21 +1569,49 @@ var KingdomISO = (function () {
     ctx.fillRect(x - 1, y - 14, 2, 10);
     // Arms
     ctx.fillStyle = '#eee';
-    ctx.fillRect(x - 7, y - 13 + walk * 2.5, 2.5, 5);
-    ctx.fillRect(x + 4, y - 13 - walk * 2.5, 2.5, 5);
+    if (pose === 'active') {
+      // Both arms pumping
+      ctx.fillRect(x - 7, y - 13 + walk * 4, 2.5, 5);
+      ctx.fillRect(x + 4, y - 13 - walk * 4, 2.5, 5);
+    } else if (pose === 'waiting') {
+      ctx.fillRect(x - 7, y - 13 + walk * 2.5, 2.5, 5);
+      ctx.fillRect(x + 4, y - 18, 2.5, 5); // arm up
+      // Amber badge
+      ctx.fillStyle = '#ffaa00';
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 8;
+      ctx.font = '7px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('❗', x + 5, y - 20);
+      ctx.fillStyle = '#eee';
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.fillRect(x - 7, y - 13 + walk * 2.5, 2.5, 5);
+      ctx.fillRect(x + 4, y - 13 - walk * 2.5, 2.5, 5);
+    }
     // Helmet (orange, neon glow)
-    ctx.shadowBlur = 14;
-    ctx.fillStyle = '#ff6600';
+    ctx.shadowBlur = pose === 'active' ? 22 : 14;
+    ctx.fillStyle = pose === 'waiting' ? '#cc4400' : '#ff6600';
     ctx.beginPath();
-    ctx.arc(x, y - 19, 6, 0, Math.PI * 2);
+    if (pose === 'waiting') {
+      // Helmet tilted
+      ctx.save();
+      ctx.translate(x, y - 19);
+      ctx.rotate(0.3);
+      ctx.arc(0, 0, 6, 0, Math.PI * 2);
+      ctx.restore();
+    } else {
+      ctx.arc(x, y - 19, 6, 0, Math.PI * 2);
+    }
     ctx.fill();
     // Visor
     ctx.fillStyle = '#001a2e';
     ctx.fillRect(x - 5, y - 21, 10, 3);
   }
 
-  function _drawDJ(x, y, walk) {
-    const armRaise = Math.sin(tick * 0.22) * 5;
+  function _drawDJ(x, y, walk, pose='idle') {
+    const armRaiseBase = Math.sin(tick * 0.22) * 5;
+    const armRaise = pose === 'active' ? armRaiseBase * 2 : armRaiseBase;
     // Legs
     ctx.fillStyle = '#111';
     ctx.fillRect(x - 3, y - 4 + walk * 2, 2.5, 5);
@@ -1574,10 +1628,27 @@ var KingdomISO = (function () {
     ctx.moveTo(x + 1, y - 14); ctx.lineTo(x - 1, y - 9);
     ctx.lineTo(x + 1, y - 9); ctx.lineTo(x - 1, y - 4);
     ctx.stroke();
-    // Arms — right arm raised
+    // Arms — right arm raised (both raised when active)
     ctx.fillStyle = '#f4a460';
-    ctx.fillRect(x - 7, y - 13 + walk * 2, 2, 5);
-    ctx.fillRect(x + 5, y - 13 - armRaise, 2, 5);
+    if (pose === 'active') {
+      ctx.fillRect(x - 7, y - 13 - armRaise, 2, 5);
+      ctx.fillRect(x + 5, y - 13 - armRaise, 2, 5);
+    } else if (pose === 'waiting') {
+      ctx.fillRect(x - 7, y - 13 + walk * 2, 2, 5);
+      ctx.fillRect(x + 5, y - 20, 2, 5); // arm straight up
+      // Amber glow on raised hand
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = '#ffaa00';
+      ctx.beginPath();
+      ctx.arc(x + 6, y - 20, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f4a460';
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.fillRect(x - 7, y - 13 + walk * 2, 2, 5);
+      ctx.fillRect(x + 5, y - 13 - armRaise, 2, 5);
+    }
     // Head
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#f4a460';
@@ -1585,8 +1656,8 @@ var KingdomISO = (function () {
     // Headphones arc
     ctx.strokeStyle = '#c084fc';
     ctx.lineWidth = 3;
-    ctx.shadowColor = '#c084fc';
-    ctx.shadowBlur = 10;
+    ctx.shadowColor = pose === 'active' ? '#ffffff' : '#c084fc';
+    ctx.shadowBlur = pose === 'active' ? 18 : 10;
     ctx.beginPath();
     ctx.arc(x, y - 23, 6, Math.PI, 0);
     ctx.stroke();
@@ -1601,10 +1672,18 @@ var KingdomISO = (function () {
     ctx.shadowBlur = 8;
     ctx.textAlign = 'center';
     ctx.fillText('♪', x + 8, noteY);
+    // Waiting pose: amber exclamation above head
+    if (pose === 'waiting') {
+      ctx.font = '8px serif';
+      ctx.fillStyle = '#ffaa00';
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 10;
+      ctx.fillText('❗', x, y - 30);
+    }
   }
 
-  function _drawCommander(x, y, walk) {
-    const capeSway = Math.sin(tick * 0.06) * 3;
+  function _drawCommander(x, y, walk, pose='idle') {
+    const capeSway = Math.sin(tick * 0.06) * (pose === 'active' ? 6 : 3);
     // Cape
     ctx.fillStyle = '#0a1a5a';
     ctx.beginPath();
@@ -1630,12 +1709,30 @@ var KingdomISO = (function () {
     ctx.fillRect(x - 7, y - 13, 14, 4);
     // Arms
     ctx.fillStyle = '#004466';
-    ctx.fillRect(x - 7, y - 11 + walk * 2, 2, 5);
-    ctx.fillRect(x + 5, y - 11 - walk * 2, 2, 5);
+    if (pose === 'active') {
+      // Pointing at monitors
+      ctx.fillRect(x - 7, y - 11 + walk * 2, 2, 5);
+      ctx.fillRect(x + 5, y - 14, 2, 5);
+    } else if (pose === 'waiting') {
+      ctx.fillRect(x - 7, y - 11 + walk * 2, 2, 5);
+      ctx.fillRect(x + 5, y - 18, 2, 5); // arm raised
+      // Amber badge
+      ctx.fillStyle = '#ffaa00';
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 8;
+      ctx.font = '8px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('❗', x, y - 28);
+      ctx.fillStyle = '#004466';
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.fillRect(x - 7, y - 11 + walk * 2, 2, 5);
+      ctx.fillRect(x + 5, y - 11 - walk * 2, 2, 5);
+    }
     // Helmet
     ctx.fillStyle = '#00e5ff';
     ctx.shadowColor = '#00e5ff';
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = pose === 'active' ? 20 : 12;
     ctx.fillRect(x - 5, y - 24, 10, 10);
     // T-visor
     ctx.fillStyle = '#001a22';
@@ -1643,7 +1740,7 @@ var KingdomISO = (function () {
     ctx.fillRect(x - 1, y - 24, 2, 8);
   }
 
-  function _drawForger(x, y, walk) {
+  function _drawForger(x, y, walk, pose='idle') {
     // Legs
     ctx.fillStyle = '#1a2233';
     ctx.fillRect(x - 4, y - 4 + walk * 2, 3, 5);
@@ -1652,29 +1749,53 @@ var KingdomISO = (function () {
     ctx.fillStyle = '#1a2233';
     ctx.fillRect(x - 4, y - 14, 8, 10);
     // Hi-vis stripe
-    ctx.fillStyle = '#fb923c';
+    ctx.fillStyle = pose === 'active' ? '#ffcc00' : '#fb923c';
     ctx.fillRect(x - 4, y - 10, 8, 3);
     // Arms
     ctx.fillStyle = '#1a2233';
-    ctx.fillRect(x - 8, y - 13 + walk * 2, 3, 5);
-    ctx.fillRect(x + 5, y - 13 - walk * 2, 3, 5);
-    // Wrench in right hand
-    ctx.fillStyle = '#bbb';
-    ctx.fillRect(x + 8, y - 15, 4, 2);
-    ctx.fillRect(x + 9, y - 17, 2, 5);
+    if (pose === 'waiting') {
+      // Arms crossed
+      ctx.fillRect(x - 8, y - 13, 3, 5);
+      ctx.fillRect(x + 5, y - 13, 3, 5);
+      // Crossed arms overlay
+      ctx.strokeStyle = '#1a2233';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x - 5, y - 11);
+      ctx.lineTo(x + 5, y - 11);
+      ctx.stroke();
+    } else {
+      ctx.fillRect(x - 8, y - 13 + walk * 2, 3, 5);
+      ctx.fillRect(x + 5, y - 13 - walk * 2, 3, 5);
+      // Wrench in right hand (moves faster when active)
+      const wrenchY = pose === 'active' ? y - 15 + Math.sin(tick * 0.3) * 3 : y - 15;
+      ctx.fillStyle = '#bbb';
+      ctx.fillRect(x + 8, wrenchY, 4, 2);
+      ctx.fillRect(x + 9, wrenchY - 2, 2, 5);
+    }
     // Face
     ctx.fillStyle = '#f4a460';
     ctx.fillRect(x - 4, y - 22, 8, 7);
     // Hard hat (orange)
     ctx.fillStyle = '#fb923c';
     ctx.shadowColor = '#fb923c';
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = pose === 'active' ? 16 : 10;
     ctx.fillRect(x - 5, y - 26, 10, 5);
     ctx.fillRect(x - 7, y - 22, 14, 2); // brim
+    // Waiting: amber exclamation
+    if (pose === 'waiting') {
+      ctx.font = '8px serif';
+      ctx.fillStyle = '#ffaa00';
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 8;
+      ctx.textAlign = 'center';
+      ctx.fillText('❗', x, y - 30);
+    }
   }
 
-  function _drawMerchant(x, y, walk) {
-    const coinBounce = Math.abs(Math.sin(tick * 0.2)) * 4;
+  function _drawMerchant(x, y, walk, pose='idle') {
+    const coinBounceSpeed = pose === 'active' ? 0.4 : 0.2;
+    const coinBounce = Math.abs(Math.sin(tick * coinBounceSpeed)) * (pose === 'active' ? 8 : 4);
     // Legs
     ctx.fillStyle = '#1a3322';
     ctx.fillRect(x - 3, y - 4 + walk * 2, 2.5, 5);
@@ -1691,12 +1812,17 @@ var KingdomISO = (function () {
     });
     // Arms
     ctx.fillStyle = '#0d2218';
-    ctx.fillRect(x - 6, y - 13 + walk * 2, 2, 5);
-    ctx.fillRect(x + 4, y - 13 - walk * 2, 2, 5);
+    if (pose === 'waiting') {
+      ctx.fillRect(x - 6, y - 13 + walk * 2, 2, 5);
+      ctx.fillRect(x + 4, y - 19, 2, 5); // arm raised up with coin
+    } else {
+      ctx.fillRect(x - 6, y - 13 + walk * 2, 2, 5);
+      ctx.fillRect(x + 4, y - 13 - walk * 2, 2, 5);
+    }
     // Bouncing coin
-    ctx.fillStyle = '#ffb300';
-    ctx.shadowColor = '#ffb300';
-    ctx.shadowBlur = 12;
+    ctx.fillStyle = pose === 'waiting' ? '#ffaa00' : '#ffb300';
+    ctx.shadowColor = pose === 'waiting' ? '#ffaa00' : '#ffb300';
+    ctx.shadowBlur = pose === 'waiting' ? 18 : 12;
     ctx.beginPath();
     ctx.arc(x + 8, y - 12 - coinBounce, 4, 0, Math.PI * 2);
     ctx.fill();
@@ -1722,8 +1848,9 @@ var KingdomISO = (function () {
     ctx.stroke();
   }
 
-  function _drawEngineer(x, y, walk) {
-    const flagWave = Math.sin(tick * 0.18) * 4;
+  function _drawEngineer(x, y, walk, pose='idle') {
+    const flagWaveSpeed = pose === 'active' ? 0.36 : 0.18;
+    const flagWave = Math.sin(tick * flagWaveSpeed) * 4;
     // Legs
     ctx.fillStyle = '#8b0000';
     ctx.fillRect(x - 3, y - 4 + walk * 2, 2.5, 5);
@@ -1738,7 +1865,20 @@ var KingdomISO = (function () {
     // Arms
     ctx.fillStyle = '#cc0033';
     ctx.fillRect(x - 7, y - 13 + walk * 2, 2, 5);
-    ctx.fillRect(x + 5, y - 17, 2, 5); // raised arm
+    if (pose === 'waiting') {
+      // Flag lowered, hand raised amber
+      ctx.fillRect(x + 5, y - 17, 2, 5);
+      ctx.fillStyle = '#ffaa00';
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 8;
+      ctx.font = '7px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('❗', x + 8, y - 22);
+      ctx.fillStyle = '#cc0033';
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.fillRect(x + 5, y - 17, 2, 5); // raised arm
+    }
     // Clipboard in left hand
     ctx.fillStyle = '#ddd';
     ctx.fillRect(x - 10, y - 13, 5, 6);
@@ -2037,6 +2177,8 @@ var KingdomISO = (function () {
       if (a) { b.x = a.x; b.y = a.y; }
       return b.life > 0;
     });
+
+    _liveBubbles = _liveBubbles.filter(lb => { lb.life--; return lb.life > 0; });
   }
 
   // ── Data fetch ─────────────────────────────────────────────────────────────
@@ -2051,6 +2193,12 @@ var KingdomISO = (function () {
       const r = await fetch('/api/overview');
       const d = await r.json();
       revenueToday = d.revenue_today != null ? `£${d.revenue_today.toFixed(0)}` : '—';
+    } catch (_) {}
+
+    try {
+      const r = await fetch('/agents/live-status');
+      const d = await r.json();
+      updateBuildingStates(d);
     } catch (_) {}
   }
 
@@ -2147,7 +2295,7 @@ var KingdomISO = (function () {
     loop();
 
     fetchData();
-    setInterval(fetchData, 30000);
+    setInterval(fetchData, 8000);
 
     canvas.addEventListener('click', handleClick);
     window.addEventListener('resize', () => {
@@ -2162,5 +2310,19 @@ var KingdomISO = (function () {
     window.removeEventListener('resize', resize);
   }
 
-  return { init, destroy };
+  function updateBuildingStates(data) {
+    if (!data || !data.buildings) return;
+    data.buildings.forEach(b => {
+      const prev = _buildingStates[b.building_id] || {};
+      if (prev.status !== b.status && b.status === 'running' && b.running_agent) {
+        _liveBubbles.push({ buildingId: b.building_id, text: (b.running_agent || 'Agent') + ' running…', color: '#00e5ff', life: 240, maxLife: 240 });
+      }
+      if (prev.status === 'running' && b.status !== 'running' && b.last_action) {
+        _liveBubbles.push({ buildingId: b.building_id, text: b.last_action.slice(0, 32), color: '#00ff66', life: 300, maxLife: 300 });
+      }
+      _buildingStates[b.building_id] = b;
+    });
+  }
+
+  return { init, destroy, updateBuildingStates };
 })();

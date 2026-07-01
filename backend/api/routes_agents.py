@@ -1,9 +1,11 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models.tables import Agent
+from backend.models.tables import Agent, Lesson, TrackRelease
 from backend.api.schemas import AgentCreate
 from backend.services.agent_progression import (
     award_xp,
@@ -87,3 +89,120 @@ def trigger_agent_alias(payload: TriggerPayload, db: Session = Depends(get_db)):
         return trigger_agent(name)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/live-status")
+def live_status(db: Session = Depends(get_db)):
+    """Return per-building live agent state for the isometric map."""
+
+    AGENT_BUILDING = {
+        'Vibes AI': 'pulsebreak', 'Music Licensing': 'pulsebreak', 'Content Agent': 'pulsebreak',
+        'Print Forge AI': 'printforge', 'Printify Studio': 'printforge',
+        'Price Optimizer': 'pitwall', 'SEO Agent': 'pitwall', 'Etsy Scout': 'pitwall',
+        'Opportunity Scout': 'command', 'AI Engineer': 'command', 'Market Scout': 'command',
+        'Treasury Agent': 'treasury',
+    }
+
+    BUILDING_IDS = ['pulsebreak', 'printforge', 'pitwall', 'command', 'treasury', 'livery']
+
+    # 1. Get running jobs from scheduler
+    running_jobs = []
+    try:
+        from backend.services.scheduler_service import get_scheduler_status
+        sched = get_scheduler_status()
+        running_jobs = sched.get('jobs', []) if isinstance(sched, dict) else []
+    except ImportError:
+        try:
+            from backend.scheduler import get_status as get_scheduler_status
+            sched = get_scheduler_status()
+            running_jobs = sched.get('jobs', []) if isinstance(sched, dict) else []
+        except Exception:
+            running_jobs = []
+    except Exception:
+        running_jobs = []
+
+    running_names = [j.get('name', '') or j.get('id', '') for j in running_jobs
+                     if isinstance(j, dict) and j.get('status') == 'running']
+
+    # 2. Recent lessons (last 2 hours)
+    recent_lessons = []
+    try:
+        cutoff = datetime.utcnow() - timedelta(hours=2)
+        recent_lessons = (
+            db.query(Lesson)
+            .filter(Lesson.created_at >= cutoff)
+            .order_by(Lesson.id.desc())
+            .limit(50)
+            .all()
+        )
+    except Exception:
+        recent_lessons = []
+
+    # 3. Pending review count
+    pending_vibes = 0
+    try:
+        pending_vibes = (
+            db.query(TrackRelease)
+            .filter(TrackRelease.status == 'pending_review')
+            .count()
+        )
+    except Exception:
+        pending_vibes = 0
+
+    # 4. Build per-building state
+    def agent_is_running(agent_name):
+        al = agent_name.lower()
+        return any(al in rn.lower() for rn in running_names)
+
+    def building_running_agent(building_id):
+        for agent_name, bid in AGENT_BUILDING.items():
+            if bid == building_id and agent_is_running(agent_name):
+                return agent_name
+        return None
+
+    def building_last_lesson(building_id):
+        agents_for_building = [a for a, bid in AGENT_BUILDING.items() if bid == building_id]
+        for lesson in recent_lessons:
+            src = (lesson.source or '').lower()
+            for agent_name in agents_for_building:
+                if agent_name.lower() in src:
+                    return lesson
+        return None
+
+    buildings = []
+    running_count = 0
+    waiting_count = 0
+
+    for bid in BUILDING_IDS:
+        running_agent = building_running_agent(bid)
+        last_lesson = building_last_lesson(bid)
+
+        # pending_count: vibes/pulsebreak tracks pending review
+        pending_count = pending_vibes if bid == 'pulsebreak' else 0
+
+        if running_agent:
+            status = 'running'
+            running_count += 1
+        elif pending_count > 0:
+            status = 'waiting'
+            waiting_count += 1
+        else:
+            status = 'idle'
+
+        activity_level = 1.0 if status == 'running' else (0.5 if status == 'waiting' else 0.0)
+
+        buildings.append({
+            'building_id': bid,
+            'status': status,
+            'running_agent': running_agent,
+            'last_action': last_lesson.lesson[:80] if last_lesson else None,
+            'last_action_at': last_lesson.created_at.isoformat() if last_lesson else None,
+            'pending_count': pending_count,
+            'activity_level': activity_level,
+        })
+
+    return {
+        'buildings': buildings,
+        'running_count': running_count,
+        'waiting_count': waiting_count,
+    }
