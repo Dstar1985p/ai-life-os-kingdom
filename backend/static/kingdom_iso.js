@@ -1,7 +1,7 @@
 /**
- * Kingdom ISO — Isometric pixel-art game map for the Kingdom AI dashboard.
- * Renders 6 venture buildings in isometric 3-D with animated agent sprites,
- * speech bubbles, CRT scanlines, particle bursts, footprints, and agent badges.
+ * Kingdom ISO — Isometric cyberpunk neon city map for the Kingdom AI dashboard.
+ * Renders 6 venture buildings in isometric 3-D with animated agent orbs,
+ * speech bubbles, CRT scanlines, particle bursts, footprints, and energy beams.
  */
 var KingdomISO = (function () {
   'use strict';
@@ -70,6 +70,14 @@ var KingdomISO = (function () {
 
   function lerpPt(a, b, t) {
     return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  }
+
+  function hexToRgb(hex) {
+    return {
+      r: parseInt(hex.slice(1, 3), 16),
+      g: parseInt(hex.slice(3, 5), 16),
+      b: parseInt(hex.slice(5, 7), 16),
+    };
   }
 
   function roundRect(c, x, y, w, h, r) {
@@ -149,18 +157,71 @@ var KingdomISO = (function () {
     return { x: cx, y: cy };
   }
 
-  // ── Stars ──────────────────────────────────────────────────────────────────
+  // ── Stars / shooting stars ─────────────────────────────────────────────────
   let shootingStars = null;
 
-  function ensureStars() {
+  // ── Background — deep space nebula ─────────────────────────────────────────
+  function drawBackground() {
+    const { w, h } = getSize();
+
+    // Deep space gradient
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0,   '#000008');
+    bg.addColorStop(0.4, '#050018');
+    bg.addColorStop(0.7, '#080028');
+    bg.addColorStop(1,   '#020010');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Nebula clouds
+    const nebulas = [
+      { x: 0.15, y: 0.2,  r: w * 0.35, c1: 'rgba(120,0,255,0.06)'  },
+      { x: 0.8,  y: 0.15, r: w * 0.3,  c1: 'rgba(0,80,255,0.07)'   },
+      { x: 0.5,  y: 0.35, r: w * 0.4,  c1: 'rgba(0,200,255,0.04)'  },
+      { x: 0.3,  y: 0.5,  r: w * 0.25, c1: 'rgba(180,0,180,0.05)'  },
+    ];
+    nebulas.forEach(n => {
+      const g = ctx.createRadialGradient(n.x * w, n.y * h, 0, n.x * w, n.y * h, n.r);
+      g.addColorStop(0, n.c1);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    });
+
+    // Aurora band across horizon
+    const off = getOffset();
+    const horizonY = off.y + 20;
+    const aurora = ctx.createLinearGradient(0, horizonY - 30, 0, horizonY + 60);
+    aurora.addColorStop(0,   'rgba(0,255,200,0)');
+    aurora.addColorStop(0.3, 'rgba(0,200,255,0.06)');
+    aurora.addColorStop(0.5, 'rgba(100,0,255,0.04)');
+    aurora.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = aurora;
+    ctx.fillRect(0, horizonY - 30, w, 90);
+
+    // Stars
     if (!stars) {
-      stars = Array.from({ length: 150 }, () => ({
+      stars = Array.from({ length: 200 }, () => ({
         x: Math.random(),
-        y: Math.random() * 0.45,
-        r: 0.3 + Math.random() * 2.0,
+        y: Math.random() * 0.5,
+        r: 0.3 + Math.random() * 1.8,
         phase: Math.random() * Math.PI * 2,
+        colorType: Math.floor(Math.random() * 3), // 0=white, 1=blue, 2=purple
       }));
     }
+    stars.forEach(s => {
+      const a = 0.4 + 0.5 * Math.sin(tick * 0.02 + s.phase);
+      ctx.globalAlpha = a;
+      if (s.colorType === 1)      ctx.fillStyle = '#aaf';
+      else if (s.colorType === 2) ctx.fillStyle = '#faf';
+      else                        ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    // Shooting stars
     if (!shootingStars) {
       shootingStars = Array.from({ length: 5 }, (_, i) => ({
         phase: i * (1800 / 5),
@@ -169,18 +230,6 @@ var KingdomISO = (function () {
         angle: 0.3 + Math.random() * 0.3,
       }));
     }
-  }
-
-  function drawStars() {
-    ensureStars();
-    const { w, h } = getSize();
-    stars.forEach(s => {
-      const alpha = 0.25 + 0.45 * Math.sin(tick * 0.03 + s.phase);
-      ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
-      ctx.beginPath();
-      ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
-      ctx.fill();
-    });
     shootingStars.forEach(ss => {
       const t = ((tick + ss.phase) % ss.period) / ss.period;
       if (t > 0.12) return;
@@ -192,7 +241,7 @@ var KingdomISO = (function () {
       const ey = sy - tailLen * Math.tan(ss.angle);
       const alpha = Math.min(progress * 5, 1) * (1 - progress);
       const grad = ctx.createLinearGradient(ex, ey, sx, sy);
-      grad.addColorStop(0, `rgba(255,255,255,0)`);
+      grad.addColorStop(0, 'rgba(255,255,255,0)');
       grad.addColorStop(1, `rgba(255,255,255,${alpha.toFixed(3)})`);
       ctx.save();
       ctx.strokeStyle = grad;
@@ -205,421 +254,353 @@ var KingdomISO = (function () {
     });
   }
 
-  // ── Ground grid ────────────────────────────────────────────────────────────
+  // ── Ground grid — neon cyberpunk ───────────────────────────────────────────
   function drawGround() {
     const off = getOffset();
-    // Horizontal iso lines (constant row)
-    for (let r = 0; r <= GRID_ROWS; r++) {
-      const isAccent = (r % 3 === 0);
-      ctx.strokeStyle = isAccent ? 'rgba(0,229,255,0.3)' : 'rgba(0,229,255,0.15)';
-      ctx.lineWidth = isAccent ? 1 : 0.5;
-      ctx.beginPath();
-      const start = iso(0, r);
-      const end = iso(GRID_COLS, r);
-      ctx.moveTo(off.x + start.x, off.y + start.y);
-      ctx.lineTo(off.x + end.x, off.y + end.y);
-      ctx.stroke();
-    }
+
     // Vertical iso lines (constant col)
     for (let c = 0; c <= GRID_COLS; c++) {
-      const isAccent = (c % 3 === 0);
-      ctx.strokeStyle = isAccent ? 'rgba(0,229,255,0.3)' : 'rgba(0,229,255,0.15)';
-      ctx.lineWidth = isAccent ? 1 : 0.5;
+      const isMajor = c % 3 === 0;
       ctx.beginPath();
-      const start = iso(c, 0);
-      const end = iso(c, GRID_ROWS);
-      ctx.moveTo(off.x + start.x, off.y + start.y);
-      ctx.lineTo(off.x + end.x, off.y + end.y);
+      const s = iso(c, 0), e = iso(c, GRID_ROWS);
+      ctx.moveTo(off.x + s.x, off.y + s.y);
+      ctx.lineTo(off.x + e.x, off.y + e.y);
+      ctx.strokeStyle = isMajor ? 'rgba(0,229,255,0.2)' : 'rgba(0,229,255,0.07)';
+      ctx.lineWidth = isMajor ? 0.8 : 0.4;
       ctx.stroke();
     }
+
+    // Horizontal iso lines (constant row)
+    for (let r = 0; r <= GRID_ROWS; r++) {
+      const isMajor = r % 3 === 0;
+      ctx.beginPath();
+      const s = iso(0, r), e = iso(GRID_COLS, r);
+      ctx.moveTo(off.x + s.x, off.y + s.y);
+      ctx.lineTo(off.x + e.x, off.y + e.y);
+      ctx.strokeStyle = isMajor ? 'rgba(0,229,255,0.2)' : 'rgba(0,229,255,0.07)';
+      ctx.lineWidth = isMajor ? 0.8 : 0.4;
+      ctx.stroke();
+    }
+
     // Pulsing intersection dots
     for (let c = 0; c <= GRID_COLS; c += 2) {
       for (let r = 0; r <= GRID_ROWS; r += 2) {
         const p = iso(c, r);
-        const alpha = 0.25 + 0.15 * Math.sin(tick * 0.04 + c + r);
+        const alpha = 0.15 + 0.1 * Math.sin(tick * 0.04 + c + r);
         ctx.fillStyle = `rgba(0,229,255,${alpha.toFixed(3)})`;
         ctx.beginPath();
-        ctx.arc(off.x + p.x, off.y + p.y, 2, 0, Math.PI * 2);
+        ctx.arc(off.x + p.x, off.y + p.y, 1.5, 0, Math.PI * 2);
         ctx.fill();
       }
     }
+
+    // Scanning line — sweeps across grid every 5 seconds
+    const scanT = (tick % 300) / 300;
+    const scanC = Math.floor(scanT * GRID_COLS);
+    if (scanC < GRID_COLS) {
+      const s = iso(scanC, 0), e = iso(scanC, GRID_ROWS);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,229,255,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(off.x + s.x, off.y + s.y);
+      ctx.lineTo(off.x + e.x, off.y + e.y);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
-  // ── Road paths between buildings ──────────────────────────────────────────
-  function drawRoads() {
-    const ROADS = [
+  // ── Energy beams between buildings ────────────────────────────────────────
+  function drawEnergyBeams() {
+    const CONNECTIONS = [
       ['pitwall', 'printforge'],
       ['pitwall', 'treasury'],
       ['pulsebreak', 'command'],
       ['treasury', 'livery'],
+      ['command', 'livery'],
     ];
-    ROADS.forEach(([aId, bId]) => {
+
+    CONNECTIONS.forEach(([aId, bId], idx) => {
       const bA = BUILDINGS.find(b => b.id === aId);
       const bB = BUILDINGS.find(b => b.id === bId);
       if (!bA || !bB) return;
       const cA = getBuildingCenter(bA);
       const cB = getBuildingCenter(bB);
+
+      // Place beams at ground level (below buildings)
+      const gA = { x: cA.x, y: cA.y + BH };
+      const gB = { x: cB.x, y: cB.y + BH };
+
+      const rA = parseInt(bA.color.slice(1, 3), 16);
+      const gvA = parseInt(bA.color.slice(3, 5), 16);
+      const bvA = parseInt(bA.color.slice(5, 7), 16);
+      const rB = parseInt(bB.color.slice(1, 3), 16);
+      const gvB = parseInt(bB.color.slice(3, 5), 16);
+      const bvB = parseInt(bB.color.slice(5, 7), 16);
+
       ctx.save();
-      ctx.strokeStyle = 'rgba(0,229,255,0.12)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 8]);
+
+      // Beam line with gradient
+      const beamGrad = ctx.createLinearGradient(gA.x, gA.y, gB.x, gB.y);
+      beamGrad.addColorStop(0,   `rgba(${rA},${gvA},${bvA},0.5)`);
+      beamGrad.addColorStop(0.5, `rgba(${rA},${gvA},${bvA},0.1)`);
+      beamGrad.addColorStop(1,   `rgba(${rB},${gvB},${bvB},0.5)`);
+      ctx.strokeStyle = beamGrad;
+      ctx.lineWidth = 0.8;
+      ctx.shadowColor = bA.color;
+      ctx.shadowBlur = 4;
+      ctx.setLineDash([4, 8]);
+      ctx.lineDashOffset = -(tick * 1.5) % 12;
       ctx.beginPath();
-      ctx.moveTo(cA.x, cA.y + BH);
-      ctx.lineTo(cB.x, cB.y + BH);
+      ctx.moveTo(gA.x, gA.y);
+      ctx.lineTo(gB.x, gB.y);
       ctx.stroke();
       ctx.setLineDash([]);
-      const t = (tick * 0.008) % 1;
-      const px = cA.x + (cB.x - cA.x) * t;
-      const py = cA.y + BH + (cB.y - cA.y) * t;
-      ctx.fillStyle = '#00e5ff';
-      ctx.shadowColor = '#00e5ff';
-      ctx.shadowBlur = 6;
+
+      // Data packet travelling along beam
+      const t = ((tick * 0.01) + idx * 0.2) % 1;
+      const px = gA.x + (gB.x - gA.x) * t;
+      const py = gA.y + (gB.y - gA.y) * t;
+      ctx.shadowColor = bA.color;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = '#fff';
       ctx.beginPath();
       ctx.arc(px, py, 2.5, 0, Math.PI * 2);
       ctx.fill();
+
       ctx.restore();
     });
   }
 
-  // ── Neon signs on building right face ─────────────────────────────────────
-  function drawBuildingSign(b, ox, oy, tr, br) {
-    // Right face corners: top-right (tr) to bottom-right (br), height BH
-    // The right face goes from (tr, tr.y-BH) at top to (br, br.y) at bottom
-    // Centre of right face:
-    const faceCx = ox + (tr.x + br.x) / 2;
-    const faceTopY = oy + (tr.y + br.y) / 2 - BH;
-    const faceBotY = oy + (tr.y + br.y) / 2;
-    const faceH = BH;
-    const faceW = Math.abs(br.x - tr.x) || 32;
-    const midY = (faceTopY + faceBotY) / 2;
+  // ── Holographic data panel above active building ───────────────────────────
+  function drawHologram(b, ox, oy) {
+    const { tl, tr } = buildingCorners(b);
+    const cx = ox + (tl.x + tr.x) / 2;
+    const cy = oy + tl.y - BH - 30;
+    const pulse = 0.6 + 0.4 * Math.sin(tick * 0.08);
+    const { r, g, b: bv } = hexToRgb(b.color);
 
     ctx.save();
+    ctx.globalAlpha = pulse * 0.85;
 
-    switch (b.id) {
-      case 'pitwall': {
-        // Neon orange border around right face
-        ctx.strokeStyle = '#ff9500';
-        ctx.lineWidth = 2;
-        ctx.shadowColor = '#ff9500';
-        ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.moveTo(ox + tr.x, oy + tr.y - BH);
-        ctx.lineTo(ox + br.x, oy + br.y - BH);
-        ctx.lineTo(ox + br.x, oy + br.y);
-        ctx.lineTo(ox + tr.x, oy + tr.y);
-        ctx.closePath();
-        ctx.stroke();
+    // Panel background
+    const pw = 64, ph = 28;
+    roundRect(ctx, cx - pw / 2, cy - ph / 2, pw, ph, 4);
+    ctx.fillStyle = `rgba(${Math.floor(r * 0.1)},${Math.floor(g * 0.1)},${Math.floor(bv * 0.1)},0.9)`;
+    ctx.fill();
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 0.8;
+    ctx.shadowColor = b.color;
+    ctx.shadowBlur = 8;
+    ctx.stroke();
 
-        // Chequered flag pattern across top of right face
-        const sqSize = 4;
-        const numSq = Math.ceil(faceW / sqSize);
-        for (let i = 0; i < numSq; i++) {
-          for (let j = 0; j < 2; j++) {
-            if ((i + j) % 2 === 0) {
-              ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            } else {
-              ctx.fillStyle = 'rgba(0,0,0,0.7)';
-            }
-            const sx = faceCx - faceW / 2 + i * sqSize;
-            const sy = faceTopY + j * sqSize;
-            ctx.fillRect(sx, sy, sqSize, sqSize);
-          }
-        }
+    // Panel content
+    ctx.shadowBlur = 0;
+    ctx.font = '5px "Press Start 2P", monospace';
+    ctx.fillStyle = b.color;
+    ctx.textAlign = 'center';
+    ctx.fillText(b.label, cx, cy - 6);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.font = '5px monospace';
+    ctx.fillText('● ACTIVE', cx, cy + 4);
 
-        // Racing car emoji
-        ctx.shadowBlur = 10;
-        ctx.font = '14px serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText('🏎', faceCx, faceTopY + 10);
-        break;
-      }
-
-      case 'pulsebreak': {
-        // Audio waveform sine wave
-        ctx.strokeStyle = '#bf5fff';
-        ctx.lineWidth = 3;
-        ctx.shadowColor = '#bf5fff';
-        ctx.shadowBlur = 16;
-        ctx.beginPath();
-        const wavePoints = 30;
-        for (let i = 0; i <= wavePoints; i++) {
-          const wx = faceCx - faceW / 2 + (i / wavePoints) * faceW;
-          const wy = midY + Math.sin((i / wavePoints) * Math.PI * 4 + tick * 0.1) * 8;
-          if (i === 0) ctx.moveTo(wx, wy);
-          else ctx.lineTo(wx, wy);
-        }
-        ctx.stroke();
-
-        // Musical note symbol using lines (two dots + stems)
-        ctx.fillStyle = '#bf5fff';
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.arc(faceCx - 4, faceTopY + 10, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(faceCx + 4, faceTopY + 12, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#bf5fff';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(faceCx - 1, faceTopY + 10);
-        ctx.lineTo(faceCx - 1, faceTopY + 4);
-        ctx.lineTo(faceCx + 7, faceTopY + 2);
-        ctx.lineTo(faceCx + 7, faceTopY + 12);
-        ctx.stroke();
-        break;
-      }
-
-      case 'command': {
-        // Concentric crosshair circles
-        const radii = [6, 12, 18];
-        const spin = Math.sin(tick * 0.04) * Math.PI * 2;
-        radii.forEach((r, i) => {
-          ctx.strokeStyle = '#00f0ff';
-          ctx.lineWidth = 1;
-          ctx.shadowColor = '#00f0ff';
-          ctx.shadowBlur = 10;
-          ctx.beginPath();
-          if (i === radii.length - 1) {
-            // Outer ring: rotated arc for spin effect
-            ctx.arc(faceCx, midY, r, spin, spin + Math.PI * 1.8);
-          } else {
-            ctx.arc(faceCx, midY, r, 0, Math.PI * 2);
-          }
-          ctx.stroke();
-        });
-        // Crosshair lines
-        ctx.strokeStyle = 'rgba(0,240,255,0.6)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(faceCx - 20, midY);
-        ctx.lineTo(faceCx - 6, midY);
-        ctx.moveTo(faceCx + 6, midY);
-        ctx.lineTo(faceCx + 20, midY);
-        ctx.moveTo(faceCx, midY - 20);
-        ctx.lineTo(faceCx, midY - 6);
-        ctx.moveTo(faceCx, midY + 6);
-        ctx.lineTo(faceCx, midY + 20);
-        ctx.stroke();
-        break;
-      }
-
-      case 'printforge': {
-        // Printer icon
-        ctx.strokeStyle = '#ff7020';
-        ctx.lineWidth = 2;
-        ctx.shadowColor = '#ff7020';
-        ctx.shadowBlur = 8;
-        // Printer body
-        ctx.strokeRect(faceCx - 8, midY - 8, 16, 10);
-        // Paper coming out
-        ctx.strokeRect(faceCx - 5, midY + 2, 10, 14);
-        // Lines on paper
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(faceCx - 3, midY + 6);
-        ctx.lineTo(faceCx + 3, midY + 6);
-        ctx.moveTo(faceCx - 3, midY + 9);
-        ctx.lineTo(faceCx + 3, midY + 9);
-        ctx.stroke();
-        break;
-      }
-
-      case 'treasury': {
-        // Gold coin stack — 3 overlapping ellipses
-        ctx.shadowColor = '#00ff66';
-        ctx.shadowBlur = 10;
-        for (let i = 2; i >= 0; i--) {
-          ctx.fillStyle = '#ffb300';
-          ctx.strokeStyle = '#00ff66';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.ellipse(faceCx, midY + i * 4, 8, 3, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        }
-        // £ symbol
-        ctx.fillStyle = '#00ff66';
-        ctx.font = 'bold 10px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowBlur = 8;
-        ctx.fillText('£', faceCx, midY - 10);
-        break;
-      }
-
-      case 'livery': {
-        // Racing livery diagonal stripes
-        ctx.strokeStyle = '#ff1a4a';
-        ctx.lineWidth = 2;
-        ctx.shadowColor = '#ff1a4a';
-        ctx.shadowBlur = 8;
-        const stripeOffsets = [-10, 0, 10];
-        stripeOffsets.forEach(off2 => {
-          ctx.beginPath();
-          ctx.moveTo(faceCx + off2 - 12, faceTopY + 4);
-          ctx.lineTo(faceCx + off2 + 12, faceBotY - 4);
-          ctx.stroke();
-        });
-        break;
-      }
-    }
+    // Connector line from panel to building
+    ctx.strokeStyle = `rgba(${r},${g},${bv},0.4)`;
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([2, 4]);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + ph / 2);
+    ctx.lineTo(cx, oy + tl.y - BH);
+    ctx.stroke();
+    ctx.setLineDash([]);
 
     ctx.restore();
   }
 
-  // ── Buildings ──────────────────────────────────────────────────────────────
+  // ── Building-specific roof sign ────────────────────────────────────────────
+  function drawBuildingSign(b, ox, oy) {
+    const { tl, tr, bl, br } = buildingCorners(b);
+    const cx = ox + (tl.x + tr.x + bl.x + br.x) / 4;
+    const cy = oy + (tl.y + tr.y + bl.y + br.y) / 4 - BH;
+
+    ctx.save();
+    ctx.font = '14px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = b.color;
+    ctx.shadowBlur = 12 + 6 * Math.sin(tick * 0.08);
+    ctx.fillText(b.icon, cx, cy - 2);
+    ctx.restore();
+  }
+
+  // ── Buildings — cyberpunk glass towers ────────────────────────────────────
   function drawBuilding(b) {
     const off = getOffset();
     const { tl, tr, br, bl } = buildingCorners(b);
     const ox = off.x, oy = off.y;
 
     const isActive = b.active;
-    // Enhanced pulsing glow: 30→60→30 over ~2s
-    const glowIntensity = isActive ? 30 + 30 * (0.5 + 0.5 * Math.sin(tick * 0.065)) : 0;
+    const pulse = 0.5 + 0.5 * Math.sin(tick * 0.065);
+    const glowStrength = isActive ? 30 + 30 * pulse : 8;
 
-    // Ground glow radial gradient under building
-    {
-      const baseCx = ox + (bl.x + br.x) / 2;
-      const baseCy = oy + (bl.y + br.y) / 2;
-      const grd = ctx.createRadialGradient(baseCx, baseCy, 0, baseCx, baseCy, 60);
-      // Extract rgb from glow string, use 0.15 alpha
-      const glowColor = b.glow.replace(/[\d.]+\)$/, '0.15)');
-      grd.addColorStop(0, glowColor);
-      grd.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.save();
-      ctx.fillStyle = grd;
-      ctx.fillRect(baseCx - 60, baseCy - 30, 120, 60);
-      ctx.restore();
-    }
+    const { r, g, b: bv } = hexToRgb(b.color);
 
-    if (isActive) {
-      ctx.save();
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = glowIntensity;
-    }
-
-    // LEFT face  (darkest)
-    ctx.beginPath();
-    ctx.moveTo(ox + bl.x, oy + bl.y);
-    ctx.lineTo(ox + br.x, oy + br.y);
-    ctx.lineTo(ox + br.x, oy + br.y - BH);
-    ctx.lineTo(ox + bl.x, oy + bl.y - BH);
-    ctx.closePath();
-    ctx.fillStyle = shadeColor(b.color, -70);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // RIGHT face (medium)
-    ctx.beginPath();
-    ctx.moveTo(ox + br.x, oy + br.y);
-    ctx.lineTo(ox + tr.x, oy + tr.y);
-    ctx.lineTo(ox + tr.x, oy + tr.y - BH);
-    ctx.lineTo(ox + br.x, oy + br.y - BH);
-    ctx.closePath();
-    ctx.fillStyle = shadeColor(b.color, -35);
-    ctx.fill();
-    ctx.stroke();
-
-    // TOP face (brightest, gradient)
+    // ── GLOW PASS ──
+    ctx.save();
+    ctx.shadowColor = b.color;
+    ctx.shadowBlur = glowStrength * 2;
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.3;
     ctx.beginPath();
     ctx.moveTo(ox + tl.x, oy + tl.y - BH);
     ctx.lineTo(ox + tr.x, oy + tr.y - BH);
     ctx.lineTo(ox + br.x, oy + br.y - BH);
     ctx.lineTo(ox + bl.x, oy + bl.y - BH);
     ctx.closePath();
-    const grd = ctx.createLinearGradient(
-      ox + tl.x, oy + tl.y - BH,
-      ox + br.x, oy + br.y - BH,
-    );
-    grd.addColorStop(0, shadeColor(b.color, 25));
-    grd.addColorStop(1, shadeColor(b.color, -5));
-    ctx.fillStyle = grd;
-    ctx.fill();
     ctx.stroke();
-
-    if (isActive) ctx.restore();
-
-    // Neon sign on right face
-    drawBuildingSign(b, ox, oy, tr, br);
-
-    // Windows on RIGHT face (2×2 grid of flickering windows)
-    drawWindows(b, ox, oy, tr, br);
-
-    // Door on LEFT face
-    {
-      const doorW = 8, doorH = 12;
-      const faceCx = ox + (bl.x + br.x) / 2;
-      const faceBotY = oy + (bl.y + br.y) / 2;
-      const dx = faceCx - doorW / 2;
-      const dy = faceBotY - doorH;
-      ctx.save();
-      ctx.fillStyle = shadeColor(b.color, -90);
-      ctx.fillRect(dx, dy, doorW, doorH);
-      ctx.strokeStyle = shadeColor(b.color, 30);
-      ctx.lineWidth = 1;
-      ctx.strokeRect(dx, dy, doorW, doorH);
-      ctx.beginPath();
-      ctx.arc(faceCx, dy, doorW / 2, Math.PI, 0);
-      ctx.fillStyle = shadeColor(b.color, -90);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Roof detail: icon on top face centre
-    {
-      const topCx = ox + (tl.x + tr.x + bl.x + br.x) / 4;
-      const topCy = oy + (tl.y + tr.y + bl.y + br.y) / 4 - BH;
-      ctx.save();
-      ctx.font = '16px serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = 8;
-      ctx.fillText(b.icon, topCx, topCy);
-      ctx.restore();
-
-      const antX = topCx;
-      const antY = topCy - 8;
-      ctx.save();
-      ctx.strokeStyle = 'rgba(200,200,200,0.6)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(antX, antY);
-      ctx.lineTo(antX, antY - 20);
-      ctx.stroke();
-      const blinkAlpha = 0.5 + 0.5 * Math.sin(tick * 0.1);
-      ctx.fillStyle = `rgba(255,80,80,${blinkAlpha.toFixed(3)})`;
-      ctx.shadowColor = 'red';
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.arc(antX, antY - 20, 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // Label above building
-    const center = getBuildingCenter(b);
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.font = '15px serif';
-    ctx.shadowColor = b.color;
-    ctx.shadowBlur = 10;
-    ctx.fillText(b.icon, center.x, center.y - 18);
-    ctx.font = 'bold 7px "Press Start 2P", monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = b.color;
-    ctx.shadowBlur = 12;
-    ctx.fillText(b.label, center.x, center.y - 4);
     ctx.restore();
 
+    // ── GROUND GLOW ──
+    const baseCx = ox + (bl.x + br.x) / 2;
+    const baseCy = oy + (bl.y + br.y) / 2;
+    const gnd = ctx.createRadialGradient(baseCx, baseCy, 0, baseCx, baseCy, 70);
+    gnd.addColorStop(0, `rgba(${r},${g},${bv},${isActive ? 0.18 : 0.08})`);
+    gnd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gnd;
+    ctx.fillRect(baseCx - 70, baseCy - 40, 140, 80);
+
+    // ── LEFT FACE (dark night side) ──
+    const leftGrad = ctx.createLinearGradient(ox + bl.x, oy + bl.y, ox + br.x, oy + br.y);
+    leftGrad.addColorStop(0, `rgba(${Math.floor(r * 0.12)},${Math.floor(g * 0.12)},${Math.floor(bv * 0.12)},1)`);
+    leftGrad.addColorStop(1, `rgba(${Math.floor(r * 0.22)},${Math.floor(g * 0.22)},${Math.floor(bv * 0.22)},1)`);
+    ctx.beginPath();
+    ctx.moveTo(ox + bl.x, oy + bl.y);
+    ctx.lineTo(ox + br.x, oy + br.y);
+    ctx.lineTo(ox + br.x, oy + br.y - BH);
+    ctx.lineTo(ox + bl.x, oy + bl.y - BH);
+    ctx.closePath();
+    ctx.fillStyle = leftGrad;
+    ctx.fill();
+
+    // ── RIGHT FACE (lit side) ──
+    const rightGrad = ctx.createLinearGradient(ox + tr.x, oy + tr.y - BH, ox + br.x, oy + br.y);
+    rightGrad.addColorStop(0,   `rgba(${Math.min(255, r + 60)},${Math.min(255, g + 60)},${Math.min(255, bv + 60)},1)`);
+    rightGrad.addColorStop(0.3, `rgba(${r},${g},${bv},1)`);
+    rightGrad.addColorStop(0.7, `rgba(${Math.floor(r * 0.55)},${Math.floor(g * 0.55)},${Math.floor(bv * 0.55)},1)`);
+    rightGrad.addColorStop(1,   `rgba(${Math.floor(r * 0.3)},${Math.floor(g * 0.3)},${Math.floor(bv * 0.3)},1)`);
+    ctx.beginPath();
+    ctx.moveTo(ox + tr.x, oy + tr.y - BH);
+    ctx.lineTo(ox + br.x, oy + br.y - BH);
+    ctx.lineTo(ox + br.x, oy + br.y);
+    ctx.lineTo(ox + tr.x, oy + tr.y);
+    ctx.closePath();
+    ctx.fillStyle = rightGrad;
+    ctx.fill();
+
+    // Glass panel horizontal lines on right face
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 0.5;
+    for (let i = 1; i < 4; i++) {
+      const t = i / 4;
+      const x1 = ox + tr.x;
+      const y1 = oy + tr.y - BH + BH * t;
+      const x2 = ox + br.x;
+      const y2 = oy + br.y - BH + BH * t;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Lit windows on right face
+    ctx.save();
+    for (let wi = 0; wi < 3; wi++) {
+      for (let wj = 0; wj < 2; wj++) {
+        const wt = (wi + 1) / 4;
+        const ws = (wj + 1) / 3;
+        const wx = ox + tr.x + (br.x - tr.x) * ws;
+        const wy = oy + tr.y - BH + BH * wt + (br.y - tr.y) * ws;
+        const lit = Math.sin(tick * 0.03 + wi * 1.7 + wj * 2.3 + b.col) > 0.1;
+        if (lit) {
+          ctx.shadowColor = b.color;
+          ctx.shadowBlur = 6;
+          ctx.fillStyle = `rgba(${Math.min(255, r + 100)},${Math.min(255, g + 100)},${Math.min(255, bv + 100)},0.9)`;
+        } else {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = `rgba(${Math.floor(r * 0.3)},${Math.floor(g * 0.3)},${Math.floor(bv * 0.3)},0.5)`;
+        }
+        ctx.fillRect(wx - 3, wy - 2, 5, 4);
+      }
+    }
+    ctx.restore();
+
+    // ── TOP FACE (roof) ──
+    const topGrad = ctx.createLinearGradient(ox + tl.x, oy + tl.y - BH, ox + br.x, oy + br.y - BH);
+    topGrad.addColorStop(0,   `rgba(${Math.min(255, r + 120)},${Math.min(255, g + 120)},${Math.min(255, bv + 120)},0.95)`);
+    topGrad.addColorStop(0.5, `rgba(${Math.min(255, r + 80)},${Math.min(255, g + 80)},${Math.min(255, bv + 80)},0.9)`);
+    topGrad.addColorStop(1,   `rgba(${r},${g},${bv},0.85)`);
+    ctx.beginPath();
+    ctx.moveTo(ox + tl.x, oy + tl.y - BH);
+    ctx.lineTo(ox + tr.x, oy + tr.y - BH);
+    ctx.lineTo(ox + br.x, oy + br.y - BH);
+    ctx.lineTo(ox + bl.x, oy + bl.y - BH);
+    ctx.closePath();
+    ctx.fillStyle = topGrad;
+    ctx.fill();
+
+    // ── NEON EDGE LINES (rim lighting) ──
+    ctx.save();
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = isActive ? 1.5 : 0.8;
+    ctx.shadowColor = b.color;
+    ctx.shadowBlur = isActive ? 12 : 4;
+    // Top face edges
+    ctx.beginPath();
+    ctx.moveTo(ox + tl.x, oy + tl.y - BH);
+    ctx.lineTo(ox + tr.x, oy + tr.y - BH);
+    ctx.lineTo(ox + br.x, oy + br.y - BH);
+    ctx.lineTo(ox + bl.x, oy + bl.y - BH);
+    ctx.closePath();
+    ctx.stroke();
+    // Vertical corner edges
+    [tl, tr, br, bl].forEach(pt => {
+      ctx.beginPath();
+      ctx.moveTo(ox + pt.x, oy + pt.y - BH);
+      ctx.lineTo(ox + pt.x, oy + pt.y);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    // ── BUILDING LABEL ──
+    const lblX = ox + (bl.x + br.x) / 2;
+    const lblY = oy + Math.max(bl.y, br.y) + 14;
+    ctx.save();
+    ctx.font = '7px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = b.color;
+    ctx.shadowColor = b.color;
+    ctx.shadowBlur = 8;
+    ctx.fillText(b.label, lblX, lblY);
+    ctx.restore();
+
+    // ── AGENT COUNT BADGE ──
+    const center = getBuildingCenter(b);
     if (b.agentCount > 0) {
       drawAgentBadge(center.x, center.y - 34, b.agentCount, b.color);
     }
+
+    // ── HOLOGRAPHIC PANEL when active ──
+    if (isActive) {
+      drawHologram(b, ox, oy);
+    }
+
+    // ── ROOF SIGN ──
+    drawBuildingSign(b, ox, oy);
   }
 
   function drawAgentBadge(x, y, count, color) {
@@ -636,27 +617,7 @@ var KingdomISO = (function () {
     ctx.restore();
   }
 
-  function drawWindows(b, ox, oy, tr, br) {
-    const numW = b.cols;
-    const numH = 2;
-    for (let ci = 0; ci < numW; ci++) {
-      for (let ri = 0; ri < numH; ri++) {
-        const tx = (ci + 1) / (numW + 1);
-        const wx = ox + tr.x + (br.x - tr.x) * tx;
-        const wy = oy + tr.y + (br.y - tr.y) * tx - BH * (0.3 + ri * 0.35);
-        const winIdx = ci * numH + ri;
-        const lit = Math.sin(tick * 0.05 + winIdx * 2.1 + b.col) > -0.3;
-        ctx.save();
-        ctx.fillStyle = lit ? 'rgba(200,240,255,0.9)' : 'rgba(0,229,255,0.15)';
-        ctx.shadowColor = '#00e5ff';
-        ctx.shadowBlur = lit ? 7 : 2;
-        ctx.fillRect(wx - 4, wy - 4, 4, 4);
-        ctx.restore();
-      }
-    }
-  }
-
-  // ── Agent sprites ─────────────────────────────────────────────────────────
+  // ── Agent orbs ────────────────────────────────────────────────────────────
   function drawFootprints(agent) {
     const trail = agent.trail || [];
     const color = AGENT_TYPES[agent.typeIdx] ? AGENT_TYPES[agent.typeIdx].color : '#00e5ff';
@@ -665,6 +626,8 @@ var KingdomISO = (function () {
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 4;
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
       ctx.fill();
@@ -680,266 +643,81 @@ var KingdomISO = (function () {
 
     drawFootprints(agent);
 
-    const bob = Math.sin(tick * 0.15 + phase) * 1.5;
+    const bob = Math.sin(tick * 0.12 + phase) * 2.5;
+    const ay = y + bob - 8;
+
+    const { r, g, b } = hexToRgb(agType.color);
 
     ctx.save();
 
-    // Drop shadow
-    ctx.globalAlpha = 0.4;
+    // Shadow ellipse on ground
+    ctx.globalAlpha = 0.25;
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.ellipse(x, y + 1, 6, 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y, 8, 3, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
 
+    // Outer glow halo
+    const outerGlow = ctx.createRadialGradient(x, ay, 0, x, ay, 14);
+    outerGlow.addColorStop(0,   `rgba(${r},${g},${b},0.4)`);
+    outerGlow.addColorStop(0.5, `rgba(${r},${g},${b},0.15)`);
+    outerGlow.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = outerGlow;
+    ctx.beginPath();
+    ctx.arc(x, ay, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Core orb
+    const coreGrad = ctx.createRadialGradient(x - 2, ay - 2, 0, x, ay, 7);
+    coreGrad.addColorStop(0,   'rgba(255,255,255,0.95)');
+    coreGrad.addColorStop(0.3, `rgba(${Math.min(255, r + 80)},${Math.min(255, g + 80)},${Math.min(255, b + 80)},0.9)`);
+    coreGrad.addColorStop(1,   `rgba(${r},${g},${b},0.8)`);
     ctx.shadowColor = agType.color;
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(x, ay, 7, 0, Math.PI * 2);
+    ctx.fill();
 
-    switch (typeIdx) {
-      case 0: drawRacingDriver(x, y + bob, tick, phase); break;
-      case 1: drawDJ(x, y + bob, tick, phase); break;
-      case 2: drawCommander(x, y + bob, tick, phase); break;
-      case 3: drawForgeWorker(x, y + bob, tick, phase); break;
-      case 4: drawMerchant(x, y + bob, tick, phase); break;
-      case 5: drawRaceEngineer(x, y + bob, tick, phase); break;
-      default: drawRacingDriver(x, y + bob, tick, phase); break;
-    }
-
+    // Orbiting ring (flattened to isometric)
+    const ringAngle = tick * 0.06 + phase;
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.6)`;
+    ctx.lineWidth = 1;
+    ctx.shadowBlur = 6;
+    ctx.save();
+    ctx.translate(x, ay);
+    ctx.rotate(ringAngle);
+    ctx.scale(1, 0.35);
+    ctx.beginPath();
+    ctx.arc(0, 0, 11, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.restore();
 
+    // Moving dot on ring
+    const dotX = x + Math.cos(ringAngle) * 11;
+    const dotY = ay + Math.sin(ringAngle) * 11 * 0.35;
+    ctx.fillStyle = '#fff';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(dotX, dotY, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
     // Name label
-    ctx.save();
-    ctx.font = "9px 'Press Start 2P', monospace";
+    ctx.font = '6px "Press Start 2P", monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = agType.color;
     ctx.shadowColor = agType.color;
     ctx.shadowBlur = 6;
-    ctx.fillText(agType.name, x, y + bob - 24);
+    ctx.fillText(agType.name, x, ay - 18);
+
     ctx.restore();
-  }
-
-  function drawRacingDriver(x, y, tick, phase) {
-    const walk = Math.sin(tick * 0.18 + phase);
-    // Legs
-    ctx.fillStyle = '#333';
-    ctx.fillRect(x - 4, y - 5 + walk * 2.5, 3, 5);
-    ctx.fillRect(x + 1, y - 5 - walk * 2.5, 3, 5);
-    // Body (white with amber centre stripe)
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x - 4, y - 15, 8, 10);
-    ctx.fillStyle = '#ff9500';
-    ctx.fillRect(x - 1, y - 15, 2, 10);
-    // Arms
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x - 7, y - 14 + walk * 3, 2, 6);
-    ctx.fillRect(x + 5, y - 14 - walk * 3, 2, 6);
-    // Helmet (orange circle)
-    ctx.fillStyle = '#ff6600';
-    ctx.beginPath();
-    ctx.arc(x, y - 20, 6, 0, Math.PI * 2);
-    ctx.fill();
-    // Visor slit (dark rect across middle)
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(x - 5, y - 22, 10, 3);
-  }
-
-  function drawDJ(x, y, tick, phase) {
-    const walk = Math.sin(tick * 0.18 + phase);
-    const armRaise = Math.sin(tick * 0.2 + phase) * 4;
-    // Legs
-    ctx.fillStyle = '#222';
-    ctx.fillRect(x - 3, y - 5 + walk * 2, 2, 6);
-    ctx.fillRect(x + 1, y - 5 - walk * 2, 2, 6);
-    // Body (black with purple lightning)
-    ctx.fillStyle = '#111';
-    ctx.fillRect(x - 4, y - 15, 8, 10);
-    // Lightning bolt on chest
-    ctx.strokeStyle = '#c084fc';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x + 1, y - 15);
-    ctx.lineTo(x - 1, y - 10);
-    ctx.lineTo(x + 1, y - 10);
-    ctx.lineTo(x - 1, y - 5);
-    ctx.stroke();
-    // Arms (one raised)
-    ctx.fillStyle = '#f4a460';
-    ctx.fillRect(x - 7, y - 14 + walk * 2, 2, 6);
-    ctx.fillRect(x + 5, y - 14 - armRaise, 2, 6);
-    // Head (square, skin tone)
-    ctx.fillStyle = '#f4a460';
-    ctx.fillRect(x - 5, y - 25, 10, 10);
-    // Headphones (purple arc over top)
-    ctx.strokeStyle = '#c084fc';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(x, y - 23, 6, Math.PI, 0);
-    ctx.stroke();
-    // Headphone cups
-    ctx.fillStyle = '#c084fc';
-    ctx.fillRect(x - 8, y - 26, 3, 4);
-    ctx.fillRect(x + 5, y - 26, 3, 4);
-  }
-
-  function drawCommander(x, y, tick, phase) {
-    const walk = Math.sin(tick * 0.18 + phase);
-    const capeSway = Math.sin(tick * 0.08 + phase) * 3;
-    // Cape (behind body — dark blue triangle, swaying)
-    ctx.fillStyle = '#0a1a4a';
-    ctx.beginPath();
-    ctx.moveTo(x - 3, y - 13);
-    ctx.lineTo(x + 3, y - 13);
-    ctx.lineTo(x + capeSway, y);
-    ctx.closePath();
-    ctx.fill();
-    // Legs
-    ctx.fillStyle = '#004455';
-    ctx.fillRect(x - 3, y - 5 + walk * 2, 2.5, 5);
-    ctx.fillRect(x + 1, y - 5 - walk * 2, 2.5, 5);
-    // Body (dark with cyan trim)
-    ctx.fillStyle = '#0d2233';
-    ctx.fillRect(x - 3, y - 13, 6, 8);
-    ctx.strokeStyle = '#00f0ff';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x - 3, y - 13, 6, 8);
-    // Shoulder armour plate
-    ctx.fillStyle = '#005577';
-    ctx.fillRect(x - 7, y - 13, 14, 4);
-    // Arms
-    ctx.fillStyle = '#005577';
-    ctx.fillRect(x - 7, y - 12 + walk * 2, 2, 5);
-    ctx.fillRect(x + 5, y - 12 - walk * 2, 2, 5);
-    // Helmet (cyan hexagon-ish)
-    ctx.fillStyle = '#00e5ff';
-    ctx.fillRect(x - 5, y - 25, 10, 10);
-    // Visor T-shape
-    ctx.fillStyle = '#001a22';
-    ctx.fillRect(x - 4, y - 22, 8, 3);
-    ctx.fillRect(x - 1, y - 25, 2, 8);
-  }
-
-  function drawForgeWorker(x, y, tick, phase) {
-    const walk = Math.sin(tick * 0.18 + phase);
-    // Legs (wide stance)
-    ctx.fillStyle = '#1a2233';
-    ctx.fillRect(x - 4, y - 5 + walk * 2, 3, 5);
-    ctx.fillRect(x + 1, y - 5 - walk * 2, 3, 5);
-    // Body (dark blue with orange hi-vis stripe)
-    ctx.fillStyle = '#1a2233';
-    ctx.fillRect(x - 4, y - 15, 8, 10);
-    ctx.fillStyle = '#fb923c';
-    ctx.fillRect(x - 4, y - 11, 8, 3);
-    // Arms (wider)
-    ctx.fillStyle = '#1a2233';
-    ctx.fillRect(x - 8, y - 14 + walk * 2, 3, 6);
-    ctx.fillRect(x + 5, y - 14 - walk * 2, 3, 6);
-    // Wrench in right hand
-    ctx.fillStyle = '#aaa';
-    ctx.fillRect(x + 8, y - 15, 4, 2);
-    ctx.fillRect(x + 9, y - 17, 2, 4);
-    // Face
-    ctx.fillStyle = '#f4a460';
-    ctx.fillRect(x - 4, y - 23, 8, 8);
-    // Hard hat (orange rounded rect + brim)
-    ctx.fillStyle = '#fb923c';
-    ctx.fillRect(x - 6, y - 27, 12, 6);
-    // Brim line
-    ctx.strokeStyle = '#c06000';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x - 7, y - 21);
-    ctx.lineTo(x + 7, y - 21);
-    ctx.stroke();
-  }
-
-  function drawMerchant(x, y, tick, phase) {
-    const walk = Math.sin(tick * 0.18 + phase);
-    const coinBounce = Math.abs(Math.sin(tick * 0.2 + phase)) * 3;
-    // Legs
-    ctx.fillStyle = '#1a3322';
-    ctx.fillRect(x - 3, y - 5 + walk * 2, 2.5, 5);
-    ctx.fillRect(x + 1, y - 5 - walk * 2, 2.5, 5);
-    // Body (dark green with yellow buttons)
-    ctx.fillStyle = '#0d2218';
-    ctx.fillRect(x - 3, y - 15, 6, 10);
-    ctx.fillStyle = '#ffb300';
-    ctx.fillRect(x - 1, y - 14, 2, 2);
-    ctx.fillRect(x - 1, y - 10, 2, 2);
-    ctx.fillRect(x - 1, y - 6, 2, 2);
-    // Arms
-    ctx.fillStyle = '#0d2218';
-    ctx.fillRect(x - 6, y - 14 + walk * 2, 2, 5);
-    ctx.fillRect(x + 4, y - 14 - walk * 2, 2, 5);
-    // Coin in right hand (bouncing)
-    ctx.fillStyle = '#ffb300';
-    ctx.shadowColor = '#ffb300';
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    ctx.arc(x + 8, y - 12 - coinBounce, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    // Monocle (tiny yellow circle at eye level)
-    ctx.strokeStyle = '#ffb300';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(x + 1, y - 21, 2.5, 0, Math.PI * 2);
-    ctx.stroke();
-    // Face
-    ctx.fillStyle = '#c8a882';
-    ctx.fillRect(x - 4, y - 27, 8, 8);
-    // Top hat (tall dark rect + brim)
-    ctx.fillStyle = '#111';
-    ctx.fillRect(x - 4, y - 37, 8, 10);
-    // Hat brim
-    ctx.fillRect(x - 6, y - 28, 12, 3);
-  }
-
-  function drawRaceEngineer(x, y, tick, phase) {
-    const walk = Math.sin(tick * 0.18 + phase);
-    const flagWave = Math.sin(tick * 0.2 + phase) * 4;
-    // Legs
-    ctx.fillStyle = '#8b0000';
-    ctx.fillRect(x - 3, y - 5 + walk * 2, 2.5, 5);
-    ctx.fillRect(x + 1, y - 5 - walk * 2, 2.5, 5);
-    // Body (red jumpsuit with "1" on chest)
-    ctx.fillStyle = '#cc0033';
-    ctx.fillRect(x - 4, y - 15, 8, 10);
-    // Racing number "1"
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 7px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('1', x, y - 7);
-    // Arms
-    ctx.fillStyle = '#cc0033';
-    ctx.fillRect(x - 7, y - 14 + walk * 2, 2, 5);
-    // Right arm raised holding flag
-    ctx.fillRect(x + 5, y - 18, 2, 5);
-    // Flag pole
-    ctx.fillStyle = '#888';
-    ctx.fillRect(x + 7, y - 24, 1, 8);
-    // Chequered flag (alternating 2×2 squares) with wave
-    const flagX = x + 8 + flagWave;
-    for (let fi = 0; fi < 4; fi++) {
-      for (let fj = 0; fj < 3; fj++) {
-        ctx.fillStyle = ((fi + fj) % 2 === 0) ? '#ffffff' : '#000000';
-        ctx.fillRect(flagX + fi * 2, y - 28 + fj * 2, 2, 2);
-      }
-    }
-    // Face
-    ctx.fillStyle = '#f4a460';
-    ctx.fillRect(x - 4, y - 23, 8, 7);
-    // Cap (red with brim)
-    ctx.fillStyle = '#cc0033';
-    ctx.fillRect(x - 6, y - 27, 12, 5);
-    // Brim
-    ctx.fillStyle = '#991122';
-    ctx.fillRect(x - 6, y - 22, 8, 2);
   }
 
   // ── Ambient Particles ─────────────────────────────────────────────────────
   function spawnAmbientParticles() {
-    BUILDINGS.forEach((b, bi) => {
-      if (Math.random() > 0.3) return; // ~30% chance per frame per building
+    BUILDINGS.forEach((b) => {
+      if (Math.random() > 0.3) return;
       const center = getBuildingCenter(b);
       const bx = center.x + (Math.random() - 0.5) * 30;
       const by = center.y + 10;
@@ -950,7 +728,7 @@ var KingdomISO = (function () {
         case 'pulsebreak': pType = 'note';  break;
         case 'pitwall':    pType = 'spark'; break;
         case 'command':    pType = 'data';  break;
-        default: return; // no ambient for other buildings
+        default: return;
       }
 
       ambientParticles.push({
@@ -986,7 +764,6 @@ var KingdomISO = (function () {
           break;
 
         case 'note':
-          // Two dots + a stem
           ctx.fillStyle = '#bf5fff';
           ctx.shadowColor = '#bf5fff';
           ctx.shadowBlur = 6;
@@ -1102,14 +879,16 @@ var KingdomISO = (function () {
     ctx.restore();
   }
 
-  // ── Scanlines + vignette ───────────────────────────────────────────────────
+  // ── CRT scanlines + vignette ───────────────────────────────────────────────
   function drawCRT() {
     const { w, h } = getSize();
     ctx.save();
-    for (let yy = 0; yy < h; yy += 3) {
-      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+    // Subtle scanlines every 4px
+    for (let yy = 0; yy < h; yy += 4) {
+      ctx.fillStyle = 'rgba(0,0,0,0.04)';
       ctx.fillRect(0, yy, w, 1);
     }
+    // Vignette
     const vg = ctx.createRadialGradient(w / 2, h / 2, h * 0.25, w / 2, h / 2, h * 0.85);
     vg.addColorStop(0, 'rgba(0,0,0,0)');
     vg.addColorStop(1, 'rgba(0,0,0,0.45)');
@@ -1128,7 +907,7 @@ var KingdomISO = (function () {
       agents.push({
         id: i,
         typeIdx,
-        type: AGENT_TYPES[typeIdx], // keep .type for burst color
+        type: AGENT_TYPES[typeIdx],
         x: 0, y: 0,
         fromBuilding: from,
         toBuilding: to,
@@ -1228,43 +1007,48 @@ var KingdomISO = (function () {
 
     ctx.clearRect(0, 0, w, h);
 
-    ctx.fillStyle = '#030410';
-    ctx.fillRect(0, 0, w, h);
+    // 1. Background (nebula, stars, aurora) — drawn without world transform
+    drawBackground();
 
-    drawStars();
-
+    // 2. World scale transform
     const scale = getScale();
     ctx.save();
     ctx.translate(w / 2, 0);
     ctx.scale(scale, scale);
     ctx.translate(-w / 2, 0);
 
+    // 3. Neon grid ground
     drawGround();
-    drawRoads();
 
+    // 4. Energy beams (under buildings)
+    drawEnergyBeams();
+
+    // 5. Mark active buildings
     BUILDINGS.forEach(b => {
       b.active = activeAgentData.some(j => j.status === 'running');
     });
 
-    // Ambient particles (drawn before buildings)
+    // 6. Ambient particles (before buildings)
     spawnAmbientParticles();
     drawAmbientParticles();
 
-    // Draw buildings back→front
+    // 7. Buildings back→front
     const sorted = [...BUILDINGS].sort((a, b) => (a.col + a.row) - (b.col + b.row));
     sorted.forEach(b => drawBuilding(b));
 
-    // Agents sorted by y (painter's algorithm)
+    // 8. Agents (painter's algo by y)
     [...agents].sort((a, b) => a.y - b.y).forEach(a => drawAgent(a));
 
-    // Burst particles
+    // 9. Burst particles
     updateAndDrawParticles();
 
-    // Bubbles
+    // 10. Speech bubbles
     bubbles.forEach(b => drawBubble(b));
 
+    // 11. End world transform
     ctx.restore();
 
+    // 12. CRT post-effect
     drawCRT();
 
     updateAgents();
