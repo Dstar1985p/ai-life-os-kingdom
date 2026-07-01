@@ -1210,7 +1210,7 @@ var KingdomISO = (function () {
     const isActive = b.active;
     const pulse = 0.5 + 0.5 * Math.sin(tick * 0.065);
     const st = _buildingStates[b.id] || {};
-    const stateGlow = st.status === 'running' ? 1.8 : st.status === 'waiting' ? 1.3 : st.status === 'recently_active' ? 1.15 : 1.0;
+    const stateGlow = st.status === 'running' ? 4.0 : st.status === 'waiting' ? 2.5 : st.status === 'recently_active' ? 1.8 : 1.0;
     const glowStrength = (isActive ? 30 + 30 * pulse : 8) * stateGlow;
 
     const { r, g, b: bv } = hexToRgb(b.color);
@@ -1352,6 +1352,22 @@ var KingdomISO = (function () {
     if (b.agentCount > 0) {
       drawAgentBadge(center.x, center.y - 34, b.agentCount, b.color);
     }
+    // Roof tint overlay — makes state instantly obvious
+    if (st.status === 'running' || st.status === 'waiting') {
+      const { tl, tr, br, bl } = buildingCorners(b);
+      const tintPulse = 0.12 + 0.10 * Math.abs(Math.sin(tick * (st.status === 'running' ? 0.13 : 0.07)));
+      ctx.save();
+      ctx.globalAlpha = tintPulse;
+      ctx.fillStyle = st.status === 'running' ? '#00e5ff' : '#ffaa00';
+      ctx.beginPath();
+      ctx.moveTo(ox + tl.x, oy + tl.y);
+      ctx.lineTo(ox + tr.x, oy + tr.y);
+      ctx.lineTo(ox + br.x, oy + br.y);
+      ctx.lineTo(ox + bl.x, oy + bl.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
     if (st.status === 'running' || st.status === 'waiting' || st.status === 'recently_active') {
       drawActivityBadge(b, ox, oy, st);
     }
@@ -1369,76 +1385,117 @@ var KingdomISO = (function () {
   function drawActivityBadge(b, ox, oy, state) {
     const { tl, tr } = buildingCorners(b);
     const cx = ox + (tl.x + tr.x) / 2;
-    const cy = oy + tl.y - BH - 18;
+    // Position badge above the building roof with extra clearance
+    const cy = oy + tl.y - BH - 32;
 
     ctx.save();
+    ctx.textAlign = 'center';
+
     if (state.status === 'running') {
-      // Spinning cyan circle
       const spinA = tick * 0.12;
+      const r = 14;
+      // Outer glow ring (large, visible on mobile)
       ctx.shadowColor = '#00e5ff';
-      ctx.shadowBlur = 12;
-      ctx.strokeStyle = '#00e5ff';
-      ctx.lineWidth = 2;
+      ctx.shadowBlur = 24;
+      ctx.strokeStyle = 'rgba(0,229,255,0.25)';
+      ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.arc(cx, cy, 8, spinA, spinA + Math.PI * 1.5);
+      ctx.arc(cx, cy, r + 4, 0, Math.PI * 2);
+      ctx.stroke();
+      // Spinning arc
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, spinA, spinA + Math.PI * 1.6);
       ctx.stroke();
       // Dot at tip
       ctx.fillStyle = '#00e5ff';
+      ctx.shadowBlur = 10;
       ctx.beginPath();
-      ctx.arc(cx + Math.cos(spinA) * 8, cy + Math.sin(spinA) * 8, 2.5, 0, Math.PI * 2);
+      ctx.arc(cx + Math.cos(spinA) * r, cy + Math.sin(spinA) * r, 4, 0, Math.PI * 2);
       ctx.fill();
-      // RUNNING text
-      ctx.shadowBlur = 6;
-      ctx.font = '5px "Press Start 2P", monospace';
-      ctx.fillStyle = '#00e5ff';
-      ctx.textAlign = 'center';
-      ctx.fillText('▶ RUNNING', cx, cy + 18);
-    } else if (state.status === 'waiting') {
-      // Pulsing amber circle
-      const pulseA = 0.6 + 0.4 * Math.abs(Math.sin(tick * 0.1));
-      ctx.globalAlpha = pulseA;
-      ctx.shadowColor = '#ffaa00';
+      // Pill label
+      const label = '▶ RUNNING';
+      ctx.font = 'bold 9px "Press Start 2P", monospace';
+      const lw = ctx.measureText(label).width + 14;
       ctx.shadowBlur = 14;
-      ctx.strokeStyle = '#ffaa00';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+      roundRect(ctx, cx - lw / 2, cy + r + 4, lw, 16, 4);
+      ctx.fillStyle = 'rgba(0,229,255,0.18)';
+      ctx.fill();
+      ctx.strokeStyle = '#00e5ff';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
-      // ❗ icon
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = '#00e5ff';
+      ctx.fillText(label, cx, cy + r + 15);
+
+    } else if (state.status === 'waiting') {
+      const pulseA = 0.55 + 0.45 * Math.abs(Math.sin(tick * 0.09));
+      const r = 14;
+      ctx.globalAlpha = pulseA;
+      // Pulsing amber glow
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 28;
+      ctx.strokeStyle = '#ffaa00';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      // ❗ big enough to read
+      ctx.font = '18px serif';
       ctx.fillStyle = '#ffaa00';
-      ctx.font = '10px serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('❗', cx, cy + 4);
+      ctx.fillText('❗', cx, cy + 7);
       ctx.globalAlpha = 1;
-      ctx.font = '5px "Press Start 2P", monospace';
+      // Pill label
+      const label = 'NEEDS YOU';
+      ctx.font = 'bold 9px "Press Start 2P", monospace';
+      const lw = ctx.measureText(label).width + 14;
+      ctx.shadowBlur = 14;
+      roundRect(ctx, cx - lw / 2, cy + r + 4, lw, 16, 4);
+      ctx.fillStyle = 'rgba(255,170,0,0.2)';
+      ctx.fill();
+      ctx.strokeStyle = '#ffaa00';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
       ctx.fillStyle = '#ffaa00';
-      ctx.fillText('WAITING', cx, cy + 18);
+      ctx.fillText(label, cx, cy + r + 15);
+
     } else if (state.status === 'recently_active') {
-      // Soft green check — static, no spin
-      const greenA = 0.7 + 0.3 * Math.abs(Math.sin(tick * 0.04));
+      const r = 12;
+      const greenA = 0.75 + 0.25 * Math.abs(Math.sin(tick * 0.04));
       ctx.globalAlpha = greenA;
       ctx.shadowColor = '#00e676';
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 16;
+      ctx.strokeStyle = '#00e676';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.font = '16px serif';
+      ctx.fillStyle = '#00e676';
+      ctx.fillText('✓', cx, cy + 6);
+      ctx.globalAlpha = 1;
+      // Pill label
+      const label = 'ACTIVE';
+      ctx.font = 'bold 9px "Press Start 2P", monospace';
+      const lw = ctx.measureText(label).width + 14;
+      ctx.shadowBlur = 10;
+      roundRect(ctx, cx - lw / 2, cy + r + 4, lw, 16, 4);
+      ctx.fillStyle = 'rgba(0,230,118,0.15)';
+      ctx.fill();
       ctx.strokeStyle = '#00e676';
       ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 7, 0, Math.PI * 2);
       ctx.stroke();
       ctx.fillStyle = '#00e676';
-      ctx.font = '9px serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('✓', cx, cy + 4);
-      ctx.globalAlpha = 1;
-      ctx.font = '5px "Press Start 2P", monospace';
-      ctx.fillStyle = '#00e676';
-      ctx.fillText('ACTIVE', cx, cy + 18);
+      ctx.fillText(label, cx, cy + r + 15);
+
     } else if (state.status === 'error') {
       ctx.shadowColor = '#ff3300';
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 16;
       ctx.fillStyle = '#ff3300';
-      ctx.font = '12px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('✗', cx, cy + 4);
+      ctx.font = '18px monospace';
+      ctx.fillText('✗', cx, cy + 7);
     }
     ctx.restore();
   }
