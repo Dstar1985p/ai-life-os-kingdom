@@ -124,15 +124,16 @@ def live_status(db: Session = Depends(get_db)):
     running_names = [j.get('name', '') or j.get('id', '') for j in running_jobs
                      if isinstance(j, dict) and j.get('status') == 'running']
 
-    # 2. Recent lessons (last 2 hours)
+    # 2. Recent lessons (last 24 hours)
     recent_lessons = []
+    recent_cutoff_hot = datetime.utcnow() - timedelta(hours=1)   # "recently active" threshold
     try:
-        cutoff = datetime.utcnow() - timedelta(hours=2)
+        cutoff = datetime.utcnow() - timedelta(hours=24)
         recent_lessons = (
             db.query(Lesson)
             .filter(Lesson.created_at >= cutoff)
             .order_by(Lesson.id.desc())
-            .limit(50)
+            .limit(100)
             .all()
         )
     except Exception:
@@ -180,16 +181,23 @@ def live_status(db: Session = Depends(get_db)):
         # pending_count: vibes/pulsebreak tracks pending review
         pending_count = pending_vibes if bid == 'pulsebreak' else 0
 
+        is_hot = (last_lesson and last_lesson.created_at and
+                  last_lesson.created_at >= recent_cutoff_hot)
+
         if running_agent:
             status = 'running'
             running_count += 1
         elif pending_count > 0:
             status = 'waiting'
             waiting_count += 1
+        elif is_hot:
+            status = 'recently_active'
         else:
             status = 'idle'
 
-        activity_level = 1.0 if status == 'running' else (0.5 if status == 'waiting' else 0.0)
+        activity_level = (1.0 if status == 'running' else
+                          0.6 if status == 'recently_active' else
+                          0.5 if status == 'waiting' else 0.0)
 
         buildings.append({
             'building_id': bid,
