@@ -1077,10 +1077,9 @@ header{
 
 /* ─── MOBILE DASHBOARD TIDY ─── */
 @media(max-width:768px){
-  /* ISO map: hide on narrow phones (< 480px), show on tablets */
+  /* ISO map: always visible, shrink canvas height on phones */
   @media(max-width:480px){
-    #kingdom-map-canvas{ display:none; }
-    .iso-map-card{ display:none; }
+    .iso-map-card canvas{ height:280px !important; }
   }
 
   /* District grid: 2 columns on phone */
