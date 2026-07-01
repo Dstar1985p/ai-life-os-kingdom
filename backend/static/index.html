@@ -44,21 +44,35 @@ header,#app-header,.resources-bar,.nav-tabs,#ticker-wrap,#kpi-strip,.iso-map-car
 #side-panel{
   position:fixed;top:0;right:-440px;width:420px;height:100vh;
   background:rgba(3,4,16,0.97);border-left:1px solid rgba(0,229,255,0.2);
-  transition:right 0.3s ease;z-index:200;overflow-y:auto;padding:20px;
+  transition:right 0.3s ease;z-index:200;overflow-y:auto;
+  display:flex;flex-direction:column;
 }
 #side-panel.open{right:0}
-#side-panel-close{
-  position:absolute;top:14px;right:16px;background:none;border:none;
-  color:rgba(0,229,255,0.7);font-size:1.2rem;cursor:pointer;z-index:201;
-  padding:4px 8px;border-radius:6px;transition:color 0.2s;
-  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+#side-panel-header{
+  position:sticky;top:0;z-index:202;
+  background:rgba(3,4,16,0.99);
+  border-bottom:1px solid rgba(0,229,255,0.18);
+  padding:14px 52px 12px 20px;
+  display:flex;align-items:center;
+  flex-shrink:0;
 }
-#side-panel-close:hover{color:#00e5ff}
+#side-panel-close{
+  position:absolute;top:10px;right:14px;background:rgba(0,229,255,0.08);
+  border:1px solid rgba(0,229,255,0.25);
+  color:rgba(0,229,255,0.8);font-size:1.1rem;cursor:pointer;z-index:203;
+  padding:4px 10px;border-radius:6px;transition:all 0.2s;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  min-width:32px;min-height:32px;
+}
+#side-panel-close:hover,#side-panel-close:active{color:#fff;background:rgba(0,229,255,0.2);border-color:#00e5ff}
 #side-panel-title{
   font-family:'Press Start 2P',monospace;font-size:0.6rem;letter-spacing:2px;
-  color:#00e5ff;margin-bottom:16px;padding-right:32px;text-transform:uppercase;
+  color:#00e5ff;text-transform:uppercase;margin:0;
 }
-#side-panel-body{min-height:200px}
+#side-panel-body{flex:1;padding:16px 20px 24px;min-height:200px}
+#side-panel-body .page{display:block!important}
+#side-panel-body .content-area{padding:0!important}
+#vis-canvas{width:100%;height:80px;border-radius:8px;background:#050012;display:block;margin-top:12px}
 @media(max-width:600px){
   #side-panel{width:100vw;right:-100vw}
   #side-panel.open{right:0}
@@ -1409,8 +1423,10 @@ header{
 <!-- ══ SIDE PANEL ══ -->
 <div id="panel-backdrop" onclick="closePanel()" style="display:none;position:fixed;inset:0;z-index:199;background:rgba(0,0,0,0.4)"></div>
 <div id="side-panel">
-  <button id="side-panel-close" onclick="closePanel()">✕</button>
-  <div id="side-panel-title">PANEL</div>
+  <div id="side-panel-header">
+    <div id="side-panel-title">PANEL</div>
+    <button id="side-panel-close" onclick="closePanel()" aria-label="Close panel">✕</button>
+  </div>
   <div id="side-panel-body"></div>
 </div>
 
@@ -1870,13 +1886,24 @@ header{
     <div id="youtube-content"><div class="loading">Loading YouTube data</div></div>
   </div>
 
+  <!-- Audio Visualiser -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(192,132,252,0.2),rgba(99,102,241,0.1))">🌊</div>
+      <div class="card-title">Visualiser</div>
+      <div class="card-subtitle" id="vis-status">Select a file above to visualise</div>
+      <div class="card-action"><button class="btn btn-sm" onclick="toggleVisDemo()" id="vis-demo-btn">▶ Demo</button></div>
+    </div>
+    <canvas id="vis-canvas" height="80"></canvas>
+  </div>
+
   <!-- Content Posts -->
   <div class="card">
     <div class="card-header">
       <div class="card-icon" style="background:linear-gradient(135deg,rgba(244,114,182,0.2),rgba(236,72,153,0.1))">📱</div>
       <div class="card-title">Content Planner</div>
       <div class="card-subtitle">AI-generated social media posts</div>
-      <div class="card-action"><button class="btn btn-sm btn-primary" onclick="triggerAgent('Content Agent')">▶ Generate</button></div>
+      <div class="card-action"><button class="btn btn-sm btn-primary" onclick="generateContentPosts()">▶ Generate</button></div>
     </div>
     <div id="content-posts"><div class="loading">Loading content</div></div>
   </div>
@@ -3524,11 +3551,11 @@ function handleDrop(e) {
   e.preventDefault();
   document.getElementById('upload-zone').classList.remove('drag-over');
   const file = e.dataTransfer?.files?.[0];
-  if (file) uploadTrack(file);
+  if (file) { uploadTrack(file); startAudioVisualiser(file); }
 }
 function handleFileSelect(e) {
   const file = e.target.files?.[0];
-  if (file) uploadTrack(file);
+  if (file) { uploadTrack(file); startAudioVisualiser(file); }
 }
 function uploadTrack(file) {
   const progressEl = document.getElementById('upload-progress');
@@ -3570,14 +3597,23 @@ async function loadLicensingConcepts() {
   try {
     const data = await fetchJSON('/music-licensing/concepts');
     if (!data?.concepts?.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.75rem">No concepts yet — click Generate</div>'; return; }
-    el.innerHTML = data.concepts.slice(0,5).map(c => {
+    el.innerHTML = data.concepts.slice(0,5).map((c, i) => {
       const ev=c.evidence||{};
-      return `<div class="track-card">
-        <div class="track-art" style="font-size:1.2rem">💿</div>
-        <div class="track-info">
-          <div class="track-title">${ev.track_title||c.title||'Concept'}</div>
-          <div class="track-genre">${ev.sub_genre||''} ${ev.recommended_platforms?'· '+ev.recommended_platforms.join(', '):''}</div>
-          ${ev.estimated_monthly_revenue_gbp?`<div class="track-meta" style="color:var(--green)">Est. £${ev.estimated_monthly_revenue_gbp.toFixed(2)}/mo</div>`:''}
+      const title = ev.track_title||c.title||'Concept';
+      const platforms = ev.recommended_platforms||[];
+      return `<div class="track-card" style="flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div class="track-art" style="font-size:1.2rem">💿</div>
+          <div class="track-info" style="flex:1">
+            <div class="track-title">${title}</div>
+            <div class="track-genre">${ev.sub_genre||''} ${platforms.length?'· '+platforms.join(', '):''}</div>
+            ${ev.estimated_monthly_revenue_gbp?`<div class="track-meta" style="color:var(--green)">Est. £${ev.estimated_monthly_revenue_gbp.toFixed(2)}/mo</div>`:''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-xs btn-primary" onclick="pitchConcept(${i},'${encodeURIComponent(title)}')">📤 Pitch</button>
+          <button class="btn btn-xs" style="border-color:rgba(0,229,255,0.4);color:var(--cyan)" onclick="copyConceptBrief(${i},'${encodeURIComponent(JSON.stringify(ev))}')">📋 Copy Brief</button>
+          <button class="btn btn-xs" style="border-color:rgba(0,255,102,0.4);color:var(--green)" onclick="draftLicenseEmail(${i},'${encodeURIComponent(title)}','${platforms[0]||''}')">✉ Draft Email</button>
         </div>
       </div>`;
     }).join('');
@@ -3604,12 +3640,42 @@ async function generateLicensingConcepts() {
   } catch(e) { showToast('Failed', 'error'); }
 }
 
+function pitchConcept(idx, titleEnc) {
+  const title = decodeURIComponent(titleEnc);
+  showToast(`Pitching "${title}" — agent drafting submission…`, 'info');
+  fetch('/music-licensing/pitch', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({title, index: idx})})
+    .catch(() => {});
+}
+
+function copyConceptBrief(idx, evEnc) {
+  try {
+    const ev = JSON.parse(decodeURIComponent(evEnc));
+    const text = `Track: ${ev.track_title||'—'}\nGenre: ${ev.sub_genre||'—'}\nPlatforms: ${(ev.recommended_platforms||[]).join(', ')}\nEst. Revenue: £${ev.estimated_monthly_revenue_gbp?.toFixed(2)||'—'}/mo\nNotes: ${ev.notes||'—'}`;
+    navigator.clipboard.writeText(text).then(() => showToast('Brief copied to clipboard', 'success'));
+  } catch(e) { showToast('Could not copy', 'error'); }
+}
+
+function draftLicenseEmail(idx, titleEnc, platform) {
+  const title = decodeURIComponent(titleEnc);
+  const body = `Hi,\n\nI'd like to submit "${title}" for licensing consideration on ${platform||'your platform'}.\n\nThis is a Drum & Bass track produced by PulseBreak. I can provide stems, metadata, and ISRC on request.\n\nBest,\n[Your name]`;
+  const mailto = `mailto:licensing@${(platform||'platform').toLowerCase().replace(/\s+/g,'')}.com?subject=${encodeURIComponent('Licensing Submission: '+title)}&body=${encodeURIComponent(body)}`;
+  window.open(mailto);
+}
+
 async function loadYouTubeContent() {
   const el = document.getElementById('youtube-content');
   if (!el) return;
   try {
     const data = await fetchJSON('/youtube/performance');
-    if (!data || !data.videos) { el.innerHTML='<div style="color:var(--muted);font-size:0.75rem">No YouTube data yet</div>'; return; }
+    if (!data || !data.videos || !data.videos.length) {
+      el.innerHTML = `<div style="text-align:center;padding:16px 8px">
+        <div style="font-size:2rem;margin-bottom:8px">▶</div>
+        <div style="font-size:0.78rem;color:var(--text);font-weight:600;margin-bottom:6px">No YouTube data yet</div>
+        <div style="font-size:0.68rem;color:var(--muted);margin-bottom:12px">Connect your YouTube channel to track views, engagement, and top-performing genres across your DnB releases.</div>
+        <button class="btn btn-sm btn-primary" onclick="triggerAgent('Content Agent')">▶ Run Content Agent</button>
+      </div>`;
+      return;
+    }
     el.innerHTML = data.videos.slice(0,4).map(v => `<div class="lb-row">
       <div style="font-size:1.2rem">▶</div>
       <div style="flex:1">
@@ -5077,48 +5143,196 @@ const PANEL_TAB_LABELS = {
   roadmap:       '🗺 ROADMAP',
 };
 
+// Track which page div is currently live in the panel
+let _panelState = { tab: null, el: null, parent: null };
+
 function openPanel(tab) {
-  const panel = document.getElementById('side-panel');
+  const panel   = document.getElementById('side-panel');
   const titleEl = document.getElementById('side-panel-title');
   const bodyEl  = document.getElementById('side-panel-body');
   if (!panel) return;
 
-  titleEl.textContent = PANEL_TAB_LABELS[tab] || tab.toUpperCase();
+  // Return the previous page element to its original home
+  if (_panelState.el && _panelState.parent) {
+    _panelState.el.style.removeProperty('display');
+    _panelState.parent.appendChild(_panelState.el);
+  }
 
-  // Clone content from the existing page div into the panel body
+  titleEl.textContent = PANEL_TAB_LABELS[tab] || tab.toUpperCase();
+  bodyEl.innerHTML = '';
+
   const srcPage = document.getElementById('page-' + tab);
   if (srcPage) {
-    bodyEl.innerHTML = '';
-    // Get all children of the content-area inside the page
-    const contentArea = srcPage.querySelector('.content-area') || srcPage;
-    const clone = contentArea.cloneNode(true);
-    clone.style.padding = '0';
-    bodyEl.appendChild(clone);
+    // MOVE the actual element (not a clone) so getElementById works correctly
+    _panelState = { tab, el: srcPage, parent: srcPage.parentElement };
+    srcPage.style.setProperty('display', 'block', 'important');
+    bodyEl.appendChild(srcPage);
   } else {
+    _panelState = { tab: null, el: null, parent: null };
     bodyEl.innerHTML = '<div style="color:rgba(0,229,255,0.5);padding:20px;font-family:\'Press Start 2P\',monospace;font-size:0.55rem;text-align:center">Loading…</div>';
   }
 
   panel.classList.add('open');
+  panel.scrollTop = 0;
   document.getElementById('kingdom-map-canvas').style.pointerEvents = 'none';
   document.getElementById('panel-backdrop').style.display = 'block';
 
-  // Trigger any lazy-load
-  if (tab === 'pitwall')       loadPitwallTab();
-  if (tab === 'pulsebreak')    loadPulsebreakTab();
-  if (tab === 'agents')        loadAgentsTab();
-  if (tab === 'opportunities') loadOpportunitiesTab();
-  if (tab === 'livery')        loadLiveryTab();
-  if (tab === 'intelligence')  loadIntelligenceTab();
-  if (tab === 'command')       loadCommandTab();
-  if (tab === 'tools')         loadToolsTab();
-  if (tab === 'roadmap')       loadGoldStandard();
+  // Trigger lazy-loads — now getElementById finds the real elements
+  const loaders = {
+    pitwall:       loadPitwallTab,
+    pulsebreak:    loadPulsebreakTab,
+    agents:        loadAgentsTab,
+    opportunities: loadOpportunitiesTab,
+    livery:        loadLiveryTab,
+    intelligence:  loadIntelligenceTab,
+    command:       loadCommandTab,
+    tools:         loadToolsTab,
+    roadmap:       loadGoldStandard,
+  };
+  if (loaders[tab]) loaders[tab]();
 }
 
 function closePanel() {
   const panel = document.getElementById('side-panel');
-  if (panel) panel.classList.remove('open');
+  if (!panel) return;
+
+  // Return the page element to its original parent in the hidden DOM
+  if (_panelState.el && _panelState.parent) {
+    _panelState.el.style.removeProperty('display');
+    _panelState.parent.appendChild(_panelState.el);
+    _panelState = { tab: null, el: null, parent: null };
+  }
+
+  panel.classList.remove('open');
   document.getElementById('kingdom-map-canvas').style.pointerEvents = 'auto';
   document.getElementById('panel-backdrop').style.display = 'none';
+  stopVisDemo();
+}
+
+/* ─── AUDIO VISUALISER ─── */
+let _visAudioCtx = null, _visAnalyser = null, _visRaf = null, _visDemoRaf = null, _visDemoMode = false;
+
+function toggleVisDemo() {
+  if (_visDemoMode) { stopVisDemo(); return; }
+  _visDemoMode = true;
+  const btn = document.getElementById('vis-demo-btn');
+  if (btn) btn.textContent = '\u25a0 Stop';
+  const st = document.getElementById('vis-status');
+  if (st) st.textContent = 'Demo mode — synthetic DnB waveform';
+  _drawVisDemo();
+}
+
+function stopVisDemo() {
+  _visDemoMode = false;
+  if (_visDemoRaf) { cancelAnimationFrame(_visDemoRaf); _visDemoRaf = null; }
+  const btn = document.getElementById('vis-demo-btn');
+  if (btn) btn.textContent = '\u25b6 Demo';
+  const st = document.getElementById('vis-status');
+  if (st) st.textContent = 'Select a file above to visualise';
+}
+
+function _drawVisDemo() {
+  const canvas = document.getElementById('vis-canvas');
+  if (!canvas || !_visDemoMode) return;
+  const ctx2 = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 300; const H = canvas.offsetHeight || 80;
+  canvas.width = W * (window.devicePixelRatio || 1);
+  canvas.height = H * (window.devicePixelRatio || 1);
+  ctx2.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  let t = 0;
+  function frame() {
+    if (!_visDemoMode) return;
+    ctx2.clearRect(0, 0, W, H);
+    ctx2.fillStyle = '#050012';
+    ctx2.fillRect(0, 0, W, H);
+    const bars = 48;
+    const bw = W / bars - 1;
+    for (let i = 0; i < bars; i++) {
+      const bass  = i < 8  ? (Math.sin(t * 0.08 + i * 0.4) * 0.5 + 0.5) * 0.9 : 0;
+      const mid   = i >= 8 && i < 28 ? (Math.sin(t * 0.15 + i * 0.7) * 0.3 + 0.3) : 0;
+      const high  = i >= 28 ? (Math.random() * 0.25 * (Math.sin(t * 0.3 + i) > 0.7 ? 1 : 0.2)) : 0;
+      const snare = (t % 22 < 2 && i > 10 && i < 20) ? 0.85 : 0;
+      const h = Math.max(bass, mid, high, snare) * H * 0.88;
+      const hue = 260 + (i / bars) * 80;
+      const grd = ctx2.createLinearGradient(0, H - h, 0, H);
+      grd.addColorStop(0, `hsla(${hue},100%,75%,1)`);
+      grd.addColorStop(1, `hsla(${hue},100%,40%,0.6)`);
+      ctx2.fillStyle = grd;
+      ctx2.shadowColor = `hsl(${hue},100%,60%)`;
+      ctx2.shadowBlur = 8;
+      ctx2.fillRect(i * (bw + 1), H - h, bw, h);
+    }
+    t++;
+    _visDemoRaf = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function startAudioVisualiser(file) {
+  stopVisDemo();
+  const canvas = document.getElementById('vis-canvas');
+  const st = document.getElementById('vis-status');
+  if (!canvas) return;
+  if (st) st.textContent = 'Visualising: ' + file.name;
+  if (_visAudioCtx) _visAudioCtx.close();
+  if (_visRaf) cancelAnimationFrame(_visRaf);
+  _visAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const buf = await _visAudioCtx.decodeAudioData(e.target.result);
+      const src = _visAudioCtx.createBufferSource();
+      _visAnalyser = _visAudioCtx.createAnalyser();
+      _visAnalyser.fftSize = 128;
+      src.buffer = buf;
+      src.connect(_visAnalyser);
+      _visAnalyser.connect(_visAudioCtx.destination);
+      src.start(0);
+      _drawVisAnalyser(canvas, _visAnalyser);
+    } catch(err) {
+      if (st) st.textContent = 'Preview unavailable — track uploaded OK';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function _drawVisAnalyser(canvas, analyser) {
+  const ctx2 = canvas.getContext('2d');
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  function frame() {
+    _visRaf = requestAnimationFrame(frame);
+    analyser.getByteFrequencyData(data);
+    const W = canvas.offsetWidth || 300, H = canvas.offsetHeight || 80;
+    canvas.width = W * (window.devicePixelRatio || 1);
+    canvas.height = H * (window.devicePixelRatio || 1);
+    ctx2.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+    ctx2.fillStyle = '#050012';
+    ctx2.fillRect(0, 0, W, H);
+    const bw = W / data.length - 1;
+    data.forEach((v, i) => {
+      const h = (v / 255) * H * 0.9;
+      const hue = 260 + (i / data.length) * 80;
+      const grd = ctx2.createLinearGradient(0, H - h, 0, H);
+      grd.addColorStop(0, `hsla(${hue},100%,75%,1)`);
+      grd.addColorStop(1, `hsla(${hue},80%,40%,0.7)`);
+      ctx2.fillStyle = grd;
+      ctx2.shadowColor = `hsl(${hue},100%,60%)`;
+      ctx2.shadowBlur = 6;
+      ctx2.fillRect(i * (bw + 1), H - h, bw, h);
+    });
+  }
+  frame();
+}
+
+/* ─── CONTENT POSTS GENERATION ─── */
+async function generateContentPosts() {
+  const el = document.getElementById('content-posts');
+  if (!el) return;
+  el.innerHTML = '<div class="loading">Generating content…</div>';
+  try {
+    await fetch('/agents/trigger', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({agent:'Content Agent'}) });
+  } catch(_) {}
+  setTimeout(loadContentPosts, 2500);
 }
 
 // Close panel on Escape key
