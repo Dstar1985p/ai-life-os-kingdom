@@ -656,7 +656,7 @@ var KingdomISO = (function () {
     const cy = oy + (tr.y + br.y) / 2 - BH / 2;
 
     const bst = _buildingStates[b.id] || {};
-    const ts = bst.status === 'running' ? 2.4 : bst.status === 'idle' ? 0.45 : 1.0;
+    const ts = bst.status === 'running' ? 2.4 : bst.status === 'recently_active' ? 1.4 : 1.0;
     const pose = bst.status === 'waiting' ? 'waiting' : bst.status === 'running' ? 'active' : 'idle';
 
     switch (b.id) {
@@ -1210,7 +1210,7 @@ var KingdomISO = (function () {
     const isActive = b.active;
     const pulse = 0.5 + 0.5 * Math.sin(tick * 0.065);
     const st = _buildingStates[b.id] || {};
-    const stateGlow = st.status === 'running' ? 1.8 : st.status === 'waiting' ? 1.3 : 1.0;
+    const stateGlow = st.status === 'running' ? 1.8 : st.status === 'waiting' ? 1.3 : st.status === 'recently_active' ? 1.15 : 1.0;
     const glowStrength = (isActive ? 30 + 30 * pulse : 8) * stateGlow;
 
     const { r, g, b: bv } = hexToRgb(b.color);
@@ -1352,7 +1352,7 @@ var KingdomISO = (function () {
     if (b.agentCount > 0) {
       drawAgentBadge(center.x, center.y - 34, b.agentCount, b.color);
     }
-    if (st.status === 'running' || st.status === 'waiting') {
+    if (st.status === 'running' || st.status === 'waiting' || st.status === 'recently_active') {
       drawActivityBadge(b, ox, oy, st);
     }
 
@@ -1413,6 +1413,25 @@ var KingdomISO = (function () {
       ctx.font = '5px "Press Start 2P", monospace';
       ctx.fillStyle = '#ffaa00';
       ctx.fillText('WAITING', cx, cy + 18);
+    } else if (state.status === 'recently_active') {
+      // Soft green check — static, no spin
+      const greenA = 0.7 + 0.3 * Math.abs(Math.sin(tick * 0.04));
+      ctx.globalAlpha = greenA;
+      ctx.shadowColor = '#00e676';
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = '#00e676';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#00e676';
+      ctx.font = '9px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('✓', cx, cy + 4);
+      ctx.globalAlpha = 1;
+      ctx.font = '5px "Press Start 2P", monospace';
+      ctx.fillStyle = '#00e676';
+      ctx.fillText('ACTIVE', cx, cy + 18);
     } else if (state.status === 'error') {
       ctx.shadowColor = '#ff3300';
       ctx.shadowBlur = 10;
@@ -1429,9 +1448,21 @@ var KingdomISO = (function () {
     const cx = ox + (tl.x + tr.x) / 2;
     const cy = oy + tl.y - BH - 38;
 
-    // Find matching live bubble
+    // Find matching live bubble, or fall back to last_action from state
     const lb = _liveBubbles.find(lb => lb.buildingId === b.id && lb.life > 0);
-    if (!lb) return;
+    if (!lb) {
+      // Show a dim subtitle from last_action if available
+      if (!state.last_action) return;
+      const text = state.last_action.length > 32 ? state.last_action.slice(0, 31) + '…' : state.last_action;
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.font = '5px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#8899aa';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, cx, cy);
+      ctx.restore();
+      return;
+    }
 
     const alpha = Math.min(lb.life / lb.maxLife * 3, 1) * Math.min((1 - lb.life / lb.maxLife) * 6 + 0.1, 1);
     const text = lb.text.length > 28 ? lb.text.slice(0, 27) + '…' : lb.text;
@@ -2302,6 +2333,32 @@ var KingdomISO = (function () {
       resize();
       stars = null;
       shootingStars = null;
+    });
+
+    // Demo key: press T to cycle the first building through all agent states
+    window.addEventListener('keydown', (e) => {
+      if (e.key !== 't' && e.key !== 'T') return;
+      const DEMO_STATES = ['running', 'waiting', 'recently_active', 'idle'];
+      const bid = BUILDINGS[0] && BUILDINGS[0].id;
+      if (!bid) return;
+      const cur = (_buildingStates[bid] || {}).status || 'idle';
+      const next = DEMO_STATES[(DEMO_STATES.indexOf(cur) + 1) % DEMO_STATES.length];
+      const actions = {
+        running: 'Uploading track batch to distributor…',
+        waiting: '3 tracks pending founder review',
+        recently_active: 'Completed Etsy listing refresh',
+        idle: null,
+      };
+      _buildingStates[bid] = {
+        status: next,
+        running_agent: next === 'running' ? 'Demo Agent' : null,
+        last_action: actions[next],
+        pending_count: next === 'waiting' ? 3 : 0,
+        activity_level: next === 'running' ? 1.0 : next === 'recently_active' ? 0.6 : next === 'waiting' ? 0.5 : 0.0,
+      };
+      if (actions[next]) {
+        _liveBubbles.push({ buildingId: bid, text: actions[next], color: next === 'running' ? '#00e5ff' : next === 'waiting' ? '#ffaa00' : '#00e676', life: 180, maxLife: 180 });
+      }
     });
   }
 
