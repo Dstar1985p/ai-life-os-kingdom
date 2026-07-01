@@ -93,10 +93,19 @@ var KingdomISO = (function () {
     };
   }
 
+  function getScale() {
+    const { w, h } = getSize();
+    // Scale so the map fills ~85% of the smaller dimension
+    const mapW = (GRID_COLS + GRID_ROWS) * (TW / 2);
+    const mapH = (GRID_COLS + GRID_ROWS) * (TH / 2) + BH * 3;
+    const scaleX = (w * 0.85) / mapW;
+    const scaleY = (h * 0.75) / mapH;
+    return Math.min(scaleX, scaleY, 2.2);
+  }
+
   function getOffset() {
     const { w, h } = getSize();
-    // Center the map horizontally, push it down a bit from top
-    return { x: w / 2, y: h * 0.18 };
+    return { x: w / 2, y: h * 0.12 + BH * getScale() };
   }
 
   function resize() {
@@ -557,6 +566,13 @@ var KingdomISO = (function () {
     // Stars
     drawStars();
 
+    // Scale the entire world to fill the screen
+    const scale = getScale();
+    ctx.save();
+    ctx.translate(w / 2, 0);
+    ctx.scale(scale, scale);
+    ctx.translate(-w / 2, 0);
+
     // Ground
     drawGround();
 
@@ -578,7 +594,9 @@ var KingdomISO = (function () {
     // Bubbles
     bubbles.forEach(b => drawBubble(b));
 
-    // CRT effects
+    ctx.restore(); // end world scale
+
+    // CRT effects (applied after scale restore, over full canvas)
     drawCRT();
 
     // Update agent state
@@ -593,11 +611,16 @@ var KingdomISO = (function () {
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
 
+    const s = getScale();
+    const { w: cw } = getSize();
     for (const b of BUILDINGS) {
       const center = getBuildingCenter(b);
-      const dx = mx - center.x;
-      const dy = my - center.y;
-      if (Math.abs(dx) < 55 && Math.abs(dy) < 45) {
+      // Transform center coords the same way the draw loop does
+      const sx = (center.x - cw / 2) * s + cw / 2;
+      const sy = center.y * s;
+      const dx = mx - sx;
+      const dy = my - sy;
+      if (Math.abs(dx) < 55 * s && Math.abs(dy) < 45 * s) {
         if (b.tab) {
           // Prefer the new slide-in panel; fall back to showTab
           if (typeof openPanel === 'function') {
