@@ -9,7 +9,7 @@ var KingdomISO = (function () {
   // ── Isometric constants ────────────────────────────────────────────────────
   const TW = 56;           // tile width  (diamond)
   const TH = 28;           // tile height (diamond)
-  const BH = 44;           // building wall height in pixels
+  const BH = 72;           // building wall height in pixels
   const GRID_COLS = 8;
   const GRID_ROWS = 6;
 
@@ -622,6 +622,679 @@ var KingdomISO = (function () {
     ctx.restore();
   }
 
+  // ── Building interior animated scenes ─────────────────────────────────────
+  function drawBuildingInterior(b, ox, oy) {
+    const { tr, br } = buildingCorners(b);
+
+    // Clip to right face parallelogram
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(ox + tr.x, oy + tr.y - BH);
+    ctx.lineTo(ox + br.x, oy + br.y - BH);
+    ctx.lineTo(ox + br.x, oy + br.y);
+    ctx.lineTo(ox + tr.x, oy + tr.y);
+    ctx.closePath();
+    ctx.clip();
+
+    // Dark interior fill
+    ctx.fillStyle = 'rgba(5,0,15,0.88)';
+    ctx.fillRect(ox + tr.x - 2, oy + tr.y - BH - 2, (br.x - tr.x) + 4, BH + 4);
+
+    // Face center
+    const cx = ox + (tr.x + br.x) / 2;
+    const cy = oy + (tr.y + br.y) / 2 - BH / 2;
+
+    switch (b.id) {
+      case 'pulsebreak': _interiorClub(cx, cy);    break;
+      case 'pitwall':    _interiorGarage(cx, cy);  break;
+      case 'command':    _interiorCommand(cx, cy); break;
+      case 'printforge': _interiorForge(cx, cy);   break;
+      case 'treasury':   _interiorBank(cx, cy);    break;
+      case 'livery':     _interiorWorkshop(cx, cy); break;
+    }
+
+    ctx.restore();
+  }
+
+  // Interior: THE CLUB (pulsebreak)
+  function _interiorClub(cx, cy) {
+    // Spotlight cones from ceiling
+    const spotColors = ['rgba(160,0,255,0.18)', 'rgba(0,220,255,0.15)', 'rgba(255,0,200,0.15)'];
+    const spotOffsets = [-18, 0, 18];
+    spotOffsets.forEach((dx, i) => {
+      const sway = Math.sin(tick * 0.02 + i * 1.2) * 8;
+      const sx = cx + dx + sway;
+      const topY = cy - BH * 0.42;
+      const botY = cy + BH * 0.3;
+      const grad = ctx.createRadialGradient(sx, topY, 0, sx, botY, 22);
+      grad.addColorStop(0, spotColors[i]);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.beginPath();
+      ctx.moveTo(sx, topY);
+      ctx.lineTo(sx - 14, botY);
+      ctx.lineTo(sx + 14, botY);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+    });
+
+    // Strobe flash
+    if (tick % 180 < 3) {
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(cx - 60, cy - 60, 120, 120);
+      ctx.restore();
+    }
+
+    // EQ bars at bottom
+    const eqY = cy + BH * 0.28;
+    const eqColors = ['#bf5fff','#dd44ff','#ff00cc','#aa00ff','#ff44dd','#cc00ff','#e060ff'];
+    for (let i = 0; i < 7; i++) {
+      const bh2 = 8 + 10 * Math.abs(Math.sin(tick * 0.12 + i * 0.9));
+      ctx.fillStyle = eqColors[i % eqColors.length];
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(cx - 22 + i * 7, eqY - bh2, 5, bh2);
+    }
+    ctx.globalAlpha = 1;
+
+    // Turntable decks
+    const deckY = cy + 4;
+    [-14, 14].forEach((dx, di) => {
+      ctx.strokeStyle = '#666';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx + dx, deckY, 10, 0, Math.PI * 2);
+      ctx.fillStyle = '#1a0030';
+      ctx.fill();
+      ctx.stroke();
+      // Spinning crosshair
+      const angle = tick * 0.06 * (di === 0 ? 1 : -1);
+      ctx.save();
+      ctx.strokeStyle = '#bf5fff';
+      ctx.lineWidth = 1;
+      ctx.shadowColor = '#bf5fff';
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx + dx + Math.cos(angle) * 9, deckY + Math.sin(angle) * 9);
+      ctx.lineTo(cx + dx - Math.cos(angle) * 9, deckY - Math.sin(angle) * 9);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Mixer board
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(cx - 6, deckY - 6, 12, 10);
+    for (let si = 0; si < 3; si++) {
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - 3 + si * 3, deckY - 4);
+      ctx.lineTo(cx - 3 + si * 3, deckY + 2);
+      ctx.stroke();
+    }
+
+    // DJ figure
+    const djX = cx, djY = cy - 8;
+    // Headphones
+    ctx.strokeStyle = '#bf5fff';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#bf5fff';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(djX, djY - 12, 5, Math.PI, 0);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Head
+    ctx.fillStyle = '#f4a460';
+    ctx.beginPath();
+    ctx.arc(djX, djY - 12, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // Torso
+    ctx.fillStyle = '#1a0033';
+    ctx.fillRect(djX - 4, djY - 8, 8, 8);
+    // Arms reaching forward
+    ctx.strokeStyle = '#f4a460';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(djX - 4, djY - 6);
+    ctx.lineTo(djX - 10, djY - 4);
+    ctx.moveTo(djX + 4, djY - 6);
+    ctx.lineTo(djX + 10, djY - 4);
+    ctx.stroke();
+  }
+
+  // Interior: PIT GARAGE (pitwall)
+  function _interiorGarage(cx, cy) {
+    // Dark grey floor
+    ctx.fillStyle = 'rgba(30,30,30,0.7)';
+    ctx.fillRect(cx - 50, cy + 10, 100, 30);
+
+    // Overhead work light
+    const lightGrad = ctx.createRadialGradient(cx, cy - BH * 0.35, 0, cx, cy, 35);
+    lightGrad.addColorStop(0, 'rgba(255,200,80,0.18)');
+    lightGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = lightGrad;
+    ctx.fillRect(cx - 50, cy - BH * 0.4, 100, 80);
+
+    // F1 car body
+    const carY = cy + 8;
+    ctx.fillStyle = '#ff9500';
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(cx - 22, carY - 5, 44, 9, 4) : ctx.fillRect(cx - 22, carY - 5, 44, 9);
+    ctx.fill();
+    // Nose cone
+    ctx.fillStyle = '#cc7000';
+    ctx.beginPath();
+    ctx.moveTo(cx + 22, carY);
+    ctx.lineTo(cx + 30, carY - 2);
+    ctx.lineTo(cx + 30, carY + 2);
+    ctx.closePath();
+    ctx.fill();
+    // Rear wing fins
+    ctx.fillStyle = '#ff9500';
+    ctx.fillRect(cx - 28, carY - 8, 6, 3);
+    ctx.fillRect(cx - 28, carY + 5, 6, 3);
+    // Wheels
+    const wheelSpin = tick * 0.15;
+    [cx - 14, cx + 12].forEach(wx => {
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(wx, carY + 6, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#222';
+      ctx.fill();
+      ctx.stroke();
+      // Spinning spoke
+      ctx.save();
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(wx + Math.cos(wheelSpin) * 4, carY + 6 + Math.sin(wheelSpin) * 4);
+      ctx.lineTo(wx - Math.cos(wheelSpin) * 4, carY + 6 - Math.sin(wheelSpin) * 4);
+      ctx.stroke();
+      ctx.restore();
+    });
+    // Under-lighting
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    const underGlow = ctx.createLinearGradient(cx - 22, carY + 4, cx + 22, carY + 4);
+    underGlow.addColorStop(0, '#ff9500');
+    underGlow.addColorStop(1, '#ffcc00');
+    ctx.strokeStyle = underGlow;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, carY + 4);
+    ctx.lineTo(cx + 20, carY + 4);
+    ctx.stroke();
+    ctx.restore();
+
+    // Sparks near wheel
+    ctx.save();
+    for (let s = 0; s < 5; s++) {
+      const sx = cx + 12 + Math.sin(tick * 0.3 + s * 1.5) * 6;
+      const sy = carY + 5 + Math.cos(tick * 0.4 + s * 2.1) * 4;
+      ctx.fillStyle = '#ffdd00';
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Mechanic figure crouching
+    const mX = cx + 14, mY = carY - 6;
+    ctx.fillStyle = '#334';
+    ctx.fillRect(mX, mY, 6, 7); // body
+    ctx.fillStyle = '#e0d0c0';
+    ctx.beginPath();
+    ctx.arc(mX + 3, mY - 3, 3, 0, Math.PI * 2); // head
+    ctx.fill();
+    // Arm with wrench
+    ctx.strokeStyle = '#e0d0c0';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(mX, mY + 2);
+    ctx.lineTo(mX - 5, mY + 4);
+    ctx.stroke();
+    ctx.strokeStyle = '#aaa';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(mX - 5, mY + 4);
+    ctx.lineTo(mX - 9, mY + 2);
+    ctx.stroke();
+
+    // Tool cabinet
+    ctx.fillStyle = '#222';
+    ctx.fillRect(cx - 40, cy - 10, 12, 20);
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 0.5;
+    for (let di = 0; di < 4; di++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - 40, cy - 10 + di * 5);
+      ctx.lineTo(cx - 28, cy - 10 + di * 5);
+      ctx.stroke();
+    }
+  }
+
+  // Interior: COMMAND HQ
+  function _interiorCommand(cx, cy) {
+    // Status strip at top
+    const statusColors = ['#00ff66','#ff3300','#00ff66','#ffaa00'];
+    for (let i = 0; i < 4; i++) {
+      const on = Math.floor(tick * 0.05 + i) % 2 === 0;
+      ctx.fillStyle = on ? statusColors[i] : '#222';
+      ctx.beginPath();
+      ctx.arc(cx - 12 + i * 8, cy - BH * 0.38, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 3 monitor screens
+    const screenY = cy - 14;
+    const screenW = 22, screenH = 18;
+    [-24, 0, 24].forEach((dx, si) => {
+      const sx = cx + dx;
+      // Bezel
+      ctx.fillStyle = '#111';
+      ctx.fillRect(sx - screenW / 2 - 1, screenY - screenH / 2 - 1, screenW + 2, screenH + 2);
+      // Screen
+      ctx.fillStyle = '#001520';
+      ctx.fillRect(sx - screenW / 2, screenY - screenH / 2, screenW, screenH);
+      // Screen glow outline
+      ctx.strokeStyle = 'rgba(0,240,255,0.5)';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(sx - screenW / 2, screenY - screenH / 2, screenW, screenH);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(sx - screenW / 2, screenY - screenH / 2, screenW, screenH);
+      ctx.clip();
+
+      if (si === 0) {
+        // Bar chart
+        for (let bi = 0; bi < 5; bi++) {
+          const bh3 = 3 + 8 * Math.abs(Math.sin(tick * 0.05 + bi * 0.8));
+          ctx.fillStyle = '#00f0ff';
+          ctx.globalAlpha = 0.8;
+          ctx.fillRect(sx - screenW / 2 + 2 + bi * 4, screenY + screenH / 2 - bh3, 3, bh3);
+        }
+      } else if (si === 1) {
+        // Scrolling sine wave
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        for (let xi = 0; xi <= screenW; xi++) {
+          const wy = screenY + Math.sin((xi + tick * 2) * 0.25) * 5;
+          xi === 0 ? ctx.moveTo(sx - screenW / 2 + xi, wy) : ctx.lineTo(sx - screenW / 2 + xi, wy);
+        }
+        ctx.stroke();
+      } else {
+        // Radar sweep
+        const radarR = 7;
+        ctx.strokeStyle = 'rgba(0,240,255,0.4)';
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.arc(sx, screenY, radarR, 0, Math.PI * 2);
+        ctx.stroke();
+        // Sweep line
+        const sweepA = (tick * 0.06) % (Math.PI * 2);
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        ctx.moveTo(sx, screenY);
+        ctx.lineTo(sx + Math.cos(sweepA) * radarR, screenY + Math.sin(sweepA) * radarR);
+        ctx.stroke();
+        // Radar fade sector
+        ctx.save();
+        const radarGrad = ctx.createConicalGradient ? null : null;
+        ctx.globalAlpha = 0.15;
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.moveTo(sx, screenY);
+        ctx.arc(sx, screenY, radarR, sweepA - 1.2, sweepA);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.restore();
+    });
+
+    // Console desk
+    ctx.fillStyle = '#0a1020';
+    ctx.fillRect(cx - 28, cy + 4, 56, 10);
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(cx - 28, cy + 4, 56, 10);
+    // Console buttons
+    const btnColors = ['#00ff66','#ff3300','#ffff00','#00aaff','#ff44ff'];
+    for (let bi = 0; bi < 5; bi++) {
+      ctx.fillStyle = btnColors[bi];
+      ctx.beginPath();
+      ctx.arc(cx - 16 + bi * 8, cy + 10, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Commander seated figure
+    const cmdX = cx, cmdY = cy + 2;
+    ctx.fillStyle = '#0d2233';
+    ctx.fillRect(cmdX - 5, cmdY - 8, 10, 8); // torso
+    ctx.fillStyle = '#1a3a55';
+    ctx.fillRect(cmdX - 8, cmdY - 6, 3, 5); // left arm
+    ctx.fillRect(cmdX + 5, cmdY - 6, 3, 5); // right arm
+    ctx.fillStyle = '#e0c8a0';
+    ctx.beginPath();
+    ctx.arc(cmdX, cmdY - 12, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Interior: PRINT FORGE
+  function _interiorForge(cx, cy) {
+    // Easel
+    const easelX = cx + 6, easelY = cy;
+    ctx.strokeStyle = '#886644';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(easelX - 10, easelY + 16);
+    ctx.lineTo(easelX, easelY - 18);
+    ctx.lineTo(easelX + 10, easelY + 16);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(easelX - 5, easelY + 16);
+    ctx.lineTo(easelX, easelY);
+    ctx.stroke();
+
+    // Canvas on easel
+    const canW = 18, canH = 14;
+    ctx.fillStyle = '#f0ead6';
+    ctx.fillRect(easelX - canW / 2, easelY - 16, canW, canH);
+    ctx.strokeStyle = '#886644';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(easelX - canW / 2, easelY - 16, canW, canH);
+
+    // Progressively drawn car outline (tick % 300 drives progress)
+    const progress = (tick % 300) / 300;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(easelX - canW / 2, easelY - 16, canW, canH);
+    ctx.clip();
+    const carLines = [
+      [easelX - 7, easelY - 10, easelX + 8, easelY - 10],
+      [easelX + 8, easelY - 10, easelX + 8, easelY - 6],
+      [easelX + 8, easelY - 6, easelX - 7, easelY - 6],
+      [easelX - 7, easelY - 6, easelX - 7, easelY - 10],
+      [easelX - 5, easelY - 6, easelX - 4, easelY - 4],
+      [easelX + 4, easelY - 6, easelX + 5, easelY - 4],
+    ];
+    const totalSegs = carLines.length;
+    const segsDone = Math.floor(progress * totalSegs);
+    ctx.strokeStyle = '#ff7020';
+    ctx.lineWidth = 1;
+    for (let li = 0; li < segsDone && li < totalSegs; li++) {
+      const [x1, y1, x2, y2] = carLines[li];
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Ink splatter particles
+    ctx.save();
+    for (let pi = 0; pi < 8; pi++) {
+      const angle = (pi / 8) * Math.PI * 2;
+      const dist = 3 + ((tick * 0.5 + pi * 37) % 12);
+      ctx.fillStyle = '#ff7020';
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.arc(easelX + Math.cos(angle) * dist, easelY - 9 + Math.sin(angle) * dist * 0.5, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Artist figure
+    const artX = cx - 12, artY = cy - 2;
+    ctx.fillStyle = '#2a1a0a';
+    ctx.fillRect(artX - 4, artY - 8, 8, 8);
+    ctx.fillStyle = '#d4a070';
+    ctx.beginPath();
+    ctx.arc(artX, artY - 12, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // Arm with brush toward canvas
+    ctx.strokeStyle = '#d4a070';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(artX + 4, artY - 4);
+    ctx.lineTo(artX + 10, artY - 6);
+    ctx.stroke();
+    // Brush tip
+    ctx.fillStyle = '#ff7020';
+    ctx.beginPath();
+    ctx.arc(artX + 11, artY - 6, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Palette in other hand
+    ctx.fillStyle = '#8b6914';
+    ctx.beginPath();
+    ctx.ellipse(artX - 8, artY - 4, 5, 3, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    const palColors = ['#ff7020','#00ff66','#00f0ff','#fff'];
+    palColors.forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(artX - 10 + i * 2.5, artY - 4, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Printing press roller
+    ctx.fillStyle = '#333';
+    ctx.fillRect(cx - 40, cy + 4, 18, 14);
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx - 31, cy + 4, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#555';
+    ctx.fill();
+    ctx.stroke();
+    // Paper coming out
+    ctx.fillStyle = '#f0ead6';
+    ctx.fillRect(cx - 36, cy + 11, 10, 3);
+  }
+
+  // Interior: THE BANK (treasury)
+  function _interiorBank(cx, cy) {
+    // Vault door (large circular)
+    const vX = cx + 4, vY = cy - 4;
+    const vR = 18;
+    // Outer ring
+    ctx.strokeStyle = '#00ff66';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#00ff66';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(vX, vY, vR, 0, Math.PI * 2);
+    ctx.fillStyle = '#001a08';
+    ctx.fill();
+    ctx.stroke();
+    // Middle ring (rotates)
+    const vRot = tick * 0.01;
+    ctx.save();
+    ctx.translate(vX, vY);
+    ctx.rotate(vRot);
+    ctx.strokeStyle = '#00cc55';
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(0, 0, vR - 4, 0, Math.PI * 2);
+    ctx.stroke();
+    // Spoke handles
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * (vR - 7), Math.sin(a) * (vR - 7));
+      ctx.lineTo(Math.cos(a) * (vR - 3), Math.sin(a) * (vR - 3));
+      ctx.stroke();
+    }
+    ctx.restore();
+    // Inner circle
+    ctx.strokeStyle = '#00ff66';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(vX, vY, 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Counter
+    ctx.fillStyle = '#1a1000';
+    ctx.fillRect(cx - 28, cy + 16, 56, 8);
+    ctx.strokeStyle = '#00ff66';
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(cx - 28, cy + 16, 56, 8);
+
+    // Merchant figure behind counter
+    const mX = cx - 10, mY = cy + 14;
+    ctx.fillStyle = '#1a2a0a';
+    ctx.fillRect(mX - 4, mY - 8, 8, 8);
+    ctx.fillStyle = '#d4c090';
+    ctx.beginPath();
+    ctx.arc(mX, mY - 11, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // Arms on counter
+    ctx.strokeStyle = '#d4c090';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(mX - 4, mY - 4);
+    ctx.lineTo(mX - 10, mY - 2);
+    ctx.moveTo(mX + 4, mY - 4);
+    ctx.lineTo(mX + 10, mY - 2);
+    ctx.stroke();
+
+    // Gold coin stack on counter
+    const coinX = cx + 12, coinY = cy + 15;
+    for (let ci = 0; ci < 4; ci++) {
+      ctx.fillStyle = '#ffd700';
+      ctx.beginPath();
+      ctx.ellipse(coinX, coinY - ci * 2, 5, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#cc9900';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+
+    // Raining coins
+    for (let ri = 0; ri < 5; ri++) {
+      const phase = (tick * 1.5 + ri * 60) % 90;
+      const rx = cx - 20 + ri * 10 + Math.sin(ri * 2.3) * 5;
+      const ry = cy - BH * 0.4 + phase;
+      if (ry < cy + 20) {
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.ellipse(rx, ry, 4, 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Digital £ display
+    const dispY = cy - BH * 0.3;
+    const amount = Math.floor(Math.sin(tick * 0.05) * 5000 + 15000);
+    ctx.fillStyle = '#001a00';
+    ctx.fillRect(cx - 20, dispY - 6, 40, 10);
+    ctx.font = 'bold 6px monospace';
+    ctx.fillStyle = '#00ff66';
+    ctx.shadowColor = '#00ff66';
+    ctx.shadowBlur = 6;
+    ctx.textAlign = 'center';
+    ctx.fillText('£' + amount, cx, dispY + 2);
+    ctx.shadowBlur = 0;
+  }
+
+  // Interior: LIVERY WORKSHOP
+  function _interiorWorkshop(cx, cy) {
+    // Checkered floor
+    for (let fi = 0; fi < 6; fi++) {
+      for (let fj = 0; fj < 3; fj++) {
+        ctx.fillStyle = ((fi + fj) % 2 === 0) ? 'rgba(40,40,40,0.7)' : 'rgba(20,20,20,0.7)';
+        ctx.fillRect(cx - 30 + fi * 10, cy + 16 + fj * 6, 10, 6);
+      }
+    }
+
+    // Car body side-view silhouette
+    const carY = cy + 4;
+    const paintProgress = (Math.sin(tick * 0.02) + 1) / 2;
+    const saturation = Math.floor(40 + paintProgress * 60);
+    ctx.fillStyle = `hsl(350, ${saturation}%, 45%)`;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(cx - 26, carY - 5, 52, 10, 5);
+    } else {
+      ctx.rect(cx - 26, carY - 5, 52, 10);
+    }
+    ctx.fill();
+    // Wheel arch cutouts
+    [-14, 14].forEach(dx => {
+      ctx.fillStyle = 'rgba(5,0,15,0.88)';
+      ctx.beginPath();
+      ctx.arc(cx + dx, carY + 5, 5, 0, Math.PI * 2);
+      ctx.fill();
+      // Wheel
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.arc(cx + dx, carY + 5, 4, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Colour swatches on wall
+    const swatchColors = ['#ff1a4a','#00f0ff','#ffff00','#00ff66','#ff9500','#bf5fff'];
+    swatchColors.forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.fillRect(cx - 40 + i * 9, cy - BH * 0.35, 7, 5);
+    });
+
+    // Paint spray artist
+    const artX = cx + 28, artY = cy + 2;
+    // Respirator mask
+    ctx.fillStyle = '#d0c8b8';
+    ctx.beginPath();
+    ctx.arc(artX, artY - 12, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // Mask filters
+    ctx.fillStyle = '#888';
+    ctx.fillRect(artX - 3, artY - 10, 2, 3);
+    ctx.fillRect(artX + 1, artY - 10, 2, 3);
+    // Body
+    ctx.fillStyle = '#223';
+    ctx.fillRect(artX - 4, artY - 8, 8, 8);
+    // Arm with spray can
+    ctx.strokeStyle = '#d0c8b8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(artX - 4, artY - 5);
+    ctx.lineTo(artX - 10, artY - 8);
+    ctx.stroke();
+    // Spray can
+    ctx.fillStyle = '#666';
+    ctx.fillRect(artX - 14, artY - 10, 4, 6);
+    // Spray cone particles
+    for (let pi = 0; pi < 12; pi++) {
+      const angle = Math.PI + (pi - 6) * 0.08;
+      const dist = 3 + ((tick * 0.5 + pi * 17) % 18);
+      const alpha = Math.max(0, 0.7 - dist / 18);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#ff1a4a';
+      ctx.beginPath();
+      ctx.arc(
+        artX - 14 + Math.cos(angle) * dist,
+        artY - 7 + Math.sin(angle) * dist,
+        1, 0, Math.PI * 2
+      );
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   // ── Buildings — cyberpunk glass towers ────────────────────────────────────
   function drawBuilding(b) {
     const off = getOffset();
@@ -686,6 +1359,9 @@ var KingdomISO = (function () {
     ctx.closePath();
     ctx.fillStyle = rightGrad;
     ctx.fill();
+
+    // ── INTERIOR SCENE ──
+    drawBuildingInterior(b, ox, oy);
 
     // Glass panel horizontal lines on right face
     ctx.save();
