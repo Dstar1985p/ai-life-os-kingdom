@@ -3,7 +3,7 @@
  * Renders 6 venture buildings in isometric 3-D with animated agent sprites,
  * speech bubbles, CRT scanlines, and a live revenue/agent HUD.
  */
-const KingdomISO = (function () {
+var KingdomISO = (function () {
   'use strict';
 
   // ── Isometric constants ────────────────────────────────────────────────────
