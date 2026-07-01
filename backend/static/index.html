@@ -30,7 +30,127 @@
   --glow-green: rgba(0,255,136,0.35); --glow-purple: rgba(192,132,252,0.35);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+body{background:#030410;color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;overflow:hidden;margin:0}
+
+/* ── GAME REDESIGN: hide old chrome ── */
+header,#app-header,.resources-bar,.nav-tabs,#ticker-wrap{display:none!important}
+
+/* ── FULLSCREEN GAME ROOT ── */
+#game-root{position:fixed;inset:0;width:100vw;height:100vh;overflow:hidden;background:#030410}
+#kingdom-map-canvas{display:block;width:100%!important;height:100%!important;cursor:crosshair}
+#kingdom-map-canvas-fullscreen{display:block;width:100%!important;height:100%!important;cursor:crosshair;position:absolute;inset:0}
+
+/* ── SIDE PANEL ── */
+#side-panel{
+  position:fixed;top:0;right:-440px;width:420px;height:100vh;
+  background:rgba(3,4,16,0.97);border-left:1px solid rgba(0,229,255,0.2);
+  transition:right 0.3s ease;z-index:200;overflow-y:auto;padding:20px;
+}
+#side-panel.open{right:0}
+#side-panel-close{
+  position:absolute;top:14px;right:16px;background:none;border:none;
+  color:rgba(0,229,255,0.7);font-size:1.2rem;cursor:pointer;z-index:201;
+  padding:4px 8px;border-radius:6px;transition:color 0.2s;
+}
+#side-panel-close:hover{color:#00e5ff}
+#side-panel-title{
+  font-family:'Press Start 2P',monospace;font-size:0.6rem;letter-spacing:2px;
+  color:#00e5ff;margin-bottom:16px;padding-right:32px;text-transform:uppercase;
+}
+#side-panel-body{min-height:200px}
+@media(max-width:600px){
+  #side-panel{width:100vw;right:-100vw}
+  #side-panel.open{right:0}
+}
+
+/* ── HUD OVERLAYS ── */
+#hud-topleft{
+  position:fixed;top:16px;left:16px;z-index:150;
+  background:rgba(3,4,16,0.88);border:1px solid rgba(0,229,255,0.3);
+  border-radius:10px;padding:12px 16px;min-width:220px;
+  font-family:'Press Start 2P',monospace;
+  box-shadow:0 0 24px rgba(0,229,255,0.1);
+}
+#hud-topleft .hud-title{font-size:0.55rem;color:#00e5ff;letter-spacing:3px;margin-bottom:6px}
+#hud-topleft .hud-level{
+  display:inline-block;font-size:0.45rem;color:#000;background:#00e5ff;
+  padding:2px 6px;border-radius:4px;margin-left:8px;vertical-align:middle;
+}
+#hud-xp-bar{height:6px;background:rgba(255,255,255,0.1);border-radius:3px;margin:6px 0;overflow:hidden}
+#hud-xp-fill{height:100%;background:linear-gradient(90deg,#00e5ff,#c084fc);border-radius:3px;transition:width 0.8s ease;width:0%}
+#hud-xp-label{font-size:0.42rem;color:rgba(0,229,255,0.7);letter-spacing:1px;margin-bottom:8px}
+#hud-stats{display:flex;gap:16px;font-size:0.42rem}
+#hud-gold{color:#ffb300}
+#hud-agents{color:#00ff88}
+
+#hud-topright{
+  position:fixed;top:16px;right:16px;z-index:150;
+  background:rgba(3,4,16,0.88);border:1px solid rgba(0,229,255,0.3);
+  border-radius:10px;padding:12px 16px;min-width:200px;max-width:260px;
+  font-family:'Press Start 2P',monospace;
+  box-shadow:0 0 24px rgba(0,229,255,0.1);
+}
+#hud-topright .hud-title{font-size:0.55rem;color:#00e5ff;letter-spacing:3px;margin-bottom:8px}
+.hud-quest{display:flex;align-items:flex-start;gap:6px;margin-bottom:6px;font-size:0.38rem;color:rgba(255,255,255,0.8);line-height:1.5}
+.hud-quest-dot{color:#00ff88;flex-shrink:0;margin-top:1px}
+
+#hud-bottom{
+  position:fixed;bottom:0;left:0;right:0;height:48px;z-index:150;
+  background:rgba(3,4,16,0.92);border-top:1px solid rgba(0,229,255,0.2);
+  display:flex;align-items:center;justify-content:space-between;padding:0 20px;
+  font-family:'Press Start 2P',monospace;
+}
+#hud-bottom-left{font-size:0.4rem;color:rgba(192,132,252,0.9);display:flex;gap:24px}
+#hud-bottom-left span{cursor:pointer;transition:color 0.2s}
+#hud-bottom-left span:hover{color:#c084fc}
+#hud-bottom-center{font-size:0.38rem;color:rgba(0,229,255,0.6);text-align:center;flex:1}
+#hud-bottom-right{}
+#hud-menu-btn{
+  font-family:'Press Start 2P',monospace;font-size:0.42rem;
+  background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.4);
+  color:#00e5ff;padding:6px 12px;border-radius:6px;cursor:pointer;
+  transition:all 0.2s;
+}
+#hud-menu-btn:hover{background:rgba(0,229,255,0.2);box-shadow:0 0 12px rgba(0,229,255,0.3)}
+
+/* Menu modal */
+#hud-menu-modal{
+  display:none;position:fixed;inset:0;z-index:300;
+  background:rgba(3,4,16,0.8);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;
+}
+#hud-menu-modal.open{display:flex}
+#hud-menu-inner{
+  background:rgba(3,4,16,0.97);border:1px solid rgba(0,229,255,0.3);
+  border-radius:16px;padding:32px;min-width:300px;
+  font-family:'Press Start 2P',monospace;
+}
+#hud-menu-inner h2{font-size:0.65rem;color:#00e5ff;letter-spacing:3px;margin-bottom:20px;text-align:center}
+.hud-menu-item{
+  display:block;width:100%;text-align:left;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+  color:var(--text);padding:10px 16px;border-radius:8px;cursor:pointer;
+  font-family:'Press Start 2P',monospace;font-size:0.42rem;margin-bottom:8px;
+  transition:all 0.2s;letter-spacing:1px;
+}
+.hud-menu-item:hover{background:rgba(0,229,255,0.1);border-color:rgba(0,229,255,0.3);color:#00e5ff}
+#hud-menu-close{color:rgba(0,229,255,0.5);text-align:center;cursor:pointer;font-size:0.45rem;margin-top:12px}
+#hud-menu-close:hover{color:#00e5ff}
+
+/* ── All old pages hidden (content moves to panel) ── */
+.page{display:none!important}
+
+/* ── Mobile HUD adjustments ── */
+@media(max-width:600px){
+  #hud-topleft,#hud-topright{font-size:0.8em;padding:8px 10px;min-width:0}
+  #hud-topleft{max-width:calc(50vw - 24px)}
+  #hud-topright{max-width:calc(50vw - 24px);right:8px}
+  #hud-topleft{left:8px;top:8px}
+  #hud-topright{top:8px}
+  #hud-bottom{padding:0 10px}
+  #hud-bottom-left{gap:10px;font-size:0.32rem}
+  #hud-bottom-center{display:none}
+}
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
 /* ─── AURORA BACKGROUND ─── */
@@ -1241,6 +1361,67 @@ header{
     </div>
     <div class="ob-body" id="ob-body"></div>
     <div class="ob-footer" id="ob-footer"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ GAME ROOT (fullscreen canvas) ══════════════════════ -->
+<div id="game-root">
+  <canvas id="kingdom-map-canvas-fullscreen"></canvas>
+</div>
+
+<!-- ══ HUD OVERLAYS ══ -->
+<div id="hud-topleft">
+  <div class="hud-title">KINGDOM OS <span class="hud-level" id="hud-level-badge">LVL 1</span></div>
+  <div id="hud-xp-bar"><div id="hud-xp-fill"></div></div>
+  <div id="hud-xp-label">XP 0 / 1,000</div>
+  <div id="hud-stats">
+    <span id="hud-gold">💰 £0.00 GOLD</span>
+    <span id="hud-agents">⚡ 0 AGENTS</span>
+  </div>
+</div>
+
+<div id="hud-topright">
+  <div class="hud-title">QUEST LOG</div>
+  <div id="hud-quests">
+    <div class="hud-quest"><span class="hud-quest-dot">●</span>Run Opportunity Scout</div>
+    <div class="hud-quest"><span class="hud-quest-dot">●</span>Log revenue entries</div>
+    <div class="hud-quest"><span class="hud-quest-dot">●</span>Advance quest: Recon Alpha</div>
+  </div>
+</div>
+
+<div id="hud-bottom">
+  <div id="hud-bottom-left">
+    <span onclick="openPanel('pitwall')">◆ PITWALL</span>
+    <span onclick="openPanel('pulsebreak')">◆ PULSEBREAK</span>
+  </div>
+  <div id="hud-bottom-center" id="hud-ticker">Loading…</div>
+  <div id="hud-bottom-right">
+    <button id="hud-menu-btn" onclick="openHudMenu()">⚔ MENU</button>
+  </div>
+</div>
+
+<!-- ══ SIDE PANEL ══ -->
+<div id="side-panel">
+  <button id="side-panel-close" onclick="closePanel()">✕</button>
+  <div id="side-panel-title">PANEL</div>
+  <div id="side-panel-body"></div>
+</div>
+
+<!-- ══ MENU MODAL ══ -->
+<div id="hud-menu-modal">
+  <div id="hud-menu-inner">
+    <h2>⚔ KINGDOM MENU</h2>
+    <button class="hud-menu-item" onclick="openPanel('overview');closeHudMenu()">💰 Treasury / Overview</button>
+    <button class="hud-menu-item" onclick="openPanel('pitwall');closeHudMenu()">🏎 Pitwall Classics</button>
+    <button class="hud-menu-item" onclick="openPanel('pulsebreak');closeHudMenu()">🎵 PulseBreak DnB</button>
+    <button class="hud-menu-item" onclick="openPanel('agents');closeHudMenu()">🤖 Agents</button>
+    <button class="hud-menu-item" onclick="openPanel('opportunities');closeHudMenu()">🎯 Opportunities</button>
+    <button class="hud-menu-item" onclick="openPanel('livery');closeHudMenu()">🏁 Livery Forge</button>
+    <button class="hud-menu-item" onclick="openPanel('intelligence');closeHudMenu()">🔮 Intelligence</button>
+    <button class="hud-menu-item" onclick="openPanel('command');closeHudMenu()">⚡ Command Centre</button>
+    <button class="hud-menu-item" onclick="openPanel('tools');closeHudMenu()">🔧 Tools</button>
+    <button class="hud-menu-item" onclick="openPanel('roadmap');closeHudMenu()">🗺 Roadmap</button>
+    <div id="hud-menu-close" onclick="closeHudMenu()">[ CLOSE ]</div>
   </div>
 </div>
 
@@ -2645,8 +2826,12 @@ let _canvasData = {};
 let activeDistrict = null;
 
 function initCanvas() {
-  const canvas = document.getElementById('kingdom-map-canvas');
+  // Use fullscreen canvas in game-root; fall back to old canvas
+  const canvas = document.getElementById('kingdom-map-canvas-fullscreen') ||
+                 document.getElementById('kingdom-map-canvas');
   if (!canvas) return;
+  // Ensure the fullscreen canvas fills its container
+  canvas.id = 'kingdom-map-canvas-fullscreen';
   KingdomISO.init(canvas);
 }
 // ── LEGACY CANVAS STUB (replaced by KingdomISO) ──
@@ -4871,6 +5056,121 @@ async function loadGoldStandard() {
     </div>`).join('');
 }
 
+/* ─── GAME PANEL SYSTEM ─── */
+const PANEL_TAB_LABELS = {
+  overview:      '💰 TREASURY',
+  pitwall:       '🏎 PITWALL CLASSICS',
+  pulsebreak:    '🎵 PULSEBREAK DnB',
+  agents:        '🤖 AGENTS',
+  opportunities: '🎯 OPPORTUNITIES',
+  livery:        '🏁 LIVERY FORGE',
+  intelligence:  '🔮 INTELLIGENCE',
+  command:       '⚡ COMMAND CENTRE',
+  tools:         '🔧 TOOLS',
+  roadmap:       '🗺 ROADMAP',
+};
+
+function openPanel(tab) {
+  const panel = document.getElementById('side-panel');
+  const titleEl = document.getElementById('side-panel-title');
+  const bodyEl  = document.getElementById('side-panel-body');
+  if (!panel) return;
+
+  titleEl.textContent = PANEL_TAB_LABELS[tab] || tab.toUpperCase();
+
+  // Clone content from the existing page div into the panel body
+  const srcPage = document.getElementById('page-' + tab);
+  if (srcPage) {
+    bodyEl.innerHTML = '';
+    // Get all children of the content-area inside the page
+    const contentArea = srcPage.querySelector('.content-area') || srcPage;
+    const clone = contentArea.cloneNode(true);
+    clone.style.padding = '0';
+    bodyEl.appendChild(clone);
+  } else {
+    bodyEl.innerHTML = '<div style="color:rgba(0,229,255,0.5);padding:20px;font-family:\'Press Start 2P\',monospace;font-size:0.55rem;text-align:center">Loading…</div>';
+  }
+
+  panel.classList.add('open');
+
+  // Trigger any lazy-load
+  if (tab === 'pitwall')       loadPitwallTab();
+  if (tab === 'pulsebreak')    loadPulsebreakTab();
+  if (tab === 'agents')        loadAgentsTab();
+  if (tab === 'opportunities') loadOpportunitiesTab();
+  if (tab === 'livery')        loadLiveryTab();
+  if (tab === 'intelligence')  loadIntelligenceTab();
+  if (tab === 'command')       loadCommandTab();
+  if (tab === 'tools')         loadToolsTab();
+  if (tab === 'roadmap')       loadGoldStandard();
+}
+
+function closePanel() {
+  const panel = document.getElementById('side-panel');
+  if (panel) panel.classList.remove('open');
+}
+
+// Close panel on Escape key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closePanel(); closeHudMenu(); }
+});
+
+function openHudMenu()  { const m = document.getElementById('hud-menu-modal'); if(m) m.classList.add('open'); }
+function closeHudMenu() { const m = document.getElementById('hud-menu-modal'); if(m) m.classList.remove('open'); }
+
+/* ─── HUD LOADER (XP / gold / agents) ─── */
+async function loadHUD() {
+  try {
+    const [overview, sched] = await Promise.all([
+      fetchJSON('/api/overview').catch(() => null),
+      fetchJSON('/scheduler/status').catch(() => null),
+    ]);
+
+    // Gold
+    const gold = overview?.revenue_today ?? overview?.monthly_revenue ?? 0;
+    const goldEl = document.getElementById('hud-gold');
+    if (goldEl) goldEl.textContent = '💰 £' + parseFloat(gold).toFixed(2) + ' GOLD';
+
+    // Agents
+    const jobs = sched?.jobs || [];
+    const activeCount = jobs.filter(j => j.status === 'running').length;
+    const totalCount  = jobs.length;
+    const agentsEl = document.getElementById('hud-agents');
+    if (agentsEl) agentsEl.textContent = `⚡ ${activeCount || totalCount} AGENTS`;
+
+    // XP / Level (cosmetic: based on active jobs and opportunities)
+    const opps = overview?.total_opportunities ?? 0;
+    const xpRaw = (opps * 50) + (totalCount * 100);
+    const level = Math.floor(xpRaw / 1000) + 1;
+    const xpInLevel = xpRaw % 1000;
+    const xpPct = (xpInLevel / 1000 * 100).toFixed(1);
+
+    const levelEl = document.getElementById('hud-level-badge');
+    if (levelEl) levelEl.textContent = 'LVL ' + level;
+    const fillEl = document.getElementById('hud-xp-fill');
+    if (fillEl) fillEl.style.width = xpPct + '%';
+    const xpLbl = document.getElementById('hud-xp-label');
+    if (xpLbl) xpLbl.textContent = `XP ${xpInLevel.toLocaleString()} / 1,000`;
+
+    // Quest log — populate from running agents
+    const questsEl = document.getElementById('hud-quests');
+    if (questsEl && jobs.length > 0) {
+      const quests = jobs.slice(0, 3).map(j =>
+        `<div class="hud-quest"><span class="hud-quest-dot">●</span>${j.name || j.id}</div>`
+      );
+      if (quests.length) questsEl.innerHTML = quests.join('');
+    }
+
+    // Bottom ticker
+    const tickerEl = document.getElementById('hud-ticker');
+    if (tickerEl) {
+      const now = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+      const runningName = jobs.find(j=>j.status==='running')?.name || 'IDLE';
+      tickerEl.textContent = `${now}  ◆  ${runningName.toUpperCase()}`;
+    }
+  } catch (_) {}
+}
+
 /* ─── BOOT ─── */
 document.addEventListener('DOMContentLoaded', () => {
   checkOnboarding();
@@ -4879,11 +5179,13 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAttribution();
   loadPipelineStatus();
   loadKpiStrip();
+  loadHUD();
   setTimeout(checkForUpdate, 5000);
   setInterval(loadOverview, 5*60*1000);
   setInterval(loadReminders, 90*1000);
   setInterval(loadPipelineStatus, 10*60*1000);
   setInterval(loadKpiStrip, 60*1000);
+  setInterval(loadHUD, 60*1000);
 
   // Chat enter key
   document.getElementById('chat-input')?.addEventListener('keydown', e => {

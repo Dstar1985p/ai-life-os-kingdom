@@ -1,7 +1,7 @@
 /**
  * Kingdom ISO — Isometric pixel-art game map for the Kingdom AI dashboard.
  * Renders 6 venture buildings in isometric 3-D with animated agent sprites,
- * speech bubbles, CRT scanlines, and a live revenue/agent HUD.
+ * speech bubbles, CRT scanlines, particle bursts, footprints, and agent badges.
  */
 var KingdomISO = (function () {
   'use strict';
@@ -26,26 +26,28 @@ var KingdomISO = (function () {
     { id: 'pitwall',    label: 'PITWALL',      col: 1, row: 1, cols: 2, rows: 2, color: '#ffb300', glow: 'rgba(255,179,0,0.4)',   tab: 'pitwall',    icon: '🏎' },
     { id: 'pulsebreak', label: 'PULSEBREAK',   col: 5, row: 0, cols: 2, rows: 2, color: '#c084fc', glow: 'rgba(192,132,252,0.4)', tab: 'pulsebreak', icon: '🎵' },
     { id: 'command',    label: 'COMMAND',       col: 8, row: 2, cols: 2, rows: 2, color: '#00e5ff', glow: 'rgba(0,229,255,0.4)',   tab: 'command',    icon: '⚔️' },
-    { id: 'printforge', label: 'PRINT FORGE',  col: 0, row: 4, cols: 2, rows: 2, color: '#fb923c', glow: 'rgba(251,146,60,0.4)', tab: 'pitwall',    icon: '🖨' },
-    { id: 'treasury',   label: 'TREASURY',     col: 4, row: 5, cols: 2, rows: 2, color: '#00ff88', glow: 'rgba(0,255,136,0.4)',  tab: 'overview',   icon: '💰' },
-    { id: 'livery',     label: 'LIVERY FORGE', col: 8, row: 5, cols: 2, rows: 2, color: '#ff3366', glow: 'rgba(255,51,102,0.4)', tab: 'livery',     icon: '🏁' },
+    { id: 'printforge', label: 'PRINT FORGE',  col: 0, row: 4, cols: 2, rows: 2, color: '#fb923c', glow: 'rgba(251,146,60,0.4)',  tab: 'pitwall',    icon: '🖨' },
+    { id: 'treasury',   label: 'TREASURY',     col: 4, row: 5, cols: 2, rows: 2, color: '#00ff88', glow: 'rgba(0,255,136,0.4)',   tab: 'overview',   icon: '💰' },
+    { id: 'livery',     label: 'LIVERY FORGE', col: 8, row: 5, cols: 2, rows: 2, color: '#ff3366', glow: 'rgba(255,51,102,0.4)',  tab: 'livery',     icon: '🏁' },
   ];
 
   // ── Agent types ────────────────────────────────────────────────────────────
   const AGENT_TYPES = [
-    { color: '#00e5ff', name: 'Scout' },
-    { color: '#ffb300', name: 'Forge' },
-    { color: '#c084fc', name: 'Vibes' },
-    { color: '#00ff88', name: 'Trade' },
+    { color: '#00e5ff', name: 'Scout'   },
+    { color: '#ffb300', name: 'Forge'   },
+    { color: '#c084fc', name: 'Vibes'   },
+    { color: '#00ff88', name: 'Trade'   },
+    { color: '#fb923c', name: 'Builder' },
+    { color: '#f472b6', name: 'Recon'   },
   ];
 
   // ── Speech-bubble messages ─────────────────────────────────────────────────
   const MESSAGES = [
     'Opportunity found!', 'Revenue +£12', 'Concept ready!',
-    'Listing drafted',   'Track analysed', 'Score: 8.5/10',
-    'Running scan…',     'Pattern match!', 'Art generated',
-    'Queue updated',     'Brief complete', 'Insight logged',
-    'Brief drafted',     'API call ✓',     'Task complete',
+    'Listing drafted',    'Track analysed', 'Score: 8.5/10',
+    'Running scan…',      'Pattern match!', 'Art generated',
+    'Queue updated',      'Brief complete', 'Insight logged',
+    'Brief drafted',      'API call ✓',     'Task complete',
   ];
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -54,6 +56,7 @@ var KingdomISO = (function () {
   let tick = 0;
   let agents = [];
   let bubbles = [];
+  let particles = [];   // burst particles
   let stars = null;
   let activeAgentData = [];
   let revenueToday = '—';
@@ -85,27 +88,28 @@ var KingdomISO = (function () {
   // ── Canvas sizing ──────────────────────────────────────────────────────────
   function getSize() {
     return {
-      w: parseInt(canvas.style.width)  || canvas.parentElement.clientWidth,
-      h: parseInt(canvas.style.height) || 420,
+      w: canvas.clientWidth  || canvas.offsetWidth  || 800,
+      h: canvas.clientHeight || canvas.offsetHeight || 600,
     };
   }
 
   function getOffset() {
-    const { w } = getSize();
-    return { x: w / 2, y: 65 };
+    const { w, h } = getSize();
+    // Center the map horizontally, push it down a bit from top
+    return { x: w / 2, y: h * 0.18 };
   }
 
   function resize() {
-    const parent = canvas.parentElement;
     const dpr = window.devicePixelRatio || 1;
-    const w = parent.clientWidth;
-    const h = w < 480 ? 280 : 420;
+    const parent = canvas.parentElement;
+    const w = parent ? parent.clientWidth  : window.innerWidth;
+    const h = parent ? parent.clientHeight : window.innerHeight;
     canvas.width  = w * dpr;
     canvas.height = h * dpr;
     canvas.style.width  = w + 'px';
     canvas.style.height = h + 'px';
     ctx.scale(dpr, dpr);
-    stars = null; // regenerate stars for new size
+    stars = null;
   }
 
   // ── Building geometry helpers ──────────────────────────────────────────────
@@ -121,7 +125,6 @@ var KingdomISO = (function () {
   function getBuildingCenter(b) {
     const off = getOffset();
     const c = buildingCorners(b);
-    // Average the four base corners for x; use top-left y minus half wall
     const cx = off.x + (c.tl.x + c.tr.x + c.bl.x + c.br.x) / 4;
     const cy = off.y + (c.tl.y + c.tr.y) / 2 - BH;
     return { x: cx, y: cy };
@@ -129,11 +132,10 @@ var KingdomISO = (function () {
 
   // ── Stars ──────────────────────────────────────────────────────────────────
   function ensureStars() {
-    const { w } = getSize();
     if (!stars) {
-      stars = Array.from({ length: 70 }, () => ({
-        x: Math.random(),   // 0-1 fractional, scaled to w
-        y: Math.random() * 90,
+      stars = Array.from({ length: 100 }, () => ({
+        x: Math.random(),
+        y: Math.random() * 0.45,
         r: 0.4 + Math.random() * 1.2,
         phase: Math.random() * Math.PI * 2,
       }));
@@ -142,12 +144,12 @@ var KingdomISO = (function () {
 
   function drawStars() {
     ensureStars();
-    const { w } = getSize();
+    const { w, h } = getSize();
     stars.forEach(s => {
       const alpha = 0.25 + 0.45 * Math.sin(tick * 0.03 + s.phase);
       ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(3)})`;
       ctx.beginPath();
-      ctx.arc(s.x * w, s.y, s.r, 0, Math.PI * 2);
+      ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
       ctx.fill();
     });
   }
@@ -183,12 +185,13 @@ var KingdomISO = (function () {
     const ox = off.x, oy = off.y;
 
     const isActive = b.active;
+    // Active buildings get a stronger pulsing glow cycling 20→40→20 over ~2s
+    const glowIntensity = isActive ? 20 + 20 * (0.5 + 0.5 * Math.sin(tick * 0.065)) : 0;
 
-    // Glow shadow
     if (isActive) {
       ctx.save();
       ctx.shadowColor = b.color;
-      ctx.shadowBlur = 22 + 8 * Math.sin(tick * 0.06);
+      ctx.shadowBlur = glowIntensity;
     }
 
     // LEFT face  (darkest)
@@ -253,6 +256,25 @@ var KingdomISO = (function () {
     ctx.shadowBlur = 12;
     ctx.fillText(b.label, center.x, center.y - 4);
     ctx.restore();
+
+    // Agent count badge above building
+    if (b.agentCount > 0) {
+      drawAgentBadge(center.x, center.y - 34, b.agentCount, b.color);
+    }
+  }
+
+  function drawAgentBadge(x, y, count, color) {
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    roundRect(ctx, x - 9, y - 9, 18, 14, 4);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.font = 'bold 7px "Press Start 2P", monospace';
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(count), x, y + 2);
+    ctx.restore();
   }
 
   function drawWindows(b, ox, oy, tr, br) {
@@ -270,10 +292,27 @@ var KingdomISO = (function () {
     }
   }
 
-  // ── Agent sprites ──────────────────────────────────────────────────────────
+  // ── Agent sprites & footprints ────────────────────────────────────────────
+  function drawFootprints(agent) {
+    const trail = agent.trail || [];
+    trail.forEach((pt, i) => {
+      const alpha = (i + 1) / trail.length * 0.35;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = agent.type.color;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
   function drawAgent(agent) {
     const { x, y, type } = agent;
-    const S = 5; // sprite size unit
+    const S = 5;
+
+    // Draw footprints first (behind agent)
+    drawFootprints(agent);
 
     ctx.save();
     ctx.shadowColor = type.color;
@@ -282,8 +321,8 @@ var KingdomISO = (function () {
     // Legs (animated walk cycle)
     const walk = Math.sin(tick * 0.22 + agent.id * 1.3) * 2.5;
     ctx.fillStyle = shadeColor(type.color, -25);
-    ctx.fillRect(x - S / 2,       y - S,     S / 2, S + walk);
-    ctx.fillRect(x,                y - S,     S / 2, S - walk);
+    ctx.fillRect(x - S / 2,  y - S,     S / 2, S + walk);
+    ctx.fillRect(x,           y - S,     S / 2, S - walk);
 
     // Body
     ctx.fillStyle = type.color;
@@ -306,15 +345,48 @@ var KingdomISO = (function () {
     ctx.restore();
   }
 
+  // ── Particles (burst on task completion) ─────────────────────────────────
+  function spawnBurst(x, y, color) {
+    for (let i = 0; i < 5; i++) {
+      const angle = (Math.PI * 2 * i) / 5 + Math.random() * 0.4;
+      const speed = 1.5 + Math.random() * 2.5;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1,
+        color,
+        life: 40 + Math.floor(Math.random() * 20),
+        maxLife: 60,
+      });
+    }
+  }
+
+  function updateAndDrawParticles() {
+    particles = particles.filter(p => {
+      p.x  += p.vx;
+      p.y  += p.vy;
+      p.vy += 0.08; // gravity
+      p.life--;
+      const alpha = p.life / p.maxLife;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return p.life > 0;
+    });
+  }
+
   // ── Speech bubbles ─────────────────────────────────────────────────────────
   function drawBubble(bubble) {
     const { x, y, text, life, maxLife } = bubble;
-    const fadeIn  = Math.min(1, life / 15);
-    const fadeOut = Math.min(1, (maxLife - life) / 15);  // fade out at end... wait, life counts DOWN
-    // life goes from maxLife → 0
-    const progress = 1 - life / maxLife;  // 0 → 1 as bubble ages
+    const progress = 1 - life / maxLife;
     const fadeAlpha = Math.min(progress * 5, 1) * Math.min((1 - progress) * 5, 1);
-    const dy = -progress * 18; // float upward
+    const dy = -progress * 18;
 
     ctx.save();
     ctx.globalAlpha = Math.max(0, fadeAlpha);
@@ -332,7 +404,6 @@ var KingdomISO = (function () {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Tail
     ctx.beginPath();
     ctx.moveTo(x - 4, by + bh);
     ctx.lineTo(x + 4, by + bh);
@@ -353,45 +424,16 @@ var KingdomISO = (function () {
   // ── Scanlines + vignette ───────────────────────────────────────────────────
   function drawCRT() {
     const { w, h } = getSize();
-    // Scanlines
     ctx.save();
     for (let yy = 0; yy < h; yy += 3) {
-      ctx.fillStyle = 'rgba(0,0,0,0.07)';
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
       ctx.fillRect(0, yy, w, 1);
     }
-    // Vignette
     const vg = ctx.createRadialGradient(w / 2, h / 2, h * 0.25, w / 2, h / 2, h * 0.85);
     vg.addColorStop(0, 'rgba(0,0,0,0)');
     vg.addColorStop(1, 'rgba(0,0,0,0.45)');
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, w, h);
-    ctx.restore();
-  }
-
-  // ── HUD overlay ────────────────────────────────────────────────────────────
-  function drawHUD() {
-    const { w } = getSize();
-    const activeCount = agents.filter(a => a.active).length;
-
-    ctx.save();
-    ctx.font = '7px "Press Start 2P", monospace';
-
-    // Left: title
-    ctx.fillStyle = 'rgba(0,229,255,0.7)';
-    ctx.textAlign = 'left';
-    ctx.fillText('KINGDOM OS v2.0', 12, 18);
-
-    // Right: agent count
-    ctx.fillStyle = '#00ff88';
-    ctx.textAlign = 'right';
-    ctx.fillText(`AGENTS: ${activeCount}/${agents.length}`, w - 12, 18);
-
-    // Revenue ticker bottom-left
-    ctx.font = '7px "Press Start 2P", monospace';
-    ctx.fillStyle = '#ffb300';
-    ctx.textAlign = 'left';
-    ctx.fillText(`REV TODAY: ${revenueToday}`, 12, parseInt(canvas.style.height) - 12);
-
     ctx.restore();
   }
 
@@ -413,20 +455,32 @@ var KingdomISO = (function () {
         active: true,
         bubbleTimer: Math.floor(Math.random() * 200),
         nextBubble: 180 + Math.floor(Math.random() * 350),
+        taskTimer: Math.floor(Math.random() * 300),
+        nextTask: (8 + Math.random() * 7) * 60, // 8-15s at ~60fps
+        trail: [],
       });
     }
   }
 
   function updateAgents() {
+    // Reset building agent counts
+    BUILDINGS.forEach(b => { b.agentCount = 0; });
+
     agents.forEach(agent => {
       agent.progress += agent.speed;
+
+      // Record footprint every 6 frames
+      if (tick % 6 === agent.id % 6) {
+        agent.trail = agent.trail || [];
+        agent.trail.push({ x: agent.x, y: agent.y });
+        if (agent.trail.length > 3) agent.trail.shift();
+      }
 
       if (agent.progress >= 1) {
         agent.progress = 0;
         agent.fromBuilding = agent.toBuilding;
         const others = BUILDINGS.filter(b => b.id !== agent.fromBuilding.id);
         agent.toBuilding = others[Math.floor(Math.random() * others.length)];
-        // Immediately pop a bubble on arrival
         agent.bubbleTimer = agent.nextBubble;
       }
 
@@ -435,6 +489,11 @@ var KingdomISO = (function () {
       const pos  = lerpPt(from, to, agent.progress);
       agent.x = pos.x;
       agent.y = pos.y;
+
+      // Count agent near destination building
+      if (agent.progress > 0.8) {
+        agent.toBuilding.agentCount = (agent.toBuilding.agentCount || 0) + 1;
+      }
 
       // Speech bubble
       agent.bubbleTimer++;
@@ -450,6 +509,14 @@ var KingdomISO = (function () {
         });
         agent.bubbleTimer = 0;
         agent.nextBubble = 160 + Math.floor(Math.random() * 320);
+      }
+
+      // Task completion burst
+      agent.taskTimer++;
+      if (agent.taskTimer >= agent.nextTask) {
+        spawnBurst(agent.x, agent.y, agent.type.color);
+        agent.taskTimer = 0;
+        agent.nextTask = (8 + Math.random() * 7) * 60;
       }
     });
 
@@ -481,7 +548,6 @@ var KingdomISO = (function () {
     tick++;
     const { w, h } = getSize();
 
-    // Clear
     ctx.clearRect(0, 0, w, h);
 
     // Background
@@ -499,12 +565,15 @@ var KingdomISO = (function () {
       b.active = activeAgentData.some(j => j.status === 'running');
     });
 
-    // Draw buildings back→front (lower col+row = further back in iso view)
+    // Draw buildings back→front
     const sorted = [...BUILDINGS].sort((a, b) => (a.col + a.row) - (b.col + b.row));
     sorted.forEach(b => drawBuilding(b));
 
     // Agents sorted by y (painter's algorithm)
     [...agents].sort((a, b) => a.y - b.y).forEach(a => drawAgent(a));
+
+    // Particles
+    updateAndDrawParticles();
 
     // Bubbles
     bubbles.forEach(b => drawBubble(b));
@@ -512,10 +581,7 @@ var KingdomISO = (function () {
     // CRT effects
     drawCRT();
 
-    // HUD
-    drawHUD();
-
-    // Update state
+    // Update agent state
     updateAgents();
 
     animFrame = requestAnimationFrame(loop);
@@ -532,8 +598,13 @@ var KingdomISO = (function () {
       const dx = mx - center.x;
       const dy = my - center.y;
       if (Math.abs(dx) < 55 && Math.abs(dy) < 45) {
-        if (b.tab && typeof showTab === 'function') {
-          showTab(b.tab);
+        if (b.tab) {
+          // Prefer the new slide-in panel; fall back to showTab
+          if (typeof openPanel === 'function') {
+            openPanel(b.tab);
+          } else if (typeof showTab === 'function') {
+            showTab(b.tab);
+          }
         }
         return;
       }
