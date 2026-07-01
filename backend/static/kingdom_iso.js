@@ -97,12 +97,14 @@ var KingdomISO = (function () {
     const { w, h } = getSize();
     const mapW = (GRID_COLS + GRID_ROWS) * (TW / 2);
     const mapH = (GRID_COLS + GRID_ROWS) * (TH / 2) + BH * 2;
-    // On mobile use more of the screen width; cap higher so buildings are big
-    const fillW = w < 600 ? 0.98 : 0.90;
-    const fillH = w < 600 ? 0.60 : 0.78;
-    const scaleX = (w * fillW) / mapW;
-    const scaleY = (h * fillH) / mapH;
-    return Math.min(scaleX, scaleY, 3.5);
+    if (w < 600) {
+      // Mobile: scale by height so buildings fill the screen vertically.
+      // The map will bleed off left/right edges — that's fine, game-style.
+      return Math.min((h * 0.72) / mapH, 1.6);
+    }
+    const scaleX = (w * 0.90) / mapW;
+    const scaleY = (h * 0.78) / mapH;
+    return Math.min(scaleX, scaleY, 2.8);
   }
 
   function getOffset() {
