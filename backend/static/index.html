@@ -996,8 +996,10 @@ header{
 .ios-banner-text{ flex:1;font-size:0.8rem;color:var(--text);line-height:1.5; }
 .ios-banner-text strong{ display:block;font-size:0.9rem;margin-bottom:2px; }
 .ios-banner-close{
-  background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;
-  padding:4px;-webkit-tap-highlight-color:transparent;
+  background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;
+  padding:12px;margin:-12px;-webkit-tap-highlight-color:transparent;
+  min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
 }
 
 /* PWA install button — better mobile sizing */
@@ -4762,7 +4764,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- iOS "Add to Home Screen" nudge (iOS Safari doesn't fire beforeinstallprompt) -->
 <div id="ios-install-banner">
   <img src="/apple-touch-icon.png" class="ios-banner-icon" alt="Kingdom">
-  <div class="ios-banner-text">
+  <div class="ios-banner-text" style="cursor:pointer" onclick="dismissIosBanner()">
     <strong>Add Kingdom to your Home Screen</strong>
     Tap <strong>⎙ Share</strong> then <strong>Add to Home Screen</strong> for the full app experience.
   </div>
