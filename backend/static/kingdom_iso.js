@@ -125,6 +125,7 @@ var KingdomISO = (function () {
     canvas.style.height = h + 'px';
     ctx.scale(dpr, dpr);
     stars = null;
+    shootingStars = null;
   }
 
   // ── Building geometry helpers ──────────────────────────────────────────────
@@ -146,13 +147,23 @@ var KingdomISO = (function () {
   }
 
   // ── Stars ──────────────────────────────────────────────────────────────────
+  let shootingStars = null;
+
   function ensureStars() {
     if (!stars) {
-      stars = Array.from({ length: 100 }, () => ({
+      stars = Array.from({ length: 150 }, () => ({
         x: Math.random(),
         y: Math.random() * 0.45,
-        r: 0.4 + Math.random() * 1.2,
+        r: 0.3 + Math.random() * 2.0,
         phase: Math.random() * Math.PI * 2,
+      }));
+    }
+    if (!shootingStars) {
+      shootingStars = Array.from({ length: 5 }, (_, i) => ({
+        phase: i * (1800 / 5), // stagger over 30s at 60fps
+        period: 1800,          // 30s cycle
+        y: 0.05 + Math.random() * 0.3,
+        angle: 0.3 + Math.random() * 0.3,
       }));
     }
   }
@@ -167,30 +178,103 @@ var KingdomISO = (function () {
       ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
       ctx.fill();
     });
+    // Shooting stars
+    shootingStars.forEach(ss => {
+      const t = ((tick + ss.phase) % ss.period) / ss.period;
+      if (t > 0.12) return; // only visible for ~12% of cycle
+      const progress = t / 0.12;
+      const tailLen = 120;
+      const sx = progress * (w + tailLen);
+      const sy = ss.y * h + sx * Math.tan(ss.angle);
+      const ex = sx - tailLen;
+      const ey = sy - tailLen * Math.tan(ss.angle);
+      const alpha = Math.min(progress * 5, 1) * (1 - progress);
+      const grad = ctx.createLinearGradient(ex, ey, sx, sy);
+      grad.addColorStop(0, `rgba(255,255,255,0)`);
+      grad.addColorStop(1, `rgba(255,255,255,${alpha.toFixed(3)})`);
+      ctx.save();
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(sx, sy);
+      ctx.stroke();
+      ctx.restore();
+    });
   }
 
   // ── Ground grid ────────────────────────────────────────────────────────────
   function drawGround() {
     const off = getOffset();
+    // Draw isometric grid lines instead of filled diamonds
+    ctx.strokeStyle = 'rgba(0,229,255,0.08)';
+    ctx.lineWidth = 0.5;
+    // Horizontal iso lines (constant row)
+    for (let r = 0; r <= GRID_ROWS; r++) {
+      ctx.beginPath();
+      const start = iso(0, r);
+      const end = iso(GRID_COLS, r);
+      ctx.moveTo(off.x + start.x, off.y + start.y);
+      ctx.lineTo(off.x + end.x, off.y + end.y);
+      ctx.stroke();
+    }
+    // Vertical iso lines (constant col)
     for (let c = 0; c <= GRID_COLS; c++) {
-      for (let r = 0; r <= GRID_ROWS; r++) {
+      ctx.beginPath();
+      const start = iso(c, 0);
+      const end = iso(c, GRID_ROWS);
+      ctx.moveTo(off.x + start.x, off.y + start.y);
+      ctx.lineTo(off.x + end.x, off.y + end.y);
+      ctx.stroke();
+    }
+    // Subtle pulsing intersection dots
+    for (let c = 0; c <= GRID_COLS; c += 2) {
+      for (let r = 0; r <= GRID_ROWS; r += 2) {
         const p = iso(c, r);
-        const x = off.x + p.x;
-        const y = off.y + p.y;
+        const alpha = 0.15 + 0.1 * Math.sin(tick * 0.04 + c + r);
+        ctx.fillStyle = `rgba(0,229,255,${alpha.toFixed(3)})`;
         ctx.beginPath();
-        ctx.moveTo(x,          y - TH / 2);
-        ctx.lineTo(x + TW / 2, y);
-        ctx.lineTo(x,          y + TH / 2);
-        ctx.lineTo(x - TW / 2, y);
-        ctx.closePath();
-        const even = (c + r) % 2 === 0;
-        ctx.fillStyle = even ? 'rgba(255,255,255,0.018)' : 'rgba(0,229,255,0.012)';
+        ctx.arc(off.x + p.x, off.y + p.y, 1.5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(0,229,255,0.055)';
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
       }
     }
+  }
+
+  // ── Road paths between buildings ──────────────────────────────────────────
+  function drawRoads() {
+    const ROADS = [
+      ['pitwall', 'printforge'],
+      ['pitwall', 'treasury'],
+      ['pulsebreak', 'command'],
+      ['treasury', 'livery'],
+    ];
+    ROADS.forEach(([aId, bId]) => {
+      const bA = BUILDINGS.find(b => b.id === aId);
+      const bB = BUILDINGS.find(b => b.id === bId);
+      if (!bA || !bB) return;
+      const cA = getBuildingCenter(bA);
+      const cB = getBuildingCenter(bB);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,229,255,0.12)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 8]);
+      ctx.beginPath();
+      ctx.moveTo(cA.x, cA.y + BH);
+      ctx.lineTo(cB.x, cB.y + BH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Moving packet
+      const t = (tick * 0.008) % 1;
+      const px = cA.x + (cB.x - cA.x) * t;
+      const py = cA.y + BH + (cB.y - cA.y) * t;
+      ctx.fillStyle = '#00e5ff';
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
   }
 
   // ── Buildings ──────────────────────────────────────────────────────────────
@@ -252,8 +336,64 @@ var KingdomISO = (function () {
 
     if (isActive) ctx.restore();
 
-    // Windows on RIGHT face
+    // Windows on RIGHT face (2×2 grid of flickering windows)
     drawWindows(b, ox, oy, tr, br);
+
+    // Door on LEFT face
+    {
+      const doorW = 8, doorH = 12;
+      // Centre of the left face bottom edge
+      const faceCx = ox + (bl.x + br.x) / 2;
+      const faceBotY = oy + (bl.y + br.y) / 2;
+      const dx = faceCx - doorW / 2;
+      const dy = faceBotY - doorH;
+      ctx.save();
+      ctx.fillStyle = shadeColor(b.color, -90);
+      ctx.fillRect(dx, dy, doorW, doorH);
+      ctx.strokeStyle = shadeColor(b.color, 30);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(dx, dy, doorW, doorH);
+      // Door arch
+      ctx.beginPath();
+      ctx.arc(faceCx, dy, doorW / 2, Math.PI, 0);
+      ctx.fillStyle = shadeColor(b.color, -90);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Roof detail: icon on top face centre
+    {
+      const topCx = ox + (tl.x + tr.x + bl.x + br.x) / 4;
+      const topCy = oy + (tl.y + tr.y + bl.y + br.y) / 4 - BH;
+      ctx.save();
+      ctx.font = '16px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 8;
+      ctx.fillText(b.icon, topCx, topCy);
+      ctx.restore();
+
+      // Antenna: thin line + blinking dot
+      const antX = topCx;
+      const antY = topCy - 8;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(200,200,200,0.6)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(antX, antY);
+      ctx.lineTo(antX, antY - 20);
+      ctx.stroke();
+      const blinkAlpha = 0.5 + 0.5 * Math.sin(tick * 0.1);
+      ctx.fillStyle = `rgba(255,80,80,${blinkAlpha.toFixed(3)})`;
+      ctx.shadowColor = 'red';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(antX, antY - 20, 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
     // Label above building
     const center = getBuildingCenter(b);
@@ -294,16 +434,21 @@ var KingdomISO = (function () {
 
   function drawWindows(b, ox, oy, tr, br) {
     const numW = b.cols;
-    for (let i = 0; i < numW; i++) {
-      const t = (i + 1) / (numW + 1);
-      const wx = ox + tr.x + (br.x - tr.x) * t;
-      const wy = oy + tr.y + (br.y - tr.y) * t - BH * 0.55;
-      const blink = (tick + i * 37 + b.col * 13) % 120 < 85;
-      ctx.fillStyle = blink ? 'rgba(0,229,255,0.85)' : 'rgba(0,229,255,0.18)';
-      ctx.shadowColor = '#00e5ff';
-      ctx.shadowBlur = blink ? 7 : 2;
-      ctx.fillRect(wx - 4, wy - 7, 8, 11);
-      ctx.shadowBlur = 0;
+    const numH = 2; // 2 rows of windows
+    for (let ci = 0; ci < numW; ci++) {
+      for (let ri = 0; ri < numH; ri++) {
+        const tx = (ci + 1) / (numW + 1);
+        const wx = ox + tr.x + (br.x - tr.x) * tx;
+        const wy = oy + tr.y + (br.y - tr.y) * tx - BH * (0.3 + ri * 0.35);
+        const winIdx = ci * numH + ri;
+        const lit = Math.sin(tick * 0.05 + winIdx * 2.1 + b.col) > -0.3;
+        ctx.save();
+        ctx.fillStyle = lit ? 'rgba(200,240,255,0.9)' : 'rgba(0,229,255,0.15)';
+        ctx.shadowColor = '#00e5ff';
+        ctx.shadowBlur = lit ? 7 : 2;
+        ctx.fillRect(wx - 4, wy - 4, 4, 4);
+        ctx.restore();
+      }
     }
   }
 
@@ -324,39 +469,59 @@ var KingdomISO = (function () {
 
   function drawAgent(agent) {
     const { x, y, type } = agent;
-    const S = 5;
 
     // Draw footprints first (behind agent)
     drawFootprints(agent);
 
+    const walk = Math.sin(tick * 0.18 + (agent.phase || agent.id));
+
     ctx.save();
     ctx.shadowColor = type.color;
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 8;
 
-    // Legs (animated walk cycle)
-    const walk = Math.sin(tick * 0.22 + agent.id * 1.3) * 2.5;
-    ctx.fillStyle = shadeColor(type.color, -25);
-    ctx.fillRect(x - S / 2,  y - S,     S / 2, S + walk);
-    ctx.fillRect(x,           y - S,     S / 2, S - walk);
+    // Shadow
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 1, 4, 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
-    // Body
+    // Legs (two 2×4 alternating)
+    ctx.fillStyle = shadeColor(type.color, -30);
+    const legSwing = walk * 2.5;
+    ctx.fillRect(x - 3, y - 4 + legSwing,  2, 4);
+    ctx.fillRect(x + 1, y - 4 - legSwing,  2, 4);
+
+    // Body (4×8)
+    ctx.fillStyle = shadeColor(type.color, -10);
+    ctx.fillRect(x - 2, y - 12, 4, 8);
+
+    // Arms (2×4 swinging on each side)
+    const armSwing = walk * 3;
     ctx.fillStyle = type.color;
-    ctx.fillRect(x - S / 2, y - S * 2.8, S, S * 1.6);
+    ctx.fillRect(x - 5, y - 11 + armSwing, 2, 4);
+    ctx.fillRect(x + 3,  y - 11 - armSwing, 2, 4);
 
-    // Head
+    // Head (6×6)
     ctx.fillStyle = shadeColor(type.color, 40);
-    ctx.fillRect(x - S / 2, y - S * 3.9, S, S * 1.1);
+    ctx.fillRect(x - 3, y - 18, 6, 6);
+
+    // Eyes
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillRect(x - 2, y - 17, 1, 1);
+    ctx.fillRect(x + 1, y - 17, 1, 1);
 
     ctx.restore();
 
-    // Name tag
+    // Name label above
     ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillRect(x - 18, y - S * 4 - 13, 36, 11);
-    ctx.fillStyle = type.color;
-    ctx.font = '6px "JetBrains Mono", monospace';
+    ctx.font = '8px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(type.name, x, y - S * 4 - 4);
+    ctx.fillStyle = type.color;
+    ctx.shadowColor = type.color;
+    ctx.shadowBlur = 6;
+    ctx.fillText(type.name, x, y - 22);
     ctx.restore();
   }
 
@@ -582,6 +747,9 @@ var KingdomISO = (function () {
     // Ground
     drawGround();
 
+    // Roads between buildings
+    drawRoads();
+
     // Mark active buildings
     BUILDINGS.forEach(b => {
       b.active = activeAgentData.some(j => j.status === 'running');
@@ -656,6 +824,7 @@ var KingdomISO = (function () {
     window.addEventListener('resize', () => {
       resize();
       stars = null;
+      shootingStars = null;
     });
   }
 

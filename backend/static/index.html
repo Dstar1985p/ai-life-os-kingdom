@@ -51,6 +51,7 @@ header,#app-header,.resources-bar,.nav-tabs,#ticker-wrap,#kpi-strip,.iso-map-car
   position:absolute;top:14px;right:16px;background:none;border:none;
   color:rgba(0,229,255,0.7);font-size:1.2rem;cursor:pointer;z-index:201;
   padding:4px 8px;border-radius:6px;transition:color 0.2s;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
 #side-panel-close:hover{color:#00e5ff}
 #side-panel-title{
@@ -67,9 +68,10 @@ header,#app-header,.resources-bar,.nav-tabs,#ticker-wrap,#kpi-strip,.iso-map-car
 #hud-topleft{
   position:fixed;top:16px;left:16px;z-index:150;
   background:rgba(3,4,16,0.88);border:1px solid rgba(0,229,255,0.3);
-  border-radius:10px;padding:12px 16px;min-width:220px;
+  border-radius:8px;padding:12px 16px;min-width:220px;
   font-family:'Press Start 2P',monospace;
-  box-shadow:0 0 24px rgba(0,229,255,0.1);
+  backdrop-filter:blur(12px);
+  box-shadow:0 0 20px rgba(0,229,255,0.15),inset 0 0 20px rgba(0,229,255,0.03);
 }
 #hud-topleft .hud-title{font-size:0.55rem;color:#00e5ff;letter-spacing:3px;margin-bottom:6px}
 #hud-topleft .hud-level{
@@ -86,9 +88,10 @@ header,#app-header,.resources-bar,.nav-tabs,#ticker-wrap,#kpi-strip,.iso-map-car
 #hud-topright{
   position:fixed;top:16px;right:16px;z-index:150;
   background:rgba(3,4,16,0.88);border:1px solid rgba(0,229,255,0.3);
-  border-radius:10px;padding:12px 16px;min-width:200px;max-width:260px;
+  border-radius:8px;padding:12px 16px;min-width:200px;max-width:260px;
   font-family:'Press Start 2P',monospace;
-  box-shadow:0 0 24px rgba(0,229,255,0.1);
+  backdrop-filter:blur(12px);
+  box-shadow:0 0 20px rgba(0,229,255,0.15),inset 0 0 20px rgba(0,229,255,0.03);
 }
 #hud-topright .hud-title{font-size:0.55rem;color:#00e5ff;letter-spacing:3px;margin-bottom:8px}
 .hud-quest{display:flex;align-items:flex-start;gap:6px;margin-bottom:6px;font-size:0.38rem;color:rgba(255,255,255,0.8);line-height:1.5}
@@ -1401,6 +1404,7 @@ header{
 </div>
 
 <!-- ══ SIDE PANEL ══ -->
+<div id="panel-backdrop" onclick="closePanel()" style="display:none;position:fixed;inset:0;z-index:199;background:rgba(0,0,0,0.4)"></div>
 <div id="side-panel">
   <button id="side-panel-close" onclick="closePanel()">✕</button>
   <div id="side-panel-title">PANEL</div>
@@ -5092,6 +5096,8 @@ function openPanel(tab) {
   }
 
   panel.classList.add('open');
+  document.getElementById('kingdom-map-canvas').style.pointerEvents = 'none';
+  document.getElementById('panel-backdrop').style.display = 'block';
 
   // Trigger any lazy-load
   if (tab === 'pitwall')       loadPitwallTab();
@@ -5108,6 +5114,8 @@ function openPanel(tab) {
 function closePanel() {
   const panel = document.getElementById('side-panel');
   if (panel) panel.classList.remove('open');
+  document.getElementById('kingdom-map-canvas').style.pointerEvents = 'auto';
+  document.getElementById('panel-backdrop').style.display = 'none';
 }
 
 // Close panel on Escape key
