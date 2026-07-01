@@ -1,43 +1,23 @@
-/* Kingdom AI Service Worker — v1.1 */
-const CACHE_NAME = 'kingdom-v2';
-const STATIC_ASSETS = [
-  '/', '/manifest.json',
-  '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png',
-  '/icon-192.svg', '/icon-512.svg',
-];
+/* Kingdom AI Service Worker — v1.2 */
+const CACHE_NAME = 'kingdom-v3';
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
+  // Delete ALL old caches on activate
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+      Promise.all(keys.map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-/* Network-first for API calls, cache-first for static assets */
+/* Network-first for everything — always serve fresh content */
 self.addEventListener('fetch', (e) => {
-  const url = new URL(e.request.url);
-
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/agents') ||
-      url.pathname.startsWith('/opportunities') || url.pathname.startsWith('/images')) {
-    // Network-first: always fresh data
-    e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
-    );
-    return;
-  }
-
-  // Cache-first for static shell
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request))
+    fetch(e.request).catch(() => caches.match(e.request))
   );
 });
 
@@ -50,8 +30,8 @@ self.addEventListener('push', (e) => {
   e.waitUntil(
     self.registration.showNotification(data.title || 'Kingdom AI', {
       body: data.body || 'New update from your Kingdom',
-      icon: '/icon-192.svg',
-      badge: '/icon-192.svg',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
       tag: data.tag || 'kingdom-general',
       renotify: true,
       data: { url: data.url || '/' },
