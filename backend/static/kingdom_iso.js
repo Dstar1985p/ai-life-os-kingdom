@@ -7,11 +7,11 @@ var KingdomISO = (function () {
   'use strict';
 
   // ── Isometric constants ────────────────────────────────────────────────────
-  const TW = 64;           // tile width  (diamond)
-  const TH = 32;           // tile height (diamond)
-  const BH = 48;           // building wall height in pixels
-  const GRID_COLS = 11;
-  const GRID_ROWS = 8;
+  const TW = 56;           // tile width  (diamond)
+  const TH = 28;           // tile height (diamond)
+  const BH = 44;           // building wall height in pixels
+  const GRID_COLS = 8;
+  const GRID_ROWS = 6;
 
   // ── Project grid → screen ─────────────────────────────────────────────────
   function iso(col, row) {
@@ -21,14 +21,14 @@ var KingdomISO = (function () {
     };
   }
 
-  // ── Building definitions ───────────────────────────────────────────────────
+  // ── Building definitions — 3×2 compact grid ───────────────────────────────
   const BUILDINGS = [
-    { id: 'pitwall',    label: 'PITWALL',      col: 1, row: 1, cols: 2, rows: 2, color: '#ff9500', glow: 'rgba(255,149,0,0.6)',   tab: 'pitwall',    icon: '🏎' },
-    { id: 'pulsebreak', label: 'PULSEBREAK',   col: 5, row: 0, cols: 2, rows: 2, color: '#bf5fff', glow: 'rgba(191,95,255,0.6)',  tab: 'pulsebreak', icon: '🎵' },
-    { id: 'command',    label: 'COMMAND',       col: 8, row: 2, cols: 2, rows: 2, color: '#00f0ff', glow: 'rgba(0,240,255,0.6)',   tab: 'command',    icon: '⚔️' },
-    { id: 'printforge', label: 'PRINT FORGE',  col: 0, row: 4, cols: 2, rows: 2, color: '#ff7020', glow: 'rgba(255,112,32,0.6)',  tab: 'pitwall',    icon: '🖨' },
-    { id: 'treasury',   label: 'TREASURY',     col: 4, row: 5, cols: 2, rows: 2, color: '#00ff66', glow: 'rgba(0,255,102,0.6)',   tab: 'overview',   icon: '💰' },
-    { id: 'livery',     label: 'LIVERY FORGE', col: 8, row: 5, cols: 2, rows: 2, color: '#ff1a4a', glow: 'rgba(255,26,74,0.6)',   tab: 'livery',     icon: '🏁' },
+    { id: 'pitwall',    label: 'PIT GARAGE',   col: 0, row: 0, cols: 2, rows: 2, color: '#ff9500', glow: 'rgba(255,149,0,0.6)',   tab: 'pitwall',    icon: '🏎' },
+    { id: 'pulsebreak', label: 'THE CLUB',      col: 3, row: 0, cols: 2, rows: 2, color: '#bf5fff', glow: 'rgba(191,95,255,0.6)',  tab: 'pulsebreak', icon: '🎵' },
+    { id: 'command',    label: 'COMMAND HQ',   col: 6, row: 0, cols: 2, rows: 2, color: '#00f0ff', glow: 'rgba(0,240,255,0.6)',   tab: 'command',    icon: '⚔️' },
+    { id: 'printforge', label: 'PRINT FORGE',  col: 0, row: 3, cols: 2, rows: 2, color: '#ff7020', glow: 'rgba(255,112,32,0.6)',  tab: 'pitwall',    icon: '🖨' },
+    { id: 'treasury',   label: 'THE BANK',     col: 3, row: 3, cols: 2, rows: 2, color: '#00ff66', glow: 'rgba(0,255,102,0.6)',   tab: 'overview',   icon: '💰' },
+    { id: 'livery',     label: 'WORKSHOP',     col: 6, row: 3, cols: 2, rows: 2, color: '#ff1a4a', glow: 'rgba(255,26,74,0.6)',   tab: 'livery',     icon: '🏁' },
   ];
 
   // ── Agent types ────────────────────────────────────────────────────────────
@@ -106,12 +106,10 @@ var KingdomISO = (function () {
     const { w, h } = getSize();
     const mapW = (GRID_COLS + GRID_ROWS) * (TW / 2);
     const mapH = (GRID_COLS + GRID_ROWS) * (TH / 2) + BH * 2;
-    if (w < 600) {
-      return Math.min((h * 0.72) / mapH, 1.6);
-    }
-    const scaleX = (w * 0.90) / mapW;
-    const scaleY = (h * 0.78) / mapH;
-    return Math.min(scaleX, scaleY, 2.8);
+    const usableH = h - 60; // HUD bar at bottom
+    const scaleX = (w * 0.94) / mapW;
+    const scaleY = (usableH * 0.82) / mapH;
+    return Math.min(scaleX, scaleY, 2.4);
   }
 
   function getOffset() {
@@ -419,19 +417,208 @@ var KingdomISO = (function () {
     ctx.restore();
   }
 
-  // ── Building-specific roof sign ────────────────────────────────────────────
+  // ── Per-building themed roof decorations ──────────────────────────────────
   function drawBuildingSign(b, ox, oy) {
     const { tl, tr, bl, br } = buildingCorners(b);
     const cx = ox + (tl.x + tr.x + bl.x + br.x) / 4;
     const cy = oy + (tl.y + tr.y + bl.y + br.y) / 4 - BH;
+    const { r, g, bv: bvx } = { r: parseInt(b.color.slice(1,3),16), g: parseInt(b.color.slice(3,5),16), bv: parseInt(b.color.slice(5,7),16) };
 
     ctx.save();
-    ctx.font = '14px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     ctx.shadowColor = b.color;
-    ctx.shadowBlur = 12 + 6 * Math.sin(tick * 0.08);
-    ctx.fillText(b.icon, cx, cy - 2);
+
+    if (b.id === 'pulsebreak') {
+      // Disco ball on roof
+      const blink = 0.5 + 0.5 * Math.sin(tick * 0.25);
+      ctx.shadowBlur = 18 * blink;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 6, 5, 0, Math.PI * 2);
+      ctx.fill();
+      // rotating coloured light rays
+      for (let i = 0; i < 6; i++) {
+        const a = (tick * 0.08) + (i * Math.PI / 3);
+        const hues = ['#ff00ff','#00ffff','#ffff00','#ff4488','#00ff88','#ff8800'];
+        ctx.strokeStyle = hues[i];
+        ctx.globalAlpha = 0.7;
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = hues[i];
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 6);
+        ctx.lineTo(cx + Math.cos(a) * 18, cy - 6 + Math.sin(a) * 9);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      // Neon club sign on face
+      ctx.font = 'bold 5px "Press Start 2P", monospace';
+      ctx.fillStyle = '#ff00ff';
+      ctx.shadowColor = '#ff00ff';
+      ctx.shadowBlur = 10 + 6 * blink;
+      ctx.textAlign = 'center';
+      ctx.fillText('CLUB', cx + 16, cy + 18);
+
+    } else if (b.id === 'treasury') {
+      // Bank pillars on left face
+      const faceL = ox + (bl.x + br.x) / 2 - 12;
+      const faceR = ox + (bl.x + br.x) / 2 + 12;
+      const faceBase = oy + (bl.y + br.y) / 2;
+      ctx.strokeStyle = '#00ff66';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 6;
+      for (let pi = 0; pi < 3; pi++) {
+        const px = faceL + pi * 12;
+        ctx.beginPath();
+        ctx.moveTo(px, faceBase);
+        ctx.lineTo(px, faceBase - BH * 0.7);
+        ctx.stroke();
+      }
+      // £ sign on roof
+      ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = '#00ff66';
+      ctx.shadowBlur = 14;
+      ctx.textAlign = 'center';
+      ctx.fillText('£', cx, cy - 2);
+      // vault door glow pulse
+      const vaultPulse = 0.6 + 0.4 * Math.sin(tick * 0.04);
+      ctx.globalAlpha = vaultPulse;
+      ctx.shadowColor = '#00ff66';
+      ctx.shadowBlur = 20;
+      ctx.strokeStyle = '#00ff66';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx + 14, cy + 14, 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+    } else if (b.id === 'pitwall') {
+      // Pit lane stripe + tyre stack
+      ctx.fillStyle = '#ff9500';
+      ctx.shadowBlur = 8;
+      // Chequered roof edge
+      for (let ci = 0; ci < 4; ci++) {
+        ctx.fillStyle = (ci % 2 === 0) ? '#ff9500' : '#fff';
+        ctx.fillRect(cx - 14 + ci * 7, cy - 14, 7, 5);
+      }
+      // Tyre stack on left face
+      const tyreX = ox + bl.x + 8;
+      const tyreY = oy + bl.y - BH * 0.3;
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 3;
+      ctx.shadowBlur = 0;
+      for (let ti = 0; ti < 2; ti++) {
+        ctx.beginPath();
+        ctx.arc(tyreX, tyreY + ti * 5, 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#222';
+        ctx.fill();
+      }
+
+    } else if (b.id === 'command') {
+      // Radar dish on roof
+      const a = tick * 0.05;
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 4);
+      ctx.lineTo(cx, cy - 16);
+      ctx.stroke();
+      // rotating sweep
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 10);
+      ctx.lineTo(cx + Math.cos(a) * 12, cy - 10 + Math.sin(a) * 6);
+      ctx.strokeStyle = `rgba(0,240,255,0.9)`;
+      ctx.stroke();
+      // dish arc
+      ctx.beginPath();
+      ctx.arc(cx, cy - 16, 8, Math.PI * 0.8, Math.PI * 2.2);
+      ctx.stroke();
+
+    } else if (b.id === 'printforge') {
+      // Chimneys on roof with smoke
+      for (let chi = 0; chi < 2; chi++) {
+        const chX = cx - 8 + chi * 16;
+        ctx.fillStyle = '#ff7020';
+        ctx.shadowBlur = 4;
+        ctx.fillRect(chX - 3, cy - 14, 6, 10);
+        // smoke puffs
+        const sp = ((tick * 0.3 + chi * 15) % 15);
+        ctx.globalAlpha = Math.max(0, 1 - sp / 15);
+        ctx.fillStyle = 'rgba(180,180,180,0.5)';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(chX, cy - 14 - sp, 3 + sp * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      // Gear on right face
+      const gearA = tick * 0.04;
+      const gearX = ox + (tr.x + br.x) / 2 + 4;
+      const gearY = oy + (tr.y + br.y) / 2 - BH * 0.5;
+      ctx.save();
+      ctx.translate(gearX, gearY);
+      ctx.rotate(gearA);
+      ctx.strokeStyle = '#ff7020';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#ff7020';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let ti = 0; ti < 6; ti++) {
+        const ta = (ti / 6) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ta) * 4, Math.sin(ta) * 4);
+        ctx.lineTo(Math.cos(ta) * 7, Math.sin(ta) * 7);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+    } else if (b.id === 'livery') {
+      // Chequered flag on roof
+      const flagWave = Math.sin(tick * 0.12) * 3;
+      const fStartX = cx - 10;
+      const fStartY = cy - 18;
+      // pole
+      ctx.strokeStyle = '#aaa';
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.moveTo(fStartX, fStartY);
+      ctx.lineTo(fStartX, fStartY + 16);
+      ctx.stroke();
+      // chequered squares
+      for (let fi = 0; fi < 3; fi++) {
+        for (let fj = 0; fj < 2; fj++) {
+          ctx.fillStyle = ((fi + fj) % 2 === 0) ? '#fff' : '#111';
+          const warp = Math.sin(tick * 0.1 + fi * 0.5) * 1.5;
+          ctx.fillRect(fStartX + fi * 5, fStartY - 12 + fj * 5 + warp, 5, 5);
+        }
+      }
+      // paint splash on right face
+      const splatX = ox + (tr.x + br.x) / 2 + 2;
+      const splatY = oy + (tr.y + br.y) / 2 - BH * 0.4;
+      ctx.shadowColor = '#ff1a4a';
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = '#ff1a4a';
+      ctx.beginPath();
+      ctx.arc(splatX, splatY, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(splatX + 6, splatY - 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Label below building (all buildings)
+    ctx.shadowColor = b.color;
+    ctx.shadowBlur = 8;
+    ctx.font = '6px "Press Start 2P", monospace';
+    ctx.fillStyle = b.color;
+    ctx.textAlign = 'center';
+    const lblY = oy + Math.max(bl.y, br.y) + 11;
+    ctx.fillText(b.label, ox + (bl.x + br.x) / 2, lblY);
     ctx.restore();
   }
 
@@ -576,18 +763,6 @@ var KingdomISO = (function () {
     });
     ctx.restore();
 
-    // ── BUILDING LABEL ──
-    const lblX = ox + (bl.x + br.x) / 2;
-    const lblY = oy + Math.max(bl.y, br.y) + 14;
-    ctx.save();
-    ctx.font = '7px "Press Start 2P", monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = b.color;
-    ctx.shadowColor = b.color;
-    ctx.shadowBlur = 8;
-    ctx.fillText(b.label, lblX, lblY);
-    ctx.restore();
-
     // ── AGENT COUNT BADGE ──
     const center = getBuildingCenter(b);
     if (b.agentCount > 0) {
@@ -617,17 +792,17 @@ var KingdomISO = (function () {
     ctx.restore();
   }
 
-  // ── Agent orbs ────────────────────────────────────────────────────────────
+  // ── Agent characters ──────────────────────────────────────────────────────
   function drawFootprints(agent) {
     const trail = agent.trail || [];
     const color = AGENT_TYPES[agent.typeIdx] ? AGENT_TYPES[agent.typeIdx].color : '#00e5ff';
     trail.forEach((pt, i) => {
-      const alpha = (i + 1) / trail.length * 0.35;
+      const alpha = (i + 1) / trail.length * 0.4;
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.fillStyle = color;
       ctx.shadowColor = color;
-      ctx.shadowBlur = 4;
+      ctx.shadowBlur = 5;
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
       ctx.fill();
@@ -640,78 +815,281 @@ var KingdomISO = (function () {
     const typeIdx = agent.typeIdx !== undefined ? agent.typeIdx : (agent.id % AGENT_TYPES.length);
     const agType = AGENT_TYPES[typeIdx];
     const phase = agent.phase || agent.id || 0;
+    const walk = Math.sin(tick * 0.18 + phase);
+    const bob  = Math.sin(tick * 0.12 + phase) * 1.5;
 
     drawFootprints(agent);
 
-    const bob = Math.sin(tick * 0.12 + phase) * 2.5;
-    const ay = y + bob - 8;
-
-    const { r, g, b } = hexToRgb(agType.color);
-
     ctx.save();
+    ctx.shadowColor = agType.color;
+    ctx.shadowBlur = 10;
 
-    // Shadow ellipse on ground
-    ctx.globalAlpha = 0.25;
+    // Ground shadow
+    ctx.globalAlpha = 0.3;
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.ellipse(x, y, 8, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y + 1, 7, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Outer glow halo
-    const outerGlow = ctx.createRadialGradient(x, ay, 0, x, ay, 14);
-    outerGlow.addColorStop(0,   `rgba(${r},${g},${b},0.4)`);
-    outerGlow.addColorStop(0.5, `rgba(${r},${g},${b},0.15)`);
-    outerGlow.addColorStop(1,   `rgba(${r},${g},${b},0)`);
-    ctx.fillStyle = outerGlow;
-    ctx.beginPath();
-    ctx.arc(x, ay, 14, 0, Math.PI * 2);
-    ctx.fill();
+    const ay = y + bob;
 
-    // Core orb
-    const coreGrad = ctx.createRadialGradient(x - 2, ay - 2, 0, x, ay, 7);
-    coreGrad.addColorStop(0,   'rgba(255,255,255,0.95)');
-    coreGrad.addColorStop(0.3, `rgba(${Math.min(255, r + 80)},${Math.min(255, g + 80)},${Math.min(255, b + 80)},0.9)`);
-    coreGrad.addColorStop(1,   `rgba(${r},${g},${b},0.8)`);
-    ctx.shadowColor = agType.color;
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = coreGrad;
-    ctx.beginPath();
-    ctx.arc(x, ay, 7, 0, Math.PI * 2);
-    ctx.fill();
+    switch (typeIdx) {
+      case 0: _drawDriver(x, ay, walk); break;    // Pitwall — Racing Driver
+      case 1: _drawDJ(x, ay, walk); break;         // PulseBreak — DJ
+      case 2: _drawCommander(x, ay, walk); break;  // Command — Commander
+      case 3: _drawForger(x, ay, walk); break;     // PrintForge — Forge Worker
+      case 4: _drawMerchant(x, ay, walk); break;   // Treasury — Merchant
+      case 5: _drawEngineer(x, ay, walk); break;   // Livery — Engineer
+      default: _drawDriver(x, ay, walk); break;
+    }
 
-    // Orbiting ring (flattened to isometric)
-    const ringAngle = tick * 0.06 + phase;
-    ctx.strokeStyle = `rgba(${r},${g},${b},0.6)`;
-    ctx.lineWidth = 1;
-    ctx.shadowBlur = 6;
-    ctx.save();
-    ctx.translate(x, ay);
-    ctx.rotate(ringAngle);
-    ctx.scale(1, 0.35);
-    ctx.beginPath();
-    ctx.arc(0, 0, 11, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // Moving dot on ring
-    const dotX = x + Math.cos(ringAngle) * 11;
-    const dotY = ay + Math.sin(ringAngle) * 11 * 0.35;
-    ctx.fillStyle = '#fff';
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    ctx.arc(dotX, dotY, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Name label
-    ctx.font = '6px "Press Start 2P", monospace';
+    // Name label with glow
+    ctx.font = '5px "Press Start 2P", monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = agType.color;
     ctx.shadowColor = agType.color;
-    ctx.shadowBlur = 6;
-    ctx.fillText(agType.name, x, ay - 18);
+    ctx.shadowBlur = 8;
+    ctx.fillText(agType.name, x, ay - 22);
 
     ctx.restore();
+  }
+
+  function _drawDriver(x, y, walk) {
+    // Legs
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x - 3, y - 4 + walk * 2, 2.5, 5);
+    ctx.fillRect(x + 1, y - 4 - walk * 2, 2.5, 5);
+    // Racing suit (white + amber stripe)
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(x - 4, y - 14, 8, 10);
+    ctx.fillStyle = '#ff9500';
+    ctx.fillRect(x - 1, y - 14, 2, 10);
+    // Arms
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(x - 7, y - 13 + walk * 2.5, 2.5, 5);
+    ctx.fillRect(x + 4, y - 13 - walk * 2.5, 2.5, 5);
+    // Helmet (orange, neon glow)
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = '#ff6600';
+    ctx.beginPath();
+    ctx.arc(x, y - 19, 6, 0, Math.PI * 2);
+    ctx.fill();
+    // Visor
+    ctx.fillStyle = '#001a2e';
+    ctx.fillRect(x - 5, y - 21, 10, 3);
+  }
+
+  function _drawDJ(x, y, walk) {
+    const armRaise = Math.sin(tick * 0.22) * 5;
+    // Legs
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x - 3, y - 4 + walk * 2, 2.5, 5);
+    ctx.fillRect(x + 1, y - 4 - walk * 2, 2.5, 5);
+    // Dark body
+    ctx.fillStyle = '#1a0033';
+    ctx.fillRect(x - 4, y - 14, 8, 10);
+    // Lightning bolt chest
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#c084fc';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(x + 1, y - 14); ctx.lineTo(x - 1, y - 9);
+    ctx.lineTo(x + 1, y - 9); ctx.lineTo(x - 1, y - 4);
+    ctx.stroke();
+    // Arms — right arm raised
+    ctx.fillStyle = '#f4a460';
+    ctx.fillRect(x - 7, y - 13 + walk * 2, 2, 5);
+    ctx.fillRect(x + 5, y - 13 - armRaise, 2, 5);
+    // Head
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#f4a460';
+    ctx.fillRect(x - 4, y - 24, 8, 9);
+    // Headphones arc
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#c084fc';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(x, y - 23, 6, Math.PI, 0);
+    ctx.stroke();
+    // Cups
+    ctx.fillStyle = '#c084fc';
+    ctx.fillRect(x - 8, y - 25, 3, 4);
+    ctx.fillRect(x + 5, y - 25, 3, 4);
+    // Music note floating
+    const noteY = y - 30 - Math.abs(Math.sin(tick * 0.1)) * 5;
+    ctx.font = '8px serif';
+    ctx.fillStyle = '#c084fc';
+    ctx.shadowBlur = 8;
+    ctx.textAlign = 'center';
+    ctx.fillText('♪', x + 8, noteY);
+  }
+
+  function _drawCommander(x, y, walk) {
+    const capeSway = Math.sin(tick * 0.06) * 3;
+    // Cape
+    ctx.fillStyle = '#0a1a5a';
+    ctx.beginPath();
+    ctx.moveTo(x - 3, y - 12);
+    ctx.lineTo(x + 3, y - 12);
+    ctx.lineTo(x + capeSway, y + 1);
+    ctx.closePath();
+    ctx.fill();
+    // Legs
+    ctx.fillStyle = '#003355';
+    ctx.fillRect(x - 3, y - 4 + walk * 2, 2.5, 5);
+    ctx.fillRect(x + 1, y - 4 - walk * 2, 2.5, 5);
+    // Armour body
+    ctx.fillStyle = '#0d2233';
+    ctx.fillRect(x - 3, y - 13, 6, 9);
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 1;
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = 8;
+    ctx.strokeRect(x - 3, y - 13, 6, 9);
+    // Shoulder plates
+    ctx.fillStyle = '#004466';
+    ctx.fillRect(x - 7, y - 13, 14, 4);
+    // Arms
+    ctx.fillStyle = '#004466';
+    ctx.fillRect(x - 7, y - 11 + walk * 2, 2, 5);
+    ctx.fillRect(x + 5, y - 11 - walk * 2, 2, 5);
+    // Helmet
+    ctx.fillStyle = '#00e5ff';
+    ctx.shadowColor = '#00e5ff';
+    ctx.shadowBlur = 12;
+    ctx.fillRect(x - 5, y - 24, 10, 10);
+    // T-visor
+    ctx.fillStyle = '#001a22';
+    ctx.fillRect(x - 4, y - 21, 8, 3);
+    ctx.fillRect(x - 1, y - 24, 2, 8);
+  }
+
+  function _drawForger(x, y, walk) {
+    // Legs
+    ctx.fillStyle = '#1a2233';
+    ctx.fillRect(x - 4, y - 4 + walk * 2, 3, 5);
+    ctx.fillRect(x + 1, y - 4 - walk * 2, 3, 5);
+    // Boilersuit
+    ctx.fillStyle = '#1a2233';
+    ctx.fillRect(x - 4, y - 14, 8, 10);
+    // Hi-vis stripe
+    ctx.fillStyle = '#fb923c';
+    ctx.fillRect(x - 4, y - 10, 8, 3);
+    // Arms
+    ctx.fillStyle = '#1a2233';
+    ctx.fillRect(x - 8, y - 13 + walk * 2, 3, 5);
+    ctx.fillRect(x + 5, y - 13 - walk * 2, 3, 5);
+    // Wrench in right hand
+    ctx.fillStyle = '#bbb';
+    ctx.fillRect(x + 8, y - 15, 4, 2);
+    ctx.fillRect(x + 9, y - 17, 2, 5);
+    // Face
+    ctx.fillStyle = '#f4a460';
+    ctx.fillRect(x - 4, y - 22, 8, 7);
+    // Hard hat (orange)
+    ctx.fillStyle = '#fb923c';
+    ctx.shadowColor = '#fb923c';
+    ctx.shadowBlur = 10;
+    ctx.fillRect(x - 5, y - 26, 10, 5);
+    ctx.fillRect(x - 7, y - 22, 14, 2); // brim
+  }
+
+  function _drawMerchant(x, y, walk) {
+    const coinBounce = Math.abs(Math.sin(tick * 0.2)) * 4;
+    // Legs
+    ctx.fillStyle = '#1a3322';
+    ctx.fillRect(x - 3, y - 4 + walk * 2, 2.5, 5);
+    ctx.fillRect(x + 1, y - 4 - walk * 2, 2.5, 5);
+    // Coat
+    ctx.fillStyle = '#0d2218';
+    ctx.fillRect(x - 3, y - 14, 6, 10);
+    // Gold buttons
+    ctx.fillStyle = '#ffb300';
+    [y - 13, y - 9, y - 5].forEach(by => {
+      ctx.beginPath();
+      ctx.arc(x, by, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    // Arms
+    ctx.fillStyle = '#0d2218';
+    ctx.fillRect(x - 6, y - 13 + walk * 2, 2, 5);
+    ctx.fillRect(x + 4, y - 13 - walk * 2, 2, 5);
+    // Bouncing coin
+    ctx.fillStyle = '#ffb300';
+    ctx.shadowColor = '#ffb300';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(x + 8, y - 12 - coinBounce, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#a07800';
+    ctx.font = 'bold 5px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('£', x + 8, y - 10 - coinBounce);
+    // Face
+    ctx.fillStyle = '#c8a882';
+    ctx.shadowBlur = 0;
+    ctx.fillRect(x - 4, y - 26, 8, 8);
+    // Top hat
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x - 4, y - 37, 8, 11);
+    ctx.fillRect(x - 6, y - 27, 12, 3);
+    // Monocle
+    ctx.strokeStyle = '#ffb300';
+    ctx.lineWidth = 1;
+    ctx.shadowColor = '#ffb300';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(x + 1, y - 20, 2.5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  function _drawEngineer(x, y, walk) {
+    const flagWave = Math.sin(tick * 0.18) * 4;
+    // Legs
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(x - 3, y - 4 + walk * 2, 2.5, 5);
+    ctx.fillRect(x + 1, y - 4 - walk * 2, 2.5, 5);
+    // Red jumpsuit
+    ctx.fillStyle = '#cc0033';
+    ctx.fillRect(x - 4, y - 14, 8, 10);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 6px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('1', x, y - 6);
+    // Arms
+    ctx.fillStyle = '#cc0033';
+    ctx.fillRect(x - 7, y - 13 + walk * 2, 2, 5);
+    ctx.fillRect(x + 5, y - 17, 2, 5); // raised arm
+    // Clipboard in left hand
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(x - 10, y - 13, 5, 6);
+    ctx.strokeStyle = '#999';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(x - 10, y - 13, 5, 6);
+    // Flag pole
+    ctx.fillStyle = '#888';
+    ctx.fillRect(x + 7, y - 26, 1.5, 10);
+    // Chequered flag
+    for (let fi = 0; fi < 3; fi++) {
+      for (let fj = 0; fj < 2; fj++) {
+        ctx.fillStyle = ((fi + fj) % 2 === 0) ? '#fff' : '#111';
+        ctx.fillRect(x + 8 + fi * 3 + flagWave * (fj * 0.3), y - 28 + fj * 3, 3, 3);
+      }
+    }
+    // Face
+    ctx.fillStyle = '#f4a460';
+    ctx.shadowBlur = 0;
+    ctx.fillRect(x - 4, y - 22, 8, 7);
+    // Red cap
+    ctx.fillStyle = '#cc0033';
+    ctx.shadowColor = '#cc0033';
+    ctx.shadowBlur = 8;
+    ctx.fillRect(x - 5, y - 26, 10, 5);
+    ctx.fillStyle = '#991122';
+    ctx.fillRect(x - 6, y - 22, 9, 2); // brim
   }
 
   // ── Ambient Particles ─────────────────────────────────────────────────────
