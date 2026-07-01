@@ -4580,24 +4580,6 @@ function pwaInstall() {
   _pwaInstallPrompt.userChoice.then(() => { _pwaInstallPrompt = null; });
 }
 
-/* ─── iOS INSTALL NUDGE ─── */
-(function() {
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isStandalone = window.navigator.standalone === true;
-  const dismissed = localStorage.getItem('ios-banner-dismissed');
-  if (isIos && !isStandalone && !dismissed) {
-    // Show after a short delay so the page loads first
-    setTimeout(() => {
-      const banner = document.getElementById('ios-install-banner');
-      if (banner) banner.classList.add('show');
-    }, 3000);
-  }
-})();
-function dismissIosBanner() {
-  const banner = document.getElementById('ios-install-banner');
-  if (banner) banner.classList.remove('show');
-  localStorage.setItem('ios-banner-dismissed', '1');
-}
 
 /* ─── PIPELINE STATUS ─── */
 async function loadPipelineStatus() {
@@ -4774,15 +4756,6 @@ document.addEventListener('DOMContentLoaded', () => {
   📲 Add to Home Screen
 </div>
 
-<!-- iOS "Add to Home Screen" nudge (iOS Safari doesn't fire beforeinstallprompt) -->
-<div id="ios-install-banner">
-  <img src="/apple-touch-icon.png" class="ios-banner-icon" alt="Kingdom">
-  <div class="ios-banner-text" style="cursor:pointer" onclick="dismissIosBanner()">
-    <strong>Add Kingdom to your Home Screen</strong>
-    Tap <strong>⎙ Share</strong> then <strong>Add to Home Screen</strong> for the full app experience.
-  </div>
-  <button class="ios-banner-close" onclick="dismissIosBanner()" aria-label="Dismiss">✕</button>
-</div>
 
 </body>
 </html>
