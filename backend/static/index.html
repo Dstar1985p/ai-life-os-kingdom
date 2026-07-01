@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Kingdom">
 <link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <!-- iOS home screen icons (must be PNG — iOS Safari ignores SVG) -->
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -1074,9 +1076,11 @@ header{
 
 /* ─── MOBILE DASHBOARD TIDY ─── */
 @media(max-width:768px){
-  /* Hide kingdom map canvas — too small to be useful on phone */
-  #kingdom-map-canvas{ display:none; }
-  .card:has(#kingdom-map-canvas){ display:none; }
+  /* ISO map: hide on narrow phones (< 480px), show on tablets */
+  @media(max-width:480px){
+    #kingdom-map-canvas{ display:none; }
+    .iso-map-card{ display:none; }
+  }
 
   /* District grid: 2 columns on phone */
   .district-grid{ grid-template-columns:repeat(2,1fr); gap:8px; }
@@ -1379,7 +1383,21 @@ header{
   </div>
   <!-- Hidden kingdom-map (kept for JS) -->
   <div id="kingdom-map" style="display:none"></div>
-  <div id="kingdom-world" style="display:none"><canvas id="kingdom-map-canvas"></canvas></div>
+
+  <!-- ══ ISOMETRIC KINGDOM MAP ══ -->
+  <div class="card iso-map-card" style="padding:0;overflow:hidden;margin-bottom:16px;background:#030410;border-color:rgba(0,229,255,0.15)">
+    <div style="padding:12px 16px;border-bottom:1px solid rgba(0,229,255,0.1);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="card-icon" style="background:linear-gradient(135deg,#0a0d1a,#030410);font-size:1rem">⚔️</div>
+        <div>
+          <div class="card-title" style="font-family:'Press Start 2P',monospace;font-size:0.6rem;letter-spacing:2px">KINGDOM MAP</div>
+          <div class="card-subtitle" id="map-subtitle">Live agent activity</div>
+        </div>
+      </div>
+      <div style="font-family:'Press Start 2P',monospace;font-size:0.55rem;color:var(--green)" id="iso-agent-counter">— AGENTS</div>
+    </div>
+    <canvas id="kingdom-map-canvas" style="display:block;width:100%;cursor:pointer"></canvas>
+  </div>
 
   <!-- MAIN 2-COL: Daily Mission + Agent Scheduler -->
   <div class="overview-main-grid">
@@ -2629,7 +2647,11 @@ let activeDistrict = null;
 function initCanvas() {
   const canvas = document.getElementById('kingdom-map-canvas');
   if (!canvas) return;
-  const ctx = canvas.getContext('2d');
+  KingdomISO.init(canvas);
+}
+// ── LEGACY CANVAS STUB (replaced by KingdomISO) ──
+function _legacyCanvas_unused() {
+  const ctx = null;
   const LW = 900, LH = 240;
   const dpr = window.devicePixelRatio || 1;
 
@@ -4869,6 +4891,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+
+<script src="/static/kingdom_iso.js"></script>
 
 <!-- PWA Install Button (Android Chrome — beforeinstallprompt) -->
 <div id="pwa-install-btn" onclick="pwaInstall()" style="display:none;position:fixed;bottom:80px;right:20px;z-index:999;background:linear-gradient(135deg,#00ff88,#00ccff);color:#000;border:none;border-radius:12px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,255,136,0.4)">
