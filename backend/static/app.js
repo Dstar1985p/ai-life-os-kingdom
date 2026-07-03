@@ -2405,17 +2405,17 @@ async function loadGoldStandard() {
 
 /* ─── GAME PANEL SYSTEM ─── */
 const PANEL_TAB_LABELS = {
-  today:         '★ TODAY — NEEDS YOU',
-  overview:      '💰 TREASURY',
-  pitwall:       '🏎 PITWALL CLASSICS',
-  pulsebreak:    '🎵 PULSEBREAK DnB',
-  agents:        '🤖 AGENTS',
-  opportunities: '🎯 OPPORTUNITIES',
-  livery:        '🏁 LIVERY FORGE',
-  intelligence:  '🔮 INTELLIGENCE',
-  command:       '⚡ COMMAND CENTRE',
-  tools:         '🔧 TOOLS',
-  roadmap:       '🗺 ROADMAP',
+  today:         'Today — needs you',
+  overview:      'Treasury',
+  pitwall:       'Pitwall Classics',
+  pulsebreak:    'PulseBreak DnB',
+  agents:        'Agents',
+  opportunities: 'Opportunities',
+  livery:        'Livery Forge',
+  intelligence:  'Intelligence',
+  command:       'Command Centre',
+  tools:         'Tools',
+  roadmap:       'Roadmap',
 };
 
 // Track which page div is currently live in the panel
