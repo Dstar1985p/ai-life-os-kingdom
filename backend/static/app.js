@@ -766,7 +766,7 @@ async function loadReviewQueue() {
         <div class="track-title">${name}</div>
         <div class="track-genre">${t.sub_genre||t.genre||'DnB'} · ${t.bpm||'?'} BPM</div>
         <div class="track-meta">Quality: ${t.quality_score??'pending'}${t.duration_secs?` · ${Math.round(t.duration_secs)}s`:''}</div>
-        <audio controls preload="none" style="width:100%;height:36px;margin:8px 0 4px" src="/vibes/review/${encodeURIComponent(name)}/audio"></audio>
+        <audio controls preload="none" data-track="${name}" onplay="onReviewAudioPlay(this)" onpause="onReviewAudioStop(this)" onended="onReviewAudioStop(this)" style="width:100%;height:36px;margin:8px 0 4px" src="/vibes/review/${encodeURIComponent(name)}/audio"></audio>
         <div class="track-actions">
           <button class="btn btn-green btn-xs" onclick="approveTrack('${name}',this)">✓ Approve</button>
           <button class="btn btn-red btn-xs" onclick="rejectTrack('${name}',this)">✗ Reject</button>
@@ -2612,6 +2612,7 @@ function closePanel() {
   document.getElementById('kingdom-map-canvas').style.pointerEvents = 'auto';
   document.getElementById('panel-backdrop').style.display = 'none';
   stopVisDemo();
+  if (typeof stopAllAudio === 'function') stopAllAudio();
 }
 
 /* ─── AUDIO VISUALISER ─── */
@@ -3159,4 +3160,45 @@ async function copyDnaPrompt(i, btn) {
   if (!el) return;
   try { await navigator.clipboard.writeText(el.textContent); btn.textContent = 'Copied!'; }
   catch(_) { btn.textContent = 'Failed'; }
+}
+
+
+/* ─── NOW PLAYING MINI-PLAYER ───
+   Only one review track plays at a time; a sticky bar shows what's playing
+   with a big stop button that always works. */
+function onReviewAudioPlay(el) {
+  document.querySelectorAll('audio[data-track]').forEach(a => { if (a !== el) a.pause(); });
+  let bar = document.getElementById('now-playing-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'now-playing-bar';
+    bar.style.cssText = 'position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;' +
+      'background:rgba(3,4,16,0.97);border:1px solid #00e5ff;border-radius:10px;padding:10px 12px;' +
+      'margin-bottom:10px;box-shadow:0 0 18px rgba(0,229,255,0.3)';
+    const body = document.getElementById('side-panel-body');
+    if (body) body.prepend(bar);
+  }
+  bar.innerHTML = `
+    <span style="font-size:1.1rem;animation:pulse 1s infinite">🎧</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:0.62rem;color:var(--muted);letter-spacing:1px">NOW PLAYING</div>
+      <div style="font-size:0.8rem;font-weight:700;color:#00e5ff;overflow-wrap:anywhere">${escapeHtml(el.dataset.track||'Track')}</div>
+    </div>
+    <button onclick="stopAllAudio()" style="min-width:44px;min-height:44px;border-radius:10px;border:1.5px solid #ff5555;background:rgba(255,85,85,0.15);color:#ff5555;font-size:1rem;cursor:pointer">⏹</button>`;
+  bar.style.display = 'flex';
+}
+
+function onReviewAudioStop() {
+  // Hide the bar only if nothing is still playing
+  const playing = [...document.querySelectorAll('audio[data-track]')].some(a => !a.paused && !a.ended);
+  if (!playing) {
+    const bar = document.getElementById('now-playing-bar');
+    if (bar) bar.style.display = 'none';
+  }
+}
+
+function stopAllAudio() {
+  document.querySelectorAll('audio').forEach(a => { a.pause(); a.currentTime = 0; });
+  const bar = document.getElementById('now-playing-bar');
+  if (bar) bar.style.display = 'none';
 }

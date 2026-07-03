@@ -371,14 +371,40 @@ def generate_visualiser(
             sw[1] *= 0.90                   # fade
         shockwaves[:] = [sw for sw in shockwaves if sw[1] > 0.06 and sw[0] < short]
 
-        # ── Rotating mirrored radial bars ─────────────────────────────────────
+        # ── Smooth spectrum corona (shorts-style flame ring around the core) ──
+        # Heavy angular smoothing turns the spectrum into a fluid blob that
+        # breathes with the music — the signature look of shorts visualisers.
         theta_rot = (theta_g + rot) % (2 * math.pi)
         bar_idx_r = (theta_rot / (2 * math.pi) * _N_BARS).astype(np.int32) % _N_BARS
+        spectrum = fft_bars[:_half] if len(fft_bars) >= _half else fft_bars
+        full_spec = spectrum[_mirror]                       # (_N_BARS,) mirrored
+        kernel = np.array([1, 4, 8, 12, 8, 4, 1], dtype=np.float32)
+        kernel /= kernel.sum()
+        smooth_spec = np.convolve(
+            np.concatenate([full_spec[-3:], full_spec, full_spec[:3]]),
+            kernel, mode="same")[3:-3]
+        pump = 1.0 + min(bass / max(rolling_bass[0], 0.01), 3.0) * 0.10 + beat_flash[0] * 0.25
+        corona_amp = (r_inner * 0.05 + smooth_spec * r_inner * 0.85) * pump
+        corona_r_pix = r_inner * 1.02 + corona_amp[bar_idx_r]   # (H, W)
+        in_corona = (r_g >= r_inner * 0.9) & (r_g <= corona_r_pix)
+        if in_corona.any():
+            depth = np.clip((corona_r_pix[in_corona] - r_g[in_corona]) /
+                            np.maximum(corona_amp[bar_idx_r][in_corona], 1.0), 0, 1)
+            h_cor = (hue_base + (bar_idx_r[in_corona] / _N_BARS) * 0.5) % 1.0
+            s_cor = np.full(h_cor.shape, 0.95, dtype=np.float32)
+            v_cor = np.clip(0.35 + depth * 0.65, 0, 1)
+            cor_rgb = _hsv_to_rgb_vec(h_cor, s_cor, v_cor)
+            frame[in_corona] = np.maximum(frame[in_corona], cor_rgb)
+            # White-hot rim right at the corona edge
+            rim = in_corona & (np.abs(r_g - corona_r_pix) < 2.5)
+            if rim.any():
+                frame[rim] = np.maximum(frame[rim], np.full((int(rim.sum()), 3), 235, dtype=np.float32))
+
+        # ── Rotating mirrored radial bars ─────────────────────────────────────
         theta_diff_r = theta_rot - bar_angles[bar_idx_r]
         theta_diff_r = ((theta_diff_r + math.pi) % (2 * math.pi)) - math.pi
         in_bar_r = np.abs(theta_diff_r) <= bar_half_rad
 
-        spectrum = fft_bars[:_half] if len(fft_bars) >= _half else fft_bars
         bar_mags = spectrum[_mirror[bar_idx_r]]
         # Outward bars
         lit_out = in_annulus & in_bar_r & (r_norm_g <= bar_mags)
@@ -478,6 +504,13 @@ def generate_visualiser(
         else:
             _draw_text_simple(frame, title, x=55, y=48, colour=title_col, scale=3)
             _draw_text_simple(frame, artist, x=57, y=100, colour=artist_col, scale=2)
+
+        # Brand mark in the centre of the orb
+        brand = "PULSEBREAK"
+        bscale = 2 if short >= 900 else 1
+        bx = cx - (len(brand) * (6 * bscale + bscale)) // 2
+        _draw_text_simple(frame, brand, x=bx, y=cy - 3 * bscale,
+                          colour=(255, 255, 255), scale=bscale)
 
         progress = min(t / max(duration, 1), 1.0)
         pb_col = np.array(_hsv_to_rgb_scalar(hue_base, 0.9, 1.0), dtype=np.float32)
