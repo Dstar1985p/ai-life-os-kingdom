@@ -135,7 +135,7 @@ var KingdomISO = (function () {
   }
 
   function resize() {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const parent = canvas.parentElement;
     const w = parent ? parent.clientWidth  : window.innerWidth;
     const h = parent ? parent.clientHeight : window.innerHeight;
@@ -2210,7 +2210,9 @@ var KingdomISO = (function () {
     BUILDINGS.forEach(b => { b.agentCount = 0; });
 
     agents.forEach(agent => {
-      agent.progress += agent.speed;
+      if (!agent.pauseUntil || tick >= agent.pauseUntil) {
+        agent.progress += agent.speed;
+      }
 
       if (tick % 6 === agent.id % 6) {
         agent.trail = agent.trail || [];
@@ -2382,6 +2384,15 @@ var KingdomISO = (function () {
   }
 
   // ── Click handler ──────────────────────────────────────────────────────────
+  const AGENT_TAP_LINES = {
+    Driver:    ['Scouting Etsy trends 🏎', 'Checking print sales…', 'Pitwall looking sharp!'],
+    DJ:        ['Mixing a new DnB drop 🎧', 'That bassline though…', 'Track queue is stacked!'],
+    Commander: ['Coordinating the fleet ⚡', 'All agents accounted for', 'Reviewing the mission…'],
+    Forger:    ['Forging fresh designs 🔥', 'Print quality: pristine', 'New artwork incoming!'],
+    Merchant:  ['Counting the gold 💰', 'Revenue ledger updated', 'Margins looking healthy'],
+    Engineer:  ['Tuning the livery 🏁', 'Paint scheme perfected', 'Race-ready designs!'],
+  };
+
   function handleClick(e) {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
@@ -2389,6 +2400,23 @@ var KingdomISO = (function () {
 
     const s = getScale();
     const { w: cw } = getSize();
+
+    // Tap a walking agent → they stop and talk to you
+    for (const agent of agents) {
+      const sx = (agent.x - cw / 2) * s + cw / 2;
+      const sy = agent.y * s;
+      if (Math.abs(mx - sx) < 22 && Math.abs(my - sy) < 26) {
+        const lines = AGENT_TAP_LINES[agent.type.name] || ['Hello, founder!'];
+        const msg = lines[Math.floor(Math.random() * lines.length)];
+        bubbles = bubbles.filter(b => b.agentId !== agent.id);
+        bubbles.push({ agentId: agent.id, x: agent.x, y: agent.y,
+                       text: `${agent.type.name}: ${msg}`, life: 150, maxLife: 150 });
+        agent.pauseUntil = tick + 130;          // stop walking while talking
+        spawnBurst(agent.x, agent.y, agent.type.color);
+        return;
+      }
+    }
+
     for (const b of BUILDINGS) {
       const center = getBuildingCenter(b);
       const sx = (center.x - cw / 2) * s + cw / 2;

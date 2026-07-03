@@ -2621,7 +2621,7 @@ function startAudioVisualiser(file) {
       const buf = await _visAudioCtx.decodeAudioData(e.target.result);
       const src = _visAudioCtx.createBufferSource();
       _visAnalyser = _visAudioCtx.createAnalyser();
-      _visAnalyser.fftSize = 128;
+      _visAnalyser.fftSize = 512;
       src.buffer = buf;
       src.connect(_visAnalyser);
       _visAnalyser.connect(_visAudioCtx.destination);
@@ -2636,52 +2636,97 @@ function startAudioVisualiser(file) {
 
 function _drawVisAnalyser(canvas, analyser) {
   const data = new Uint8Array(analyser.frequencyBinCount);
-  const particles = Array.from({length:50},()=>({
-    angle:Math.random()*Math.PI*2, speed:0.003+Math.random()*0.005,
-    dist:0.5+Math.random()*0.4, size:1+Math.random()*2,
-    hue:220+Math.random()*100, alpha:0.3+Math.random()*0.5
+  const particles = Array.from({length:60},()=>({
+    angle:Math.random()*Math.PI*2, speed:0.003+Math.random()*0.006,
+    dist:0.5+Math.random()*0.5, size:1+Math.random()*2.2,
+    hue:Math.random()*360, alpha:0.3+Math.random()*0.5
   }));
-  let t = 0;
+  const shockwaves = [];
+  let t = 0, rot = 0, lastW = 0, lastH = 0, rollingBass = 0.1;
+  const ctx2 = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
   function frame() {
     _visRaf = requestAnimationFrame(frame);
     analyser.getByteFrequencyData(data);
-    const dpr = window.devicePixelRatio || 1;
     const W = canvas.offsetWidth || 360, H = canvas.offsetHeight || 280;
-    canvas.width = W*dpr; canvas.height = H*dpr;
-    const ctx2 = canvas.getContext('2d');
-    ctx2.scale(dpr, dpr);
+    if (W !== lastW || H !== lastH) {           // only realloc when size changes
+      canvas.width = W*dpr; canvas.height = H*dpr;
+      lastW = W; lastH = H;
+    }
+    ctx2.setTransform(dpr,0,0,dpr,0,0);
     const n = data.length;
-    const bass = data.slice(0,4).reduce((a,v)=>a+v,0)/4/255;
-    const mid  = data.slice(4,20).reduce((a,v)=>a+v,0)/16/255;
-    const hi   = data.slice(20,n).reduce((a,v)=>a+v,0)/(n-20)/255;
+    const bass = data.slice(0,10).reduce((a,v)=>a+v,0)/10/255;
+    const mid  = data.slice(10,80).reduce((a,v)=>a+v,0)/70/255;
+    const hi   = data.slice(80,n).reduce((a,v)=>a+v,0)/(n-80)/255;
     const energy = bass*0.5+mid*0.3+hi*0.2;
-    const hueShift = (t*0.3)%360;
+    const hueShift = (t*0.45)%360;
     const cx=W/2, cy=H/2;
-    const baseR=Math.min(W,H)*0.19;
-    const pulse=baseR*(1+bass*0.6);
-    ctx2.fillStyle='rgba(5,0,18,0.2)'; ctx2.fillRect(0,0,W,H);
+    const baseR=Math.min(W,H)*0.18;
+    const pulse=baseR*(1+bass*0.65);
+
+    // Kick detection → shockwave
+    rollingBass = rollingBass*0.94 + bass*0.06;
+    if (bass > rollingBass*1.5 && bass > 0.3 && (!shockwaves.length || shockwaves[shockwaves.length-1].r > pulse*1.8)) {
+      shockwaves.push({ r: pulse*1.1, a: 0.9, hue: hueShift });
+    }
+
+    // Trails — long fade
+    ctx2.fillStyle='rgba(4,0,16,0.16)'; ctx2.fillRect(0,0,W,H);
+
+    // Breathing nebula halo
     for(let r=3;r>=0;r--){
-      const rr=pulse*(1.5+r*0.6+energy*r*0.1);
+      const rr=pulse*(1.5+r*0.7+energy*r*0.15);
       const grd=ctx2.createRadialGradient(cx,cy,rr*0.3,cx,cy,rr);
-      grd.addColorStop(0,`hsla(${hueShift+r*15},100%,60%,${(0.07+bass*0.07)/(r+1)})`);
+      grd.addColorStop(0,`hsla(${hueShift+r*22},100%,60%,${(0.09+bass*0.09)/(r+1)})`);
       grd.addColorStop(1,'transparent');
       ctx2.fillStyle=grd; ctx2.beginPath(); ctx2.arc(cx,cy,rr,0,Math.PI*2); ctx2.fill();
     }
+
+    // Shockwave rings
+    for (let i=shockwaves.length-1;i>=0;i--){
+      const sw=shockwaves[i];
+      ctx2.strokeStyle=`hsla(${sw.hue},95%,70%,${sw.a})`;
+      ctx2.lineWidth=2.5+(1-sw.a)*5;
+      ctx2.shadowColor=`hsl(${sw.hue},95%,70%)`;
+      ctx2.shadowBlur=14;
+      ctx2.beginPath(); ctx2.arc(cx,cy,sw.r,0,Math.PI*2); ctx2.stroke();
+      ctx2.shadowBlur=0;
+      sw.r += Math.min(W,H)*0.012; sw.a *= 0.92;
+      if (sw.a < 0.05 || sw.r > Math.max(W,H)) shockwaves.splice(i,1);
+    }
+
+    // Mirrored radial spikes — half the spectrum on each side, symmetric,
+    // slowly rotating with the music's energy
+    rot += 0.0025 + mid*0.006;
+    const SPIKES = 96;
+    const half = SPIKES/2;
     ctx2.save();
-    for(let i=0;i<n;i++){
-      const ang=(i/n)*Math.PI*2+t*0.005;
-      const v=data[i]/255;
-      const spikeLen=pulse*(0.05+v*0.9);
+    for(let i=0;i<SPIKES;i++){
+      const m = i < half ? i : SPIKES - 1 - i;         // mirror index
+      const bin = Math.floor((m/half)**1.35 * (n*0.75));
+      const v = data[Math.min(bin, n-1)]/255;
+      const ang=(i/SPIKES)*Math.PI*2 - Math.PI/2 + rot;
+      const spikeLen=pulse*(0.06+v*1.15);
       const x1=cx+Math.cos(ang)*pulse, y1=cy+Math.sin(ang)*pulse;
       const x2=cx+Math.cos(ang)*(pulse+spikeLen), y2=cy+Math.sin(ang)*(pulse+spikeLen);
-      const sHue=hueShift+i*(180/n);
-      ctx2.strokeStyle=`hsla(${sHue},100%,72%,${0.2+v*0.8})`;
-      ctx2.lineWidth=1+v*2.5; ctx2.shadowColor=`hsl(${sHue},100%,65%)`; ctx2.shadowBlur=4+v*10;
+      const sHue=hueShift+(m/half)*300;
+      ctx2.strokeStyle=`hsla(${sHue},100%,${62+v*20}%,${0.25+v*0.75})`;
+      ctx2.lineWidth=1.2+v*2.8;
+      ctx2.shadowColor=`hsl(${sHue},100%,65%)`;
+      ctx2.shadowBlur=3+v*12;
       ctx2.beginPath(); ctx2.moveTo(x1,y1); ctx2.lineTo(x2,y2); ctx2.stroke();
+      // white-hot tip on loud bins
+      if (v > 0.55) {
+        ctx2.fillStyle=`rgba(255,255,255,${v*0.9})`;
+        ctx2.beginPath(); ctx2.arc(x2,y2,1.6+v*1.6,0,Math.PI*2); ctx2.fill();
+      }
     }
     ctx2.restore();
+
+    // Core orb
     ctx2.save();
-    ctx2.shadowColor=`hsla(${hueShift},100%,70%,0.9)`; ctx2.shadowBlur=30+bass*60;
+    ctx2.shadowColor=`hsla(${hueShift},100%,70%,0.9)`; ctx2.shadowBlur=30+bass*70;
     const orbGrd=ctx2.createRadialGradient(cx-pulse*0.28,cy-pulse*0.28,0,cx,cy,pulse);
     orbGrd.addColorStop(0,`hsla(${hueShift+40},80%,98%,1)`);
     orbGrd.addColorStop(0.3,`hsla(${hueShift+20},100%,75%,0.95)`);
@@ -2692,20 +2737,26 @@ function _drawVisAnalyser(canvas, analyser) {
     const specGrd=ctx2.createRadialGradient(cx-pulse*0.32,cy-pulse*0.32,0,cx-pulse*0.2,cy-pulse*0.2,pulse*0.35);
     specGrd.addColorStop(0,'rgba(255,255,255,0.5)'); specGrd.addColorStop(1,'transparent');
     ctx2.fillStyle=specGrd; ctx2.beginPath(); ctx2.arc(cx-pulse*0.2,cy-pulse*0.2,pulse*0.35,0,Math.PI*2); ctx2.fill();
+
+    // Orbiting sparks — speed and brightness ride the highs
     particles.forEach((p,i)=>{
-      p.angle+=p.speed*(1+energy); const dist=pulse*(1.7+p.dist*0.5+Math.sin(t*0.03+i)*0.1+bass*0.2);
+      p.angle+=p.speed*(1+energy+hi*2);
+      const dist=pulse*(1.7+p.dist*0.5+Math.sin(t*0.03+i)*0.1+bass*0.25);
       const ox=cx+Math.cos(p.angle)*dist, oy=cy+Math.sin(p.angle)*dist;
-      ctx2.save(); ctx2.shadowColor=`hsla(${p.hue+t*0.2},100%,75%,0.9)`; ctx2.shadowBlur=4+energy*8;
-      ctx2.fillStyle=`hsla(${p.hue+t*0.2},100%,80%,${p.alpha+energy*0.3})`;
-      ctx2.beginPath(); ctx2.arc(ox,oy,p.size*(1+energy*0.8),0,Math.PI*2); ctx2.fill(); ctx2.restore();
+      ctx2.save(); ctx2.shadowColor=`hsla(${p.hue+t*0.4},100%,75%,0.9)`; ctx2.shadowBlur=4+hi*14;
+      ctx2.fillStyle=`hsla(${p.hue+t*0.4},100%,80%,${p.alpha+hi*0.5})`;
+      ctx2.beginPath(); ctx2.arc(ox,oy,p.size*(1+hi*1.4),0,Math.PI*2); ctx2.fill(); ctx2.restore();
     });
-    const BARS=Math.min(n,48); const bw=(W*0.7)/BARS; const bx=W*0.15;
+
+    // Bottom spectrum strip
+    const BARS=48; const bw=(W*0.72)/BARS; const bx=W*0.14;
     for(let i=0;i<BARS;i++){
-      const v=data[Math.floor(i*n/BARS)]/255;
-      const bh=v*H*0.22; const bHue=hueShift+i*(200/BARS);
+      const v=data[Math.floor((i/BARS)**1.3*n*0.8)]/255;
+      const bh=v*H*0.2; const bHue=hueShift+i*(300/BARS);
+      if (bh < 1) continue;
       const grd=ctx2.createLinearGradient(0,H-bh,0,H);
-      grd.addColorStop(0,`hsla(${bHue},100%,78%,0.9)`); grd.addColorStop(1,`hsla(${bHue},100%,40%,0.2)`);
-      ctx2.fillStyle=grd; ctx2.shadowColor=`hsl(${bHue},100%,65%)`; ctx2.shadowBlur=4;
+      grd.addColorStop(0,`hsla(${bHue},100%,78%,0.9)`); grd.addColorStop(1,`hsla(${bHue},100%,40%,0.15)`);
+      ctx2.fillStyle=grd;
       ctx2.fillRect(bx+i*(bw+1),H-bh,bw,bh);
     }
     t++;
