@@ -2637,6 +2637,112 @@ function stopVisDemo() {
   if (st) st.textContent = 'Select a file above to visualise';
 }
 
+/* ── Turntable style shared by the demo preview and the real-audio preview ──
+   Mirrors the actual video renderer (backend/services/visualiser.py): black
+   background, the PulseBreak logo spinning like a vinyl disc, and a smooth
+   neon-green (#c8ff00) corona that breathes with the music instead of
+   separate rainbow spike lines. */
+const PB_LOGO_SRC = '/static/pulsebreak_logo.png';
+let _pbLogoImg = null, _pbLogoReady = false;
+function _getPBLogo() {
+  if (!_pbLogoImg) {
+    _pbLogoImg = new Image();
+    _pbLogoImg.onload = () => { _pbLogoReady = true; };
+    _pbLogoImg.onerror = () => { _pbLogoImg = 'failed'; };
+    _pbLogoImg.src = PB_LOGO_SRC;
+  }
+  return _pbLogoReady ? _pbLogoImg : null;
+}
+
+/* discAngle persists per canvas across frames via a WeakMap keyed on canvas */
+const _pbDiscAngles = new WeakMap();
+
+function _drawTurntableFrame(ctx2, W, H, t, bass, mid, hi, bandAt, canvas) {
+  const LIME = '#c8ff00';
+  const cx = W/2, cy = H/2;
+  const discR = Math.min(W,H) * 0.24;
+
+  // Black background with a long trail (never blue/purple — brand is black+lime)
+  ctx2.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx2.fillRect(0,0,W,H);
+
+  // Subtle bass-driven vignette so the frame doesn't look flat
+  const glow = ctx2.createRadialGradient(cx,cy,discR*0.5,cx,cy,Math.max(W,H)*0.6);
+  glow.addColorStop(0, `rgba(200,255,0,${0.05+bass*0.08})`);
+  glow.addColorStop(1, 'transparent');
+  ctx2.fillStyle = glow; ctx2.fillRect(0,0,W,H);
+
+  // ── Smooth neon-green corona (one continuous flowing shape, not spikes) ──
+  const N = 64;
+  const raw = new Array(N);
+  for (let i=0;i<N;i++) raw[i] = bandAt(i, N);
+  // heavy neighbour smoothing (two passes) → fluid wave instead of jagged bars
+  const smoothOnce = (arr) => {
+    const out = new Array(N);
+    for (let i=0;i<N;i++){
+      let s=0, wsum=0;
+      for (let k=-4;k<=4;k++){
+        const w = [1,2,4,8,12,8,4,2,1][k+4];
+        s += arr[(i+k+N)%N]*w; wsum += w;
+      }
+      out[i] = s/wsum;
+    }
+    return out;
+  };
+  const smooth = smoothOnce(smoothOnce(raw));
+  const pump = 1 + bass*0.12;
+  // Precompute points then draw with quadratic curves through midpoints for
+  // a fluid, rounded outline (no faceted corners)
+  const pts = [];
+  for (let i=0;i<N;i++){
+    const ang = (i/N)*Math.PI*2 - Math.PI/2;
+    const r = (discR*1.05 + (discR*0.12 + smooth[i]*discR*0.85)*pump);
+    pts.push([cx+Math.cos(ang)*r, cy+Math.sin(ang)*r]);
+  }
+  ctx2.save();
+  ctx2.beginPath();
+  ctx2.moveTo((pts[0][0]+pts[N-1][0])/2, (pts[0][1]+pts[N-1][1])/2);
+  for (let i=0;i<N;i++){
+    const next = pts[(i+1)%N];
+    const mid = [(pts[i][0]+next[0])/2, (pts[i][1]+next[1])/2];
+    ctx2.quadraticCurveTo(pts[i][0], pts[i][1], mid[0], mid[1]);
+  }
+  ctx2.closePath();
+  ctx2.fillStyle = 'rgba(200,255,0,0.16)';
+  ctx2.shadowColor = LIME; ctx2.shadowBlur = 18+bass*20;
+  ctx2.fill();
+  ctx2.lineWidth = 2.5;
+  ctx2.strokeStyle = 'rgba(235,255,180,0.9)';   // white-hot lime rim
+  ctx2.stroke();
+  ctx2.restore();
+
+  // ── Spinning PulseBreak logo disc ──
+  let angle = _pbDiscAngles.get(canvas) || 0;
+  angle += 3.3 + bass*3.0;                       // ≈33⅓ rpm baseline, kicks with bass
+  _pbDiscAngles.set(canvas, angle % 360);
+  const logo = _getPBLogo();
+  ctx2.save();
+  ctx2.beginPath(); ctx2.arc(cx,cy,discR,0,Math.PI*2); ctx2.clip();
+  ctx2.translate(cx,cy); ctx2.rotate(angle*Math.PI/180); ctx2.translate(-cx,-cy);
+  if (logo) {
+    ctx2.drawImage(logo, cx-discR, cy-discR, discR*2, discR*2);
+  } else {
+    // Fallback vinyl while the logo loads (or if missing)
+    ctx2.fillStyle = '#0e0e10';
+    ctx2.fillRect(cx-discR, cy-discR, discR*2, discR*2);
+    for (let gr = discR*0.4; gr < discR; gr += discR*0.12) {
+      ctx2.strokeStyle = 'rgba(60,70,60,0.8)'; ctx2.lineWidth = 1;
+      ctx2.beginPath(); ctx2.arc(cx,cy,gr,0,Math.PI*2); ctx2.stroke();
+    }
+    ctx2.fillStyle = LIME;
+    ctx2.beginPath(); ctx2.arc(cx,cy,discR*0.06,0,Math.PI*2); ctx2.fill();
+  }
+  ctx2.restore();
+  // Thin lime ring around the disc edge
+  ctx2.strokeStyle = 'rgba(200,255,0,0.6)'; ctx2.lineWidth = 2;
+  ctx2.beginPath(); ctx2.arc(cx,cy,discR,0,Math.PI*2); ctx2.stroke();
+}
+
 function _drawVisDemo() {
   const canvas = document.getElementById('vis-canvas');
   if (!canvas || !_visDemoMode) return;
@@ -2647,113 +2753,19 @@ function _drawVisDemo() {
   const ctx2 = canvas.getContext('2d');
   ctx2.scale(dpr, dpr);
   let t = 0;
-  const particles = Array.from({length:60},(_,i)=>({
-    angle: Math.random()*Math.PI*2, speed: 0.002+Math.random()*0.006,
-    dist: 0.55+Math.random()*0.35, size: 1+Math.random()*2.5,
-    hue: 220+Math.random()*100, alpha: 0.3+Math.random()*0.5
-  }));
   function frame() {
     if (!_visDemoMode) return;
-    // DnB synthetic: 174bpm ≈ tick%21 for beat, %10.5 for halfbeat
-    const kick  = Math.max(0, 1 - (t%21)/5);         // big bass every beat
+    // Synthetic 174bpm DnB energy — same cadence as before, new visuals
+    const kick  = Math.max(0, 1 - (t%21)/5);
     const snare = t%21 > 10 ? Math.max(0,1-(t%21-10)/4) : 0;
     const bass  = (Math.sin(t*0.07)*0.5+0.5)*0.7 + kick*0.3;
     const mid   = Math.sin(t*0.13+1)*0.3+0.3 + snare*0.2;
     const hi    = Math.random()*0.15*(Math.sin(t*0.4)>0.5?1:0.3) + snare*0.3;
-    const energy = bass*0.5 + mid*0.3 + hi*0.2;
-
-    // trail
-    ctx2.fillStyle = 'rgba(5,0,18,0.18)';
-    ctx2.fillRect(0,0,W,H);
-
-    const cx=W/2, cy=H/2;
-    const baseR = Math.min(W,H)*0.19;
-    const pulse = baseR*(1+bass*0.55+kick*0.15);
-    const hueShift = (t*0.4)%360;
-
-    // outer atmosphere rings
-    for (let r=4;r>=0;r--) {
-      const rr = pulse*(1.6+r*0.55+energy*r*0.12);
-      const grd=ctx2.createRadialGradient(cx,cy,rr*0.3,cx,cy,rr);
-      grd.addColorStop(0,`hsla(${hueShift+r*15},100%,60%,${(0.06+kick*0.06)/(r+1)})`);
-      grd.addColorStop(1,'transparent');
-      ctx2.fillStyle=grd;
-      ctx2.beginPath();ctx2.arc(cx,cy,rr,0,Math.PI*2);ctx2.fill();
-    }
-
-    // spike ring — freq spikes radiating from orb edge
-    const SPIKES=36;
-    ctx2.save();
-    for(let i=0;i<SPIKES;i++){
-      const ang=(i/SPIKES)*Math.PI*2+t*0.005;
-      const band = i<12 ? bass : i<24 ? mid : hi;
-      const spikeLen = pulse*(0.05+band*0.9+kick*0.3*(i<8?1:0));
-      const x1=cx+Math.cos(ang)*pulse, y1=cy+Math.sin(ang)*pulse;
-      const x2=cx+Math.cos(ang)*(pulse+spikeLen), y2=cy+Math.sin(ang)*(pulse+spikeLen);
-      const sHue=hueShift+i*3;
-      ctx2.strokeStyle=`hsla(${sHue},100%,75%,${0.3+band*0.7})`;
-      ctx2.lineWidth=1.2+band*2.5;
-      ctx2.shadowColor=`hsl(${sHue},100%,65%)`;
-      ctx2.shadowBlur=6+band*10;
-      ctx2.beginPath();ctx2.moveTo(x1,y1);ctx2.lineTo(x2,y2);ctx2.stroke();
-    }
-    ctx2.restore();
-
-    // core orb
-    ctx2.save();
-    ctx2.shadowColor=`hsla(${hueShift},100%,70%,0.9)`;
-    ctx2.shadowBlur=30+bass*60;
-    const orbGrd=ctx2.createRadialGradient(cx-pulse*0.28,cy-pulse*0.28,0,cx,cy,pulse);
-    orbGrd.addColorStop(0,`hsla(${hueShift+40},80%,98%,1)`);
-    orbGrd.addColorStop(0.3,`hsla(${hueShift+20},100%,75%,0.95)`);
-    orbGrd.addColorStop(0.7,`hsla(${hueShift},100%,45%,0.85)`);
-    orbGrd.addColorStop(1,`hsla(${hueShift-20},100%,20%,0.4)`);
-    ctx2.fillStyle=orbGrd;
-    ctx2.beginPath();ctx2.arc(cx,cy,pulse,0,Math.PI*2);ctx2.fill();
-    ctx2.restore();
-
-    // specular highlight
-    ctx2.save();
-    const specR=pulse*0.35;
-    const specGrd=ctx2.createRadialGradient(cx-pulse*0.32,cy-pulse*0.32,0,cx-pulse*0.2,cy-pulse*0.2,specR);
-    specGrd.addColorStop(0,'rgba(255,255,255,0.55)');
-    specGrd.addColorStop(1,'transparent');
-    ctx2.fillStyle=specGrd;
-    ctx2.beginPath();ctx2.arc(cx-pulse*0.2,cy-pulse*0.2,specR,0,Math.PI*2);ctx2.fill();
-    ctx2.restore();
-
-    // orbiting particles
-    particles.forEach((p,i)=>{
-      p.angle+=p.speed*(1+energy*1.2);
-      const dist=pulse*(1.7+p.dist*0.6+Math.sin(t*0.03+i)*0.15+bass*0.2);
-      const ox=cx+Math.cos(p.angle)*dist, oy=cy+Math.sin(p.angle)*dist;
-      const ps=p.size*(1+energy*0.8);
-      ctx2.save();
-      ctx2.shadowColor=`hsla(${p.hue+t*0.3},100%,75%,0.9)`;
-      ctx2.shadowBlur=4+energy*8;
-      ctx2.fillStyle=`hsla(${p.hue+t*0.3},100%,80%,${p.alpha+energy*0.3})`;
-      ctx2.beginPath();ctx2.arc(ox,oy,ps,0,Math.PI*2);ctx2.fill();
-      ctx2.restore();
-    });
-
-    // bottom frequency bars overlay
-    const BARS=32;
-    const bw=(W*0.7)/BARS;
-    const bx=W*0.15;
-    for(let i=0;i<BARS;i++){
-      const band=i<8?bass:i<20?mid:hi;
-      const noise=Math.sin(t*0.2+i*1.3)*0.12;
-      const bh=(band+noise)*H*0.22;
-      const bHue=hueShift+i*(200/BARS);
-      const grd=ctx2.createLinearGradient(0,H-bh,0,H);
-      grd.addColorStop(0,`hsla(${bHue},100%,78%,0.9)`);
-      grd.addColorStop(1,`hsla(${bHue},100%,40%,0.2)`);
-      ctx2.fillStyle=grd;
-      ctx2.shadowColor=`hsl(${bHue},100%,65%)`;
-      ctx2.shadowBlur=4;
-      ctx2.fillRect(bx+i*(bw+1),H-bh,bw,bh);
-    }
-
+    const bandAt = (i, n) => {
+      const band = i < n*0.33 ? bass : i < n*0.66 ? mid : hi;
+      return Math.max(0, Math.min(1, band + Math.sin(t*0.2+i*0.7)*0.08));
+    };
+    _drawTurntableFrame(ctx2, W, H, t, bass, mid, hi, bandAt, canvas);
     t++;
     _visDemoRaf = requestAnimationFrame(frame);
   }
@@ -2790,13 +2802,7 @@ function startAudioVisualiser(file) {
 
 function _drawVisAnalyser(canvas, analyser) {
   const data = new Uint8Array(analyser.frequencyBinCount);
-  const particles = Array.from({length:60},()=>({
-    angle:Math.random()*Math.PI*2, speed:0.003+Math.random()*0.006,
-    dist:0.5+Math.random()*0.5, size:1+Math.random()*2.2,
-    hue:Math.random()*360, alpha:0.3+Math.random()*0.5
-  }));
-  const shockwaves = [];
-  let t = 0, rot = 0, lastW = 0, lastH = 0, rollingBass = 0.1;
+  let t = 0, lastW = 0, lastH = 0;
   const ctx2 = canvas.getContext('2d');
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
@@ -2813,106 +2819,11 @@ function _drawVisAnalyser(canvas, analyser) {
     const bass = data.slice(0,10).reduce((a,v)=>a+v,0)/10/255;
     const mid  = data.slice(10,80).reduce((a,v)=>a+v,0)/70/255;
     const hi   = data.slice(80,n).reduce((a,v)=>a+v,0)/(n-80)/255;
-    const energy = bass*0.5+mid*0.3+hi*0.2;
-    const hueShift = (t*0.45)%360;
-    const cx=W/2, cy=H/2;
-    const baseR=Math.min(W,H)*0.18;
-    const pulse=baseR*(1+bass*0.65);
-
-    // Kick detection → shockwave
-    rollingBass = rollingBass*0.94 + bass*0.06;
-    if (bass > rollingBass*1.5 && bass > 0.3 && (!shockwaves.length || shockwaves[shockwaves.length-1].r > pulse*1.8)) {
-      shockwaves.push({ r: pulse*1.1, a: 0.9, hue: hueShift });
-    }
-
-    // Trails — long fade
-    ctx2.fillStyle='rgba(4,0,16,0.16)'; ctx2.fillRect(0,0,W,H);
-
-    // Breathing nebula halo
-    for(let r=3;r>=0;r--){
-      const rr=pulse*(1.5+r*0.7+energy*r*0.15);
-      const grd=ctx2.createRadialGradient(cx,cy,rr*0.3,cx,cy,rr);
-      grd.addColorStop(0,`hsla(${hueShift+r*22},100%,60%,${(0.09+bass*0.09)/(r+1)})`);
-      grd.addColorStop(1,'transparent');
-      ctx2.fillStyle=grd; ctx2.beginPath(); ctx2.arc(cx,cy,rr,0,Math.PI*2); ctx2.fill();
-    }
-
-    // Shockwave rings
-    for (let i=shockwaves.length-1;i>=0;i--){
-      const sw=shockwaves[i];
-      ctx2.strokeStyle=`hsla(${sw.hue},95%,70%,${sw.a})`;
-      ctx2.lineWidth=2.5+(1-sw.a)*5;
-      ctx2.shadowColor=`hsl(${sw.hue},95%,70%)`;
-      ctx2.shadowBlur=14;
-      ctx2.beginPath(); ctx2.arc(cx,cy,sw.r,0,Math.PI*2); ctx2.stroke();
-      ctx2.shadowBlur=0;
-      sw.r += Math.min(W,H)*0.012; sw.a *= 0.92;
-      if (sw.a < 0.05 || sw.r > Math.max(W,H)) shockwaves.splice(i,1);
-    }
-
-    // Mirrored radial spikes — half the spectrum on each side, symmetric,
-    // slowly rotating with the music's energy
-    rot += 0.0025 + mid*0.006;
-    const SPIKES = 96;
-    const half = SPIKES/2;
-    ctx2.save();
-    for(let i=0;i<SPIKES;i++){
-      const m = i < half ? i : SPIKES - 1 - i;         // mirror index
-      const bin = Math.floor((m/half)**1.35 * (n*0.75));
-      const v = data[Math.min(bin, n-1)]/255;
-      const ang=(i/SPIKES)*Math.PI*2 - Math.PI/2 + rot;
-      const spikeLen=pulse*(0.06+v*1.15);
-      const x1=cx+Math.cos(ang)*pulse, y1=cy+Math.sin(ang)*pulse;
-      const x2=cx+Math.cos(ang)*(pulse+spikeLen), y2=cy+Math.sin(ang)*(pulse+spikeLen);
-      const sHue=hueShift+(m/half)*300;
-      ctx2.strokeStyle=`hsla(${sHue},100%,${62+v*20}%,${0.25+v*0.75})`;
-      ctx2.lineWidth=1.2+v*2.8;
-      ctx2.shadowColor=`hsl(${sHue},100%,65%)`;
-      ctx2.shadowBlur=3+v*12;
-      ctx2.beginPath(); ctx2.moveTo(x1,y1); ctx2.lineTo(x2,y2); ctx2.stroke();
-      // white-hot tip on loud bins
-      if (v > 0.55) {
-        ctx2.fillStyle=`rgba(255,255,255,${v*0.9})`;
-        ctx2.beginPath(); ctx2.arc(x2,y2,1.6+v*1.6,0,Math.PI*2); ctx2.fill();
-      }
-    }
-    ctx2.restore();
-
-    // Core orb
-    ctx2.save();
-    ctx2.shadowColor=`hsla(${hueShift},100%,70%,0.9)`; ctx2.shadowBlur=30+bass*70;
-    const orbGrd=ctx2.createRadialGradient(cx-pulse*0.28,cy-pulse*0.28,0,cx,cy,pulse);
-    orbGrd.addColorStop(0,`hsla(${hueShift+40},80%,98%,1)`);
-    orbGrd.addColorStop(0.3,`hsla(${hueShift+20},100%,75%,0.95)`);
-    orbGrd.addColorStop(0.7,`hsla(${hueShift},100%,45%,0.85)`);
-    orbGrd.addColorStop(1,`hsla(${hueShift-20},100%,20%,0.4)`);
-    ctx2.fillStyle=orbGrd; ctx2.beginPath(); ctx2.arc(cx,cy,pulse,0,Math.PI*2); ctx2.fill();
-    ctx2.restore();
-    const specGrd=ctx2.createRadialGradient(cx-pulse*0.32,cy-pulse*0.32,0,cx-pulse*0.2,cy-pulse*0.2,pulse*0.35);
-    specGrd.addColorStop(0,'rgba(255,255,255,0.5)'); specGrd.addColorStop(1,'transparent');
-    ctx2.fillStyle=specGrd; ctx2.beginPath(); ctx2.arc(cx-pulse*0.2,cy-pulse*0.2,pulse*0.35,0,Math.PI*2); ctx2.fill();
-
-    // Orbiting sparks — speed and brightness ride the highs
-    particles.forEach((p,i)=>{
-      p.angle+=p.speed*(1+energy+hi*2);
-      const dist=pulse*(1.7+p.dist*0.5+Math.sin(t*0.03+i)*0.1+bass*0.25);
-      const ox=cx+Math.cos(p.angle)*dist, oy=cy+Math.sin(p.angle)*dist;
-      ctx2.save(); ctx2.shadowColor=`hsla(${p.hue+t*0.4},100%,75%,0.9)`; ctx2.shadowBlur=4+hi*14;
-      ctx2.fillStyle=`hsla(${p.hue+t*0.4},100%,80%,${p.alpha+hi*0.5})`;
-      ctx2.beginPath(); ctx2.arc(ox,oy,p.size*(1+hi*1.4),0,Math.PI*2); ctx2.fill(); ctx2.restore();
-    });
-
-    // Bottom spectrum strip
-    const BARS=48; const bw=(W*0.72)/BARS; const bx=W*0.14;
-    for(let i=0;i<BARS;i++){
-      const v=data[Math.floor((i/BARS)**1.3*n*0.8)]/255;
-      const bh=v*H*0.2; const bHue=hueShift+i*(300/BARS);
-      if (bh < 1) continue;
-      const grd=ctx2.createLinearGradient(0,H-bh,0,H);
-      grd.addColorStop(0,`hsla(${bHue},100%,78%,0.9)`); grd.addColorStop(1,`hsla(${bHue},100%,40%,0.15)`);
-      ctx2.fillStyle=grd;
-      ctx2.fillRect(bx+i*(bw+1),H-bh,bw,bh);
-    }
+    const bandAt = (i, count) => {
+      const bin = Math.floor((i/count)**1.3 * n*0.8);
+      return data[Math.min(bin, n-1)]/255;
+    };
+    _drawTurntableFrame(ctx2, W, H, t, bass, mid, hi, bandAt, canvas);
     t++;
   }
   frame();
