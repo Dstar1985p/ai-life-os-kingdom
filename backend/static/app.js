@@ -679,6 +679,7 @@ async function approveTrack(id, btn) {
       const err = await r.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${r.status}`);
     }
+    buzz([12, 40, 12]);
     showToast('✓ Approved — video render queued (takes a while, watch the strip above)', 'success', 5000);
     loadReviewQueue(); loadTrackLibrary(); loadRenderStatus();
   } catch(e) {
@@ -2797,6 +2798,8 @@ async function loadHUD() {
 /* ─── BOOT ─── */
 document.addEventListener('DOMContentLoaded', () => {
   checkOnboarding();
+  const wantTab = new URLSearchParams(location.search).get('tab');
+  if (wantTab) setTimeout(() => { try { openPanel(wantTab); } catch(_){} }, 900);
   // City canvas boots lazily on first toggle — Command Center is home
   loadOverview();
   loadAttribution();
@@ -2865,6 +2868,7 @@ async function todayAct(idx, actionJson, approved) {
       body: action.body ? JSON.stringify(action.body) : undefined,
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
+    buzz(12);
     if (card) {
       card.style.opacity = '0.45';
       card.innerHTML = `<div style="text-align:center;color:${approved ? '#00e676' : '#ff5555'};font-size:0.8rem;padding:6px">${approved ? '✓ Approved' : '✕ Rejected'}</div>`;
@@ -3028,7 +3032,9 @@ function startCoreSphere() {
   let t = 0, lastW = 0, lastH = 0;
   let _sphereRot = 0;
   function frame() {
-    if (document.body.classList.contains('city-mode')) { requestAnimationFrame(frame); return; }
+    if (document.body.classList.contains('city-mode') || document.hidden) { requestAnimationFrame(frame); return; }
+    // Half frame rate on phones — indistinguishable, half the battery cost
+    if (window.innerWidth < 700 && (t & 1)) { t++; requestAnimationFrame(frame); return; }
     const W = cv.offsetWidth || 360, H = cv.offsetHeight || 250;
     if (W !== lastW || H !== lastH) { cv.width = W * dpr; cv.height = H * dpr; lastW = W; lastH = H; }
     ctx2.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -3300,3 +3306,62 @@ if (document.getElementById('command-home')) {
   setInterval(loadCommandHome, 30000);
   setInterval(loadCIRevenue, 60000);
 }
+
+
+/* ─── MOBILE POLISH ─── */
+function buzz(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(_) {}
+}
+
+/* Pull-to-refresh on the command home — essential in installed-PWA mode
+   where there is no browser reload control */
+(function initPullToRefresh() {
+  const home = document.getElementById('command-home');
+  if (!home) return;
+  let startY = null, pulling = false;
+  let indicator = null;
+  const ensureIndicator = () => {
+    if (indicator) return indicator;
+    indicator = document.createElement('div');
+    indicator.id = 'ptr-indicator';
+    indicator.textContent = '↻';
+    document.body.appendChild(indicator);
+    return indicator;
+  };
+  home.addEventListener('touchstart', (e) => {
+    if (home.scrollTop <= 0) { startY = e.touches[0].clientY; pulling = false; }
+    else startY = null;
+  }, { passive: true });
+  home.addEventListener('touchmove', (e) => {
+    if (startY === null) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 24) {
+      pulling = true;
+      const ind = ensureIndicator();
+      ind.style.opacity = Math.min((dy - 24) / 70, 1);
+      ind.style.transform = `translateX(-50%) translateY(${Math.min(dy * 0.35, 46)}px) rotate(${dy * 2}deg)`;
+    }
+  }, { passive: true });
+  home.addEventListener('touchend', (e) => {
+    if (startY === null) return;
+    const dy = e.changedTouches[0].clientY - startY;
+    const ind = ensureIndicator();
+    if (pulling && dy > 90) {
+      buzz(10);
+      ind.classList.add('spinning');
+      Promise.allSettled([loadCommandHome(), loadCIRevenue()]).then(() => {
+        setTimeout(() => { ind.classList.remove('spinning'); ind.style.opacity = 0; }, 400);
+        showToast('Refreshed', 'success', 1200);
+      });
+    } else {
+      ind.style.opacity = 0;
+    }
+    startY = null; pulling = false;
+  }, { passive: true });
+})();
+
+/* Battery guard: freeze all canvas work when the app is backgrounded */
+let _appHidden = false;
+document.addEventListener('visibilitychange', () => {
+  _appHidden = document.hidden;
+});

@@ -1369,3 +1369,26 @@ body.city-mode #game-root{display:block!important}
   .ci-core-wrap{height:320px}
   .ci-grid{grid-template-columns:repeat(3,1fr);gap:14px}
 }
+
+/* ═══ Mobile polish ═══ */
+#ptr-indicator{
+  position:fixed;top:calc(90px + env(safe-area-inset-top,0px));left:50%;
+  transform:translateX(-50%);z-index:160;
+  width:38px;height:38px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(13,20,34,0.92);border:1px solid rgba(120,180,255,0.3);
+  color:#7fd4ff;font-size:1.1rem;opacity:0;pointer-events:none;
+  transition:opacity 0.2s;
+}
+#ptr-indicator.spinning{animation:ptrSpin 0.8s linear infinite;opacity:1!important}
+@keyframes ptrSpin{to{transform:translateX(-50%) rotate(360deg)}}
+
+/* Respect users who turn off motion */
+@media (prefers-reduced-motion: reduce){
+  .ci-spark i,.ci-live{animation:none!important}
+  #side-panel{transition:none}
+  *{scroll-behavior:auto!important}
+}
+
+/* Overscroll containment — stop the whole page rubber-banding behind panels */
+#command-home,#side-panel-body{overscroll-behavior:contain}

@@ -1289,6 +1289,7 @@ var KingdomISO = (function () {
 
   // ── Main render loop ───────────────────────────────────────────────────────
   function loop() {
+    if (document.hidden) { animFrame = requestAnimationFrame(loop); return; }
     tick++;
     const { w, h } = getSize();
 
