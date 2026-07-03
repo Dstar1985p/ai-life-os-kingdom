@@ -19,8 +19,4 @@ test_*.db
 .kingdom_email.json
 
 # PulseBreak audio/video files
-pulsebreak_tracks/*.mp3
-pulsebreak_tracks/*.wav
-pulsebreak_tracks/*.m4a
-pulsebreak_tracks/*.mp4
-pulsebreak_tracks/videos/
+pulsebreak_tracks/

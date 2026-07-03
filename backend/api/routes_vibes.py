@@ -13,7 +13,7 @@ from backend.models.tables import TrackRelease
 from backend.services.vibes_report import get_weekly_release_plan, mark_track_status
 from backend.services.youtube_uploader import get_youtube_status
 from backend.services.pulsebreak_watch import (
-    scan_and_process, approve_track, reject_track, list_review_queue,
+    scan_and_process, reject_track, list_review_queue,
     TRACKS_DIR, PROCESSED_DIR, REVIEW_DIR, REJECTED_DIR, REPORTS_DIR, ensure_dirs,
 )
 
