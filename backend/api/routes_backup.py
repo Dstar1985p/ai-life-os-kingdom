@@ -37,7 +37,7 @@ def _list_backups() -> list[dict]:
     return results
 
 
-@router.get("/create")
+@router.api_route("/create", methods=["GET", "POST"])
 def backup_create():
     """Create a timestamped copy of the SQLite database."""
     if not _db_path.exists():

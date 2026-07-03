@@ -24,10 +24,38 @@ def scheduler_status():
 def run_agent(agent_name: str):
     """Trigger an agent immediately by name."""
     agent_name = agent_name.replace("%20", " ")
-    if agent_name not in _VALID_AGENTS:
+    if agent_name == "PulseBreak Track Processor":
+        from backend.database import SessionLocal
+        from backend.services.pulsebreak_watch import scan_and_process
+        db = SessionLocal()
+        try:
+            return {"status": "ok", "agent": agent_name, "result": scan_and_process(db)}
+        finally:
+            db.close()
+    # Validate against the live registry, not a hardcoded list
+    try:
+        from backend.scheduler import _get_agents
+        valid = set(_get_agents().keys()) | {"Watch Folder"}
+    except Exception:
+        valid = _VALID_AGENTS
+    if agent_name not in valid:
+        # Not an agent — maybe it's a scheduler job (e.g. "Weekly Digest Email");
+        # nudge its next run to now
+        try:
+            from datetime import datetime
+            import backend.scheduler as _sched_mod
+            sched = getattr(_sched_mod, "_scheduler", None)
+            if sched:
+                for job in sched.get_jobs():
+                    if (job.name or job.id).lower() == agent_name.lower():
+                        job.modify(next_run_time=datetime.now())
+                        return {"status": "ok", "agent": agent_name,
+                                "note": "Scheduled job nudged to run now"}
+        except Exception:
+            pass
         raise HTTPException(
             status_code=404,
-            detail=f"Agent '{agent_name}' not found. Valid: {sorted(_VALID_AGENTS)}",
+            detail=f"Agent '{agent_name}' not found. Valid: {sorted(valid)}",
         )
     try:
         from backend.scheduler import trigger_agent

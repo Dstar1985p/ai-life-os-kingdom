@@ -1182,6 +1182,10 @@ function renderForecast(data) {
     <div class="metric-row"><span class="metric-key">Key Risk</span><span class="metric-val" style="color:var(--amber);font-size:0.72rem">${(data.key_risk||'').slice(0,50)}</span></div>`;
 }
 
+async function loadGoals() {
+  try { renderGoals(await fetchJSON('/goals/summary')); } catch(_) {}
+}
+
 function renderGoals(data) {
   const el = document.getElementById('goals-content');
   if (!el || !data) return;
@@ -1773,14 +1777,20 @@ async function createBackup() {
 
 /* ─── OUTCOME RECORDING ─── */
 async function recordOutcome(entityType, entityId, outcome, btnEl) {
+  // Backend vocabulary is success/failure/partial
+  const mapped = { positive:'success', negative:'failure' }[outcome] || outcome;
   try {
-    await fetch('/outcomes/record', {
+    const r = await fetch('/outcomes/record', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({entity_type:entityType, entity_id:entityId, outcome})
+      body: JSON.stringify({entity_type:entityType, entity_id:entityId, outcome:mapped})
     });
-    if (btnEl) { btnEl.disabled=true; btnEl.textContent=outcome==='positive'?'✓ Done':'✗ Noted'; }
+    if (!r.ok) {
+      const err = await r.json().catch(()=>({}));
+      throw new Error(err.detail || 'HTTP ' + r.status);
+    }
+    if (btnEl) { btnEl.disabled=true; btnEl.textContent=mapped==='success'?'✓ Done':'✗ Noted'; }
     showToast('Outcome recorded', 'success');
-  } catch(e) { showToast('Error recording outcome','error'); }
+  } catch(e) { showToast('Recording failed: ' + e.message,'error'); }
 }
 
 /* ─── CHAR MODAL ─── */
@@ -1793,7 +1803,7 @@ async function openCharModal(agent) {
   bg.classList.add('open');
   body.innerHTML = '<div class="loading">Loading agent data</div>';
   try {
-    const data = await fetchJSON(`/agent/profile/${agent}`);
+    const data = await fetchJSON(`/agents/${encodeURIComponent(agent)}/profile`);
     if (!data) { body.innerHTML='<div class="modal-header"><div class="modal-title">'+agent+'</div><button class="modal-close" onclick="closeCharModal()">✕</button></div><div style="color:var(--muted);font-size:0.8rem;padding:8px">No profile data available</div>'; return; }
     const ks = data.kingdom_score||0;
     const scoreColor = ks>=80?'var(--green)':ks>=60?'var(--amber)':'var(--red)';
