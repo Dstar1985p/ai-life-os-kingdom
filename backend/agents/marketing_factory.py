@@ -186,7 +186,8 @@ class MarketingFactoryAgent(BaseRevenueAgent):
                                     source_agent="Marketing Factory"))
 
         db.commit()
-        return self._record_run(result, db)
+        self._record_run(result, db)
+        return result
 
 
 def generate_instagram(venture: str, product_title: str, tone: str, db) -> Optional[dict]:

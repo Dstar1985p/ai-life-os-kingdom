@@ -167,4 +167,5 @@ class AIResearchAgent(BaseRevenueAgent):
                 result.actions_taken.append(f"Opportunity: {title} ({venture})")
 
         db.commit()
-        return self._record_run(result, db)
+        self._record_run(result, db)
+        return result

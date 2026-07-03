@@ -63,3 +63,23 @@ def commander_run(db: Session = Depends(get_db)):
     from backend.agents.ai_commander import AICommanderAgent
     agent = AICommanderAgent()
     return agent.run(db)
+
+
+@router.get("/chat-history")
+def chat_history(limit: int = 20, db: Session = Depends(get_db)):
+    """Recent commander/agent chat exchanges (persisted as agent_chat lessons)."""
+    from backend.models.tables import Lesson
+    rows = (
+        db.query(Lesson)
+        .filter(Lesson.source == "agent_chat")
+        .order_by(Lesson.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return {
+        "messages": [
+            {"id": r.id, "text": r.lesson, "at": r.created_at.isoformat() if r.created_at else None}
+            for r in rows
+        ],
+        "count": len(rows),
+    }

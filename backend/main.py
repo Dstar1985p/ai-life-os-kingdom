@@ -32,7 +32,7 @@ from backend.api.routes_treasury import router as treasury_router
 from backend.api.routes_market_scout import router as market_scout_router
 from backend.api.routes_gig_scout import router as gig_scout_router
 from backend.api.routes_livery import router as livery_router
-from backend.api.routes_log import router as log_router
+from backend.api.routes_log import router as log_router, errors_router
 from backend.api.routes_learning import router as learning_router
 from backend.api.routes_music_licensing import router as music_licensing_router
 from backend.api.routes_crisis import router as crisis_router
@@ -133,6 +133,7 @@ app.include_router(etsy_router)
 app.include_router(printify_router)
 app.include_router(treasury_router)
 app.include_router(log_router)
+app.include_router(errors_router)
 app.include_router(learning_router)
 app.include_router(music_licensing_router)
 app.include_router(crisis_router)

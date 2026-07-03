@@ -276,7 +276,8 @@ class AICommanderAgent(BaseRevenueAgent):
             self._send_alert_email(db, critical_issues, report_text)
 
         db.commit()
-        return self._record_run(result, db)
+        self._record_run(result, db)
+        return result
 
     def _send_alert_email(self, db: Session, critical_issues: list[str], report_text: str) -> None:
         """Send an immediate alert email — debounced to at most once per 4h."""

@@ -34,3 +34,34 @@ def record_run(payload: AgentRunCreate, db: Session = Depends(get_db)):
 @router.get("/dashboard")
 def economics_dashboard(db: Session = Depends(get_db)):
     return get_agent_economics_dashboard(db)
+
+
+@router.get("/performance")
+def agent_performance(db: Session = Depends(get_db)):
+    """Per-agent 7-day run counts and success rates for the Agents panel."""
+    from datetime import datetime, timedelta
+    from sqlalchemy import case, func
+    from backend.models.tables import AgentRun
+
+    since = datetime.utcnow() - timedelta(days=7)
+    rows = (
+        db.query(
+            AgentRun.agent_name,
+            func.count(AgentRun.id),
+            func.sum(case((AgentRun.status == "ok", 1), else_=0)),
+        )
+        .filter(AgentRun.run_at >= since)
+        .group_by(AgentRun.agent_name)
+        .all()
+    )
+    perf = []
+    for name, total, ok in rows:
+        total = total or 0
+        ok = ok or 0
+        perf.append({
+            "agent": name,
+            "runs_7d": total,
+            "success_rate": round(ok / total * 100, 1) if total else 0.0,
+        })
+    perf.sort(key=lambda p: -p["runs_7d"])
+    return {"agent_performance": perf}

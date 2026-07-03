@@ -506,13 +506,13 @@ def youtube_performance(db: Session = Depends(get_db)) -> dict:
     except Exception:
         summary = {}
     from backend.models.tables import TrackRelease as _TR
-    recent = db.query(_TR).order_by(_TR.released_at.desc()).limit(10).all()
+    recent = db.query(_TR).order_by(_TR.created_at.desc()).limit(10).all()
     tracks = [
         {
             "track_name": t.track_name,
             "status": t.status,
-            "score": t.score,
-            "released_at": t.released_at.isoformat() if t.released_at else None,
+            "score": t.quality_score,
+            "released_at": t.youtube_uploaded_at.isoformat() if t.youtube_uploaded_at else None,
         }
         for t in recent
     ]

@@ -704,7 +704,7 @@ async function loadAvatars(venture) {
     <div class="track-info">
       <div class="track-title">${a.name||'Avatar'}</div>
       <div class="track-genre">${a.venture||''} · ${a.age_range||''}</div>
-      <div class="track-meta">${(a.pain_points||[]).slice(0,2).join(' · ')}</div>
+      <div class="track-meta">${asList(a.pain_points).slice(0,2).join(' · ')}</div>
     </div>
   </div>`).join('');
 }
@@ -1028,7 +1028,7 @@ async function loadOpportunitiesTab() {
   const [leaderboard, recon, forecast, goals] = await Promise.all([
     fetchJSON('/leaderboard/opportunities'),
     fetchJSON('/revenue-recon'),
-    fetchJSON('/revenue-forecaster/latest'),
+    fetchJSON('/forecast-agent/latest'),
     fetchJSON('/goals/summary'),
   ]);
   renderLeaderboard(leaderboard);
@@ -2888,3 +2888,14 @@ function escapeHtml(s) {
 // Badge on load + periodic refresh
 refreshTodayBadge();
 setInterval(refreshTodayBadge, 60000);
+
+
+/* Coerce a value that may be a JSON string, comma list, or array into an array */
+function asList(v) {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string') {
+    try { const j = JSON.parse(v); if (Array.isArray(j)) return j; } catch (_) {}
+    return v ? v.split(',').map(s => s.trim()).filter(Boolean) : [];
+  }
+  return [];
+}
