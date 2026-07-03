@@ -19,10 +19,29 @@ else:
     DATABASE_URL = f"sqlite:///{_data_dir}/kingdom_alpha.db"
     _IS_POSTGRES = False
 
+DB_BOOT_WARNING = ""
+
+def _sqlite_engine():
+    _dir = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", ".")
+    return create_engine(f"sqlite:///{_dir}/kingdom_alpha.db",
+                         connect_args={"check_same_thread": False})
+
 if _IS_POSTGRES:
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10)
+    try:
+        engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10)
+        # Fail fast here (not mid-request) so a bad Postgres config is caught
+        with engine.connect() as _c:
+            _c.execute(text("SELECT 1"))
+    except Exception as exc:
+        DB_BOOT_WARNING = (
+            f"Postgres unavailable ({type(exc).__name__}) — running on SQLite fallback. "
+            "Data written now will NOT persist across redeploys. Fix DATABASE_URL/driver."
+        )
+        logger.critical(DB_BOOT_WARNING)
+        engine = _sqlite_engine()
+        _IS_POSTGRES = False
 else:
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+    engine = _sqlite_engine()
 
 
 def _apply_migrations(eng) -> None:

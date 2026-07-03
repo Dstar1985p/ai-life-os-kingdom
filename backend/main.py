@@ -60,18 +60,28 @@ from backend.api.routes_commander import router as commander_router
 from backend.api.routes_marketing import router as marketing_router
 from backend.api.routes_content_drafts import router as content_drafts_router, content_router
 
-# Create all tables immediately at import time (supports TestClient without context manager)
-Base.metadata.create_all(bind=engine)
-_apply_migrations(engine)
-seed_defaults()
+# Create all tables immediately at import time (supports TestClient without
+# context manager). Never let this kill the boot — lifespan retries it, and a
+# dead app helps nobody.
+try:
+    Base.metadata.create_all(bind=engine)
+    _apply_migrations(engine)
+    seed_defaults()
+except Exception:
+    import logging
+    logging.getLogger(__name__).exception("Import-time DB setup failed — will retry at startup")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Also run on app startup (for uvicorn / production)
-    Base.metadata.create_all(bind=engine)
-    _apply_migrations(engine)
-    seed_defaults()
+    try:
+        Base.metadata.create_all(bind=engine)
+        _apply_migrations(engine)
+        seed_defaults()
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Startup DB setup failed — serving anyway")
     # Start background scheduler
     try:
         from backend.scheduler import start_scheduler
@@ -177,11 +187,16 @@ def root():
 
 @app.get("/health")
 def health() -> dict:
-    return {
+    from backend.database import DB_BOOT_WARNING
+    out = {
         "status": "healthy",
         "service": "Kingdom — AI Life OS",
         "version": "1.3.0",
     }
+    if DB_BOOT_WARNING:
+        out["status"] = "degraded"
+        out["warning"] = DB_BOOT_WARNING
+    return out
 
 
 # PWA / static assets served at root — must be registered LAST so it doesn't
