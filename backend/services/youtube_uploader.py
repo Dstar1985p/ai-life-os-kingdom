@@ -29,10 +29,28 @@ class YouTubeNotAuthorisedError(Exception):
     pass
 
 
+def _materialise_from_env() -> None:
+    """Railway's filesystem is ephemeral and headless — there's no browser to
+    run the OAuth flow there. Authorise once on your own machine (which has a
+    browser), then paste the resulting token JSON into a Railway env var so
+    the deployed app can write it to disk on startup, no browser needed.
+    """
+    import os
+    if not TOKEN_FILE.exists():
+        token_json = os.environ.get("YOUTUBE_TOKEN_JSON", "").strip()
+        if token_json:
+            TOKEN_FILE.write_text(token_json)
+    if not CREDENTIALS_FILE.exists():
+        creds_json = os.environ.get("YOUTUBE_CREDENTIALS_JSON", "").strip()
+        if creds_json:
+            CREDENTIALS_FILE.write_text(creds_json)
+
+
 def get_youtube_client():
     """Build an authenticated YouTube API client."""
     if not YOUTUBE_AVAILABLE:
         raise YouTubeUnavailableError("google-api-python-client not installed")
+    _materialise_from_env()
     if not TOKEN_FILE.exists():
         raise YouTubeNotAuthorisedError(
             "YouTube not authorised. Run: python scripts/youtube_setup.py"
@@ -102,6 +120,7 @@ def upload_to_youtube(
 
 def get_youtube_status() -> dict:
     """Check if YouTube is configured and authorised."""
+    _materialise_from_env()
     if not YOUTUBE_AVAILABLE:
         return {
             "available": False,
