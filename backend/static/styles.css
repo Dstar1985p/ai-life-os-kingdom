@@ -1351,3 +1351,21 @@ body:not(.city-mode) #chat-bubble{display:none}
 /* City mode: hide command layers */
 body.city-mode #command-home,body.city-mode #ci-talk-bar{display:none}
 body.city-mode #game-root{display:block!important}
+
+/* ═══ Command center v2: tap affordances, revenue, desktop cockpit ═══ */
+.ci-tap{cursor:pointer;transition:border-color 0.15s,background 0.15s}
+.ci-tap:hover,.ci-tap:active{border-color:rgba(120,190,255,0.35);background:rgba(28,44,70,0.55)}
+.ci-ago{margin-left:8px;color:#48627e}
+.ci-runs{margin-left:auto;color:#5f7d9c;font-weight:600;letter-spacing:0}
+.ci-agent-state{justify-content:flex-start}
+.ci-rev-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.ci-rev-v{font-size:1.05rem;font-weight:800;color:#e8f2fc;font-variant-numeric:tabular-nums}
+.ci-rev-v.up{color:#4ade80}.ci-rev-v.down{color:#ff8095}
+.ci-rev-l{font-size:0.58rem;font-weight:700;letter-spacing:1.2px;color:#7fa6cc;text-transform:uppercase;margin-top:3px}
+#ci-talk-bar.listening{border-color:rgba(255,120,120,0.6);color:#ffc9c9;box-shadow:0 0 28px rgba(255,90,90,0.3)}
+
+@media(min-width:1100px){
+  #command-home{width:1280px;max-width:100%;left:50%;right:auto;transform:translateX(-50%);padding-top:calc(104px + env(safe-area-inset-top,0px))}
+  .ci-core-wrap{height:320px}
+  .ci-grid{grid-template-columns:repeat(3,1fr);gap:14px}
+}

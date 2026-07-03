@@ -3026,6 +3026,7 @@ function startCoreSphere() {
   }));
 
   let t = 0, lastW = 0, lastH = 0;
+  let _sphereRot = 0;
   function frame() {
     if (document.body.classList.contains('city-mode')) { requestAnimationFrame(frame); return; }
     const W = cv.offsetWidth || 360, H = cv.offsetHeight || 250;
@@ -3033,11 +3034,20 @@ function startCoreSphere() {
     ctx2.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx2.clearRect(0, 0, W, H);
     const cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.34;
-    const rotY = t * 0.008, tiltX = 0.35;
+    // The core IS the system: spin speeds up with running agents,
+    // halo warms amber when things need the founder, flashes gold on revenue
+    const speed = 0.008 * (1 + Math.min(_ciState.running, 4) * 0.6);
+    _sphereRot += speed;
+    const rotY = _sphereRot, tiltX = 0.35;
+    if (_ciState.revFlash > 0) _ciState.revFlash--;
 
-    // Halo
+    let haloCol = '70,150,230', haloA = 0.14;
+    if (_ciState.revFlash > 0) { haloCol = '255,200,80'; haloA = 0.14 + 0.14 * (_ciState.revFlash / 120); }
+    else if (_ciState.waiting > 0) { haloCol = '255,180,80'; haloA = 0.12 + 0.05 * Math.sin(t * 0.05); }
+    else if (_ciState.running > 0) { haloA = 0.20 + 0.06 * Math.sin(t * 0.08); }
+
     const halo = ctx2.createRadialGradient(cx, cy, R * 0.4, cx, cy, R * 2.1);
-    halo.addColorStop(0, 'rgba(70,150,230,0.14)');
+    halo.addColorStop(0, `rgba(${haloCol},${haloA.toFixed(3)})`);
     halo.addColorStop(1, 'rgba(0,0,0,0)');
     ctx2.fillStyle = halo;
     ctx2.fillRect(0, 0, W, H);
@@ -3108,14 +3118,31 @@ function startCIClock() {
 }
 
 /* ── Data modules ── */
+let _ciState = { running: 0, waiting: 0, revenue: 0, revFlash: 0 };
+
 async function loadCommandHome() {
-  const [sched, lessons, overview, pipeline, health] = await Promise.all([
+  const [sched, lessons, overview, pipeline, health, live, perf] = await Promise.all([
     fetchJSON('/scheduler/status').catch(()=>null),
     fetchJSON('/lessons?limit=8').catch(()=>null),
     fetchJSON('/api/overview').catch(()=>null),
     fetchJSON('/pipeline/status').catch(()=>null),
     fetchJSON('/health').catch(()=>null),
+    fetchJSON('/agents/live-status').catch(()=>null),
+    fetchJSON('/agent-economics/performance').catch(()=>null),
   ]);
+
+  // Feed the core sphere: it breathes with the system
+  if (live) {
+    _ciState.running = live.running_count || 0;
+    _ciState.waiting = live.waiting_count || 0;
+  }
+  if (overview) {
+    const rev = overview.revenue_today ?? 0;
+    if (rev > _ciState.revenue) _ciState.revFlash = 120;   // gold pulse on new money
+    _ciState.revenue = rev;
+  }
+  const _runsByAgent = {};
+  (perf?.agent_performance || []).forEach(a => { _runsByAgent[a.agent] = a.runs_7d; });
 
   // System status pill
   const pill = document.getElementById('ci-system-status');
@@ -3130,11 +3157,11 @@ async function loadCommandHome() {
     const rows = [];
     const agents = sched?.agents || [];
     const running = agents.filter(a=>a.scheduler_running).length;
-    rows.push({k:'Agents', v:`${agents.length} registered · ${running} scheduled`, ok:agents.length>0});
-    (pipeline?.steps||[]).forEach(st => rows.push({k:st.step, v:st.detail?.slice(0,42)||st.status, ok:st.status==='ok'}));
-    if (overview) rows.push({k:'Revenue today', v:'£'+(overview.revenue_today??0).toFixed(2), ok:true});
+    rows.push({k:'Agents', v:`${agents.length} registered · ${running} scheduled`, ok:agents.length>0, go:'agents'});
+    (pipeline?.steps||[]).forEach(st => rows.push({k:st.step, v:st.detail?.slice(0,42)||st.status, ok:st.status==='ok', go:'pulsebreak'}));
+    if (overview) rows.push({k:'Revenue today', v:'£'+(overview.revenue_today??0).toFixed(2), ok:true, go:'overview'});
     ov.innerHTML = rows.map(r=>`
-      <div class="ci-row">
+      <div class="ci-row ci-tap" onclick="openPanel('${r.go}')">
         <span class="ci-dot ${r.ok?'ok':'warn'}"></span>
         <span class="ci-k">${escapeHtml(r.k)}</span>
         <span class="ci-v">${escapeHtml(String(r.v))}</span>
@@ -3146,11 +3173,11 @@ async function loadCommandHome() {
   if (feed) {
     const items = (lessons?.lessons || lessons || []).slice(0,6);
     feed.innerHTML = items.length ? items.map(l=>`
-      <div class="ci-row">
+      <div class="ci-row ci-tap" onclick="openPanel('intelligence')">
         <span class="ci-dot ok"></span>
         <div style="flex:1;min-width:0">
           <div class="ci-feed-txt">${escapeHtml((l.lesson||'').slice(0,110))}</div>
-          <div class="ci-feed-src">${escapeHtml((l.source||'').toUpperCase())}</div>
+          <div class="ci-feed-src">${escapeHtml((l.source||'').toUpperCase())}<span class="ci-ago">${timeAgo(l.created_at)}</span></div>
         </div>
       </div>`).join('') : '<div class="ci-empty">No intelligence yet — run an agent.</div>';
   }
@@ -3158,11 +3185,18 @@ async function loadCommandHome() {
   // Active agents grid
   const ag = document.getElementById('ci-agents');
   if (ag && sched?.agents) {
+    const maxRuns = Math.max(1, ...Object.values(_runsByAgent));
     ag.innerHTML = sched.agents.slice(0,8).map(a=>{
-      const bars = Array.from({length:10},(_,i)=>`<i style="height:${20+((a.name.charCodeAt(i%a.name.length)*7+i*13)%70)}%;animation-delay:${i*0.12}s"></i>`).join('');
+      const runs = _runsByAgent[a.name] || 0;
+      const rel = runs / maxRuns;                      // real 7-day activity
+      const bars = Array.from({length:10},(_,i)=>{
+        const jitter = ((a.name.charCodeAt(i%a.name.length)*7+i*13)%30) - 15;
+        const h = Math.max(8, Math.min(100, rel*80 + jitter));
+        return `<i style="height:${h.toFixed(0)}%;animation-delay:${i*0.12}s"></i>`;
+      }).join('');
       return `<div class="ci-agent" onclick="triggerAgent('${a.name.replace(/'/g,"\\'")}')" style="cursor:pointer">
         <div class="ci-agent-name">${escapeHtml(a.name)}</div>
-        <div class="ci-agent-state ${a.scheduler_running?'on':'off'}">● ${a.scheduler_running?'ACTIVE':'STANDBY'}</div>
+        <div class="ci-agent-state ${a.scheduler_running?'on':'off'}">● ${a.scheduler_running?'ACTIVE':'STANDBY'}<span class="ci-runs">${runs}×/wk</span></div>
         <div class="ci-spark">${bars}</div>
       </div>`;
     }).join('');
@@ -3177,9 +3211,9 @@ async function loadCommandHome() {
     let todayCount = 0;
     try { const t = await fetchJSON('/today'); todayCount = t?.total||0; } catch(_){}
     const rev = overview?.monthly_revenue ?? 0;
-    const gauge = (pct, val, label, col) => {
+    const gauge = (pct, val, label, col, go) => {
       const r = 30, c = 2*Math.PI*r, off = c*(1-Math.min(pct,100)/100);
-      return `<div class="ci-gauge">
+      return `<div class="ci-gauge ci-tap" onclick="openPanel('${go}')">
         <svg viewBox="0 0 74 74">
           <circle cx="37" cy="37" r="${r}" fill="none" stroke="rgba(120,180,255,0.12)" stroke-width="5"/>
           <circle cx="37" cy="37" r="${r}" fill="none" stroke="${col}" stroke-width="5"
@@ -3191,10 +3225,70 @@ async function loadCommandHome() {
       </div>`;
     };
     gg.innerHTML =
-      gauge(pctA, running, 'Agents on', '#39c4f2') +
-      gauge(Math.min(todayCount*20,100), todayCount, 'Need you', todayCount>0?'#ffb84d':'#4ade80') +
-      gauge(Math.min(rev,100), '£'+Math.round(rev), 'Month rev', '#4ade80');
+      gauge(pctA, running, 'Agents on', '#39c4f2', 'agents') +
+      gauge(Math.min(todayCount*20,100), todayCount, 'Need you', todayCount>0?'#ffb84d':'#4ade80', 'today') +
+      gauge(Math.min(rev,100), '£'+Math.round(rev), 'Month rev', '#4ade80', 'overview');
+    // Today badge count doubles as core-state input
+    _ciState.waiting = Math.max(_ciState.waiting, todayCount);
   }
+}
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const s2 = (Date.now() - new Date(iso + (iso.endsWith('Z')?'':'Z')).getTime()) / 1000;
+  if (s2 < 90) return 'just now';
+  if (s2 < 3600) return Math.round(s2/60) + 'm ago';
+  if (s2 < 86400) return Math.round(s2/3600) + 'h ago';
+  return Math.round(s2/86400) + 'd ago';
+}
+
+async function loadCIRevenue() {
+  const el = document.getElementById('ci-revenue');
+  if (!el) return;
+  try {
+    const o = await fetchJSON('/api/overview');
+    const today = o?.revenue_today ?? 0, month = o?.monthly_revenue ?? 0;
+    const daily = new Date().getDate() > 0 ? month / new Date().getDate() : 0;
+    const up = today >= daily;
+    el.innerHTML = `
+      <div class="ci-rev-row">
+        <div class="ci-rev-cell"><div class="ci-rev-v">£${today.toFixed(2)}</div><div class="ci-rev-l">Today</div></div>
+        <div class="ci-rev-cell"><div class="ci-rev-v">£${month.toFixed(2)}</div><div class="ci-rev-l">This month</div></div>
+        <div class="ci-rev-cell"><div class="ci-rev-v ${up?'up':'down'}">${up?'▲':'▼'}</div><div class="ci-rev-l">vs daily avg</div></div>
+      </div>`;
+  } catch(_) { el.innerHTML = '<div class="ci-empty">Revenue unavailable</div>'; }
+}
+
+/* ── 5. Voice input on TALK TO KINGDOM ── */
+let _recognizing = false;
+function talkToKingdom() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const bar = document.getElementById('ci-talk-bar');
+  if (!SR || _recognizing) { toggleChat(); return; }
+  try {
+    const rec = new SR();
+    rec.lang = 'en-GB';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    _recognizing = true;
+    if (bar) { bar.classList.add('listening'); bar.childNodes.forEach(()=>{}); bar.innerHTML = '<span class="ci-talk-wave">〰〰〰</span> LISTENING… <span class="ci-talk-wave">〰〰〰</span>'; }
+    const reset = () => {
+      _recognizing = false;
+      if (bar) bar.innerHTML = '<span class="ci-talk-wave">〰〰〰</span> TALK TO KINGDOM <span class="ci-talk-wave">〰〰〰</span>';
+    };
+    rec.onresult = (e) => {
+      reset();
+      const text = e.results[0][0].transcript;
+      toggleChat();
+      setTimeout(() => {
+        const input = document.getElementById('chat-input');
+        if (input) { input.value = text; sendChatMessage(); }
+      }, 450);
+    };
+    rec.onerror = () => { reset(); toggleChat(); };
+    rec.onend = reset;
+    rec.start();
+  } catch(_) { _recognizing = false; toggleChat(); }
 }
 
 // Boot the command home
@@ -3202,5 +3296,7 @@ if (document.getElementById('command-home')) {
   startCoreSphere();
   startCIClock();
   loadCommandHome();
+  loadCIRevenue();
   setInterval(loadCommandHome, 30000);
+  setInterval(loadCIRevenue, 60000);
 }
