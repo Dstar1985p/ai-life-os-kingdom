@@ -2290,6 +2290,41 @@ var KingdomISO = (function () {
     } catch (_) {}
   }
 
+  // ── Live event stream (SSE) — falls back to polling if unavailable ────────
+  let _sse = null;
+  let _pollTimer = null;
+
+  function startPolling() {
+    if (_pollTimer) return;
+    fetchData();
+    _pollTimer = setInterval(fetchData, 8000);
+  }
+
+  function connectEvents() {
+    if (typeof EventSource === 'undefined') { startPolling(); return; }
+    try {
+      _sse = new EventSource('/events');
+      _sse.addEventListener('state', (e) => {
+        try {
+          const snap = JSON.parse(e.data);
+          if (snap.live) updateBuildingStates(snap.live);
+          if (snap.overview && snap.overview.revenue_today != null) {
+            revenueToday = `£${snap.overview.revenue_today.toFixed(0)}`;
+          }
+        } catch (_) {}
+      });
+      _sse.onerror = () => {
+        // Connection lost — EventSource auto-reconnects; poll meanwhile
+        startPolling();
+      };
+      _sse.onopen = () => {
+        if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+      };
+    } catch (_) {
+      startPolling();
+    }
+  }
+
   // ── Main render loop ───────────────────────────────────────────────────────
   function loop() {
     tick++;
@@ -2382,8 +2417,8 @@ var KingdomISO = (function () {
     spawnAgents();
     loop();
 
-    fetchData();
-    setInterval(fetchData, 8000);
+    fetchData();          // initial paint (scheduler + overview + live status)
+    connectEvents();      // then switch to push updates
 
     canvas.addEventListener('click', handleClick);
     window.addEventListener('resize', () => {

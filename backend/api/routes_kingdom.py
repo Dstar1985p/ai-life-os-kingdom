@@ -106,8 +106,7 @@ def agent_leaderboard(db: Session = Depends(get_db)):
     return get_leaderboard(db)
 
 
-@router.get("/api/overview")
-def api_overview(db: Session = Depends(get_db)):
+def compute_overview(db: Session) -> dict:
     """HUD overview — revenue snapshot and active agent count."""
     try:
         from backend.models.tables import RevenueEntry
@@ -130,3 +129,8 @@ def api_overview(db: Session = Depends(get_db)):
         "monthly_revenue": round(float(monthly_revenue), 2),
         "active_agents": active_agents,
     }
+
+
+@router.get("/api/overview")
+def api_overview(db: Session = Depends(get_db)):
+    return compute_overview(db)

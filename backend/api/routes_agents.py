@@ -91,9 +91,8 @@ def trigger_agent_alias(payload: TriggerPayload, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
-@router.get("/live-status")
-def live_status(db: Session = Depends(get_db)):
-    """Return per-building live agent state for the isometric map."""
+def compute_live_status(db: Session) -> dict:
+    """Per-building live agent state — shared by /agents/live-status and /events SSE."""
 
     AGENT_BUILDING = {
         'Vibes AI': 'pulsebreak', 'Music Licensing': 'pulsebreak', 'Content Agent': 'pulsebreak',
@@ -214,3 +213,9 @@ def live_status(db: Session = Depends(get_db)):
         'running_count': running_count,
         'waiting_count': waiting_count,
     }
+
+
+@router.get("/live-status")
+def live_status(db: Session = Depends(get_db)):
+    """Return per-building live agent state for the isometric map."""
+    return compute_live_status(db)
