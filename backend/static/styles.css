@@ -1247,3 +1247,104 @@ header{
   /* KPI strip labels shorter on very small screens */
   .kpi-label{ letter-spacing:1px; }
 }
+
+/* ═══ COMMAND CENTER HOME ═══ */
+#command-home{
+  position:fixed;inset:0;z-index:100;overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  padding:calc(96px + env(safe-area-inset-top,0px)) 14px 0;
+  font-family:'Inter',system-ui,sans-serif;
+}
+.ci-topline{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.ci-status-pill{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:0.62rem;font-weight:700;letter-spacing:1.6px;color:#9fb8d4;
+  background:rgba(20,32,52,0.55);border:1px solid rgba(120,180,255,0.16);
+  padding:5px 11px;border-radius:999px;text-transform:uppercase;
+}
+.ci-status-pill b{color:#4ade80;letter-spacing:1.6px}
+.ci-dot{width:7px;height:7px;border-radius:50%}
+.ci-dot.ok{background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,0.8)}
+.ci-dot.warn{background:#ffb84d;box-shadow:0 0 8px rgba(255,184,77,0.8)}
+.ci-clock{font-size:0.86rem;font-weight:700;color:#cfe2f5;font-variant-numeric:tabular-nums;letter-spacing:1px}
+
+.ci-core-wrap{position:relative;height:250px;margin:0 -14px;cursor:pointer}
+#core-sphere{width:100%;height:100%;display:block}
+.ci-core-label{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  pointer-events:none;text-align:center;
+}
+.ci-core-name{font-size:1.05rem;font-weight:800;letter-spacing:8px;color:#dceeff;text-shadow:0 0 24px rgba(90,180,255,0.8)}
+.ci-core-sub{font-size:0.6rem;font-weight:700;letter-spacing:5px;color:#7fb2e0;margin-top:5px}
+.ci-core-ver{font-size:0.56rem;color:#54718f;margin-top:3px;letter-spacing:1px}
+
+.ci-grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:760px){.ci-grid{grid-template-columns:1fr 1fr}}
+.ci-panel{
+  background:rgba(13,20,34,0.72);
+  border:1px solid rgba(120,180,255,0.13);
+  border-radius:14px;padding:14px 15px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+.ci-title{
+  font-size:0.62rem;font-weight:800;letter-spacing:2.2px;text-transform:uppercase;
+  color:#7fa6cc;margin:0 0 11px;display:flex;align-items:center;justify-content:space-between;
+}
+.ci-live{color:#ff5d6d;font-size:0.56rem;letter-spacing:1.5px;animation:ciBlink 2s infinite}
+@keyframes ciBlink{0%,100%{opacity:1}50%{opacity:0.35}}
+.ci-empty{color:#54718f;font-size:0.76rem}
+.ci-list{display:flex;flex-direction:column;gap:8px}
+.ci-row{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(20,32,52,0.5);border:1px solid rgba(120,180,255,0.08);
+  border-radius:10px;padding:9px 11px;font-size:0.78rem;
+}
+.ci-row .ci-k{font-weight:600;color:#dbe8f5;flex-shrink:0;max-width:46%;overflow-wrap:break-word}
+.ci-row .ci-v{font-size:0.68rem;color:#7fa6cc;margin-left:auto;text-align:right;max-width:52%;overflow-wrap:anywhere;line-height:1.35}
+.ci-feed-txt{flex:1;min-width:0;font-size:0.74rem;color:#c6d8ea;line-height:1.4;overflow-wrap:anywhere}
+.ci-feed-src{font-size:0.6rem;color:#5f7d9c;letter-spacing:0.5px}
+
+.ci-agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ci-agent{
+  background:rgba(20,32,52,0.5);border:1px solid rgba(120,180,255,0.08);
+  border-radius:10px;padding:9px 10px;
+}
+.ci-agent-name{font-size:0.7rem;font-weight:700;color:#dbe8f5;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ci-agent-state{font-size:0.6rem;font-weight:600;letter-spacing:0.8px;display:flex;align-items:center;gap:5px}
+.ci-agent-state.on{color:#4ade80}.ci-agent-state.off{color:#5f7d9c}
+.ci-spark{display:flex;align-items:flex-end;gap:2px;height:16px;margin-top:7px}
+.ci-spark i{flex:1;background:linear-gradient(180deg,#39c4f2,#1673a8);border-radius:1px;opacity:0.85;animation:ciSpark 2.2s ease-in-out infinite}
+@keyframes ciSpark{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.55)}}
+
+.ci-gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ci-gauge{text-align:center}
+.ci-gauge svg{width:74px;height:74px}
+.ci-gauge .gv{font-size:0.86rem;font-weight:800;fill:#e8f2fc}
+.ci-gauge .gl{font-size:0.6rem;font-weight:700;letter-spacing:1px;color:#7fa6cc;text-transform:uppercase;margin-top:4px}
+
+.ci-cmds{display:grid;grid-template-columns:1fr;gap:8px}
+.ci-cmd{
+  text-align:left;font-family:inherit;font-size:0.8rem;font-weight:600;color:#cfe2f5;
+  background:rgba(30,60,100,0.28);border:1px solid rgba(120,180,255,0.2);
+  border-radius:10px;padding:12px 14px;cursor:pointer;transition:background 0.15s;
+}
+.ci-cmd:hover,.ci-cmd:active{background:rgba(50,100,160,0.35)}
+
+#ci-talk-bar{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:140;
+  font-family:'Inter',sans-serif;font-size:0.68rem;font-weight:800;letter-spacing:2.5px;
+  color:#bfe4ff;background:rgba(12,22,38,0.9);
+  border:1px solid rgba(90,180,255,0.45);border-radius:999px;
+  padding:11px 22px;cursor:pointer;white-space:nowrap;
+  box-shadow:0 0 24px rgba(60,150,255,0.25), inset 0 0 18px rgba(60,150,255,0.08);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.ci-talk-wave{color:#3f8fd4;font-weight:400;letter-spacing:0}
+
+/* Chat bubble is redundant on the command home — the talk bar owns it */
+body:not(.city-mode) #chat-bubble{display:none}
+
+/* City mode: hide command layers */
+body.city-mode #command-home,body.city-mode #ci-talk-bar{display:none}
+body.city-mode #game-root{display:block!important}

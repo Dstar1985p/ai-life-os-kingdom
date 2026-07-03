@@ -2797,7 +2797,7 @@ async function loadHUD() {
 /* ─── BOOT ─── */
 document.addEventListener('DOMContentLoaded', () => {
   checkOnboarding();
-  initCanvas();
+  // City canvas boots lazily on first toggle — Command Center is home
   loadOverview();
   loadAttribution();
   loadPipelineStatus();
@@ -2983,4 +2983,224 @@ function stopAllAudio() {
   document.querySelectorAll('audio').forEach(a => { a.pause(); a.currentTime = 0; });
   const bar = document.getElementById('now-playing-bar');
   if (bar) bar.style.display = 'none';
+}
+
+/* ═══ COMMAND CENTER HOME ═══ */
+let _cityInited = false;
+
+function toggleCityView() {
+  const on = document.body.classList.toggle('city-mode');
+  if (on && !_cityInited) { _cityInited = true; initCanvas(); }
+  const btn = document.getElementById('hud-menu-btn');
+  if (btn) btn.textContent = on ? '⌂ HOME' : '⚔ MENU';
+}
+// Menu button doubles as Home when in city mode
+(function hookMenuHome(){
+  const btn = document.getElementById('hud-menu-btn');
+  if (!btn) return;
+  btn.onclick = () => {
+    if (document.body.classList.contains('city-mode')) toggleCityView();
+    else openHudMenu();
+  };
+})();
+
+/* ── Rotating wireframe core sphere ── */
+function startCoreSphere() {
+  const cv = document.getElementById('core-sphere');
+  if (!cv) return;
+  const ctx2 = cv.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  // Fibonacci point cloud on a unit sphere
+  const N = 220;
+  const pts = [];
+  const ga = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < N; i++) {
+    const yy = 1 - (i / (N - 1)) * 2;
+    const rr = Math.sqrt(1 - yy * yy);
+    const th = ga * i;
+    pts.push([Math.cos(th) * rr, yy, Math.sin(th) * rr]);
+  }
+  const sats = Array.from({length: 5}, (_, i) => ({
+    tilt: (i / 5) * Math.PI, speed: 0.004 + i * 0.0013, phase: i * 2.1, rad: 1.35 + i * 0.16,
+  }));
+
+  let t = 0, lastW = 0, lastH = 0;
+  function frame() {
+    if (document.body.classList.contains('city-mode')) { requestAnimationFrame(frame); return; }
+    const W = cv.offsetWidth || 360, H = cv.offsetHeight || 250;
+    if (W !== lastW || H !== lastH) { cv.width = W * dpr; cv.height = H * dpr; lastW = W; lastH = H; }
+    ctx2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx2.clearRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.34;
+    const rotY = t * 0.008, tiltX = 0.35;
+
+    // Halo
+    const halo = ctx2.createRadialGradient(cx, cy, R * 0.4, cx, cy, R * 2.1);
+    halo.addColorStop(0, 'rgba(70,150,230,0.14)');
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx2.fillStyle = halo;
+    ctx2.fillRect(0, 0, W, H);
+
+    // Point cloud with depth-scaled alpha
+    pts.forEach(p0 => {
+      let [x, y, z] = p0;
+      const x1 = x * Math.cos(rotY) + z * Math.sin(rotY);
+      const z1 = -x * Math.sin(rotY) + z * Math.cos(rotY);
+      const y1 = y * Math.cos(tiltX) - z1 * Math.sin(tiltX);
+      const z2 = y * Math.sin(tiltX) + z1 * Math.cos(tiltX);
+      const depth = (z2 + 1) / 2;
+      const px = cx + x1 * R, py = cy + y1 * R;
+      ctx2.globalAlpha = 0.12 + depth * 0.5;
+      ctx2.fillStyle = depth > 0.72 ? '#bfe4ff' : '#3f87c9';
+      ctx2.beginPath();
+      ctx2.arc(px, py, 0.7 + depth * 1.0, 0, Math.PI * 2);
+      ctx2.fill();
+    });
+    ctx2.globalAlpha = 1;
+
+    // Meridian wireframe rings
+    ctx2.strokeStyle = 'rgba(90,170,240,0.16)';
+    ctx2.lineWidth = 0.8;
+    for (let m = 0; m < 4; m++) {
+      const a = rotY + (m / 4) * Math.PI;
+      ctx2.beginPath();
+      ctx2.ellipse(cx, cy, Math.abs(R * Math.cos(a)) + 0.001, R, 0, 0, Math.PI * 2);
+      ctx2.stroke();
+    }
+    ctx2.beginPath();
+    ctx2.ellipse(cx, cy, R, R * 0.32, 0, 0, Math.PI * 2);
+    ctx2.stroke();
+
+    // Orbiting satellites with trails
+    sats.forEach(s2 => {
+      const a = t * s2.speed + s2.phase;
+      const or = R * s2.rad;
+      const ox2 = Math.cos(a) * or, oy2 = Math.sin(a) * or * 0.3;
+      const px = cx + ox2 * Math.cos(s2.tilt) - oy2 * Math.sin(s2.tilt);
+      const py = cy + ox2 * Math.sin(s2.tilt) * 0.4 + oy2 * Math.cos(s2.tilt);
+      ctx2.strokeStyle = 'rgba(90,170,240,0.10)';
+      ctx2.beginPath();
+      ctx2.ellipse(cx, cy, or, or * 0.3, s2.tilt * 0.4, 0, Math.PI * 2);
+      ctx2.stroke();
+      ctx2.fillStyle = '#9fd4ff';
+      ctx2.shadowColor = '#5ab0ff'; ctx2.shadowBlur = 8;
+      ctx2.beginPath(); ctx2.arc(px, py, 1.8, 0, Math.PI * 2); ctx2.fill();
+      ctx2.shadowBlur = 0;
+    });
+
+    t++;
+    requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+/* ── Clock ── */
+function startCIClock() {
+  const el = document.getElementById('ci-clock');
+  if (!el) return;
+  const tickFn = () => {
+    const d = new Date();
+    el.textContent = d.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  };
+  tickFn();
+  setInterval(tickFn, 1000);
+}
+
+/* ── Data modules ── */
+async function loadCommandHome() {
+  const [sched, lessons, overview, pipeline, health] = await Promise.all([
+    fetchJSON('/scheduler/status').catch(()=>null),
+    fetchJSON('/lessons?limit=8').catch(()=>null),
+    fetchJSON('/api/overview').catch(()=>null),
+    fetchJSON('/pipeline/status').catch(()=>null),
+    fetchJSON('/health').catch(()=>null),
+  ]);
+
+  // System status pill
+  const pill = document.getElementById('ci-system-status');
+  if (pill && health) {
+    const ok = health.status === 'healthy';
+    pill.innerHTML = `<span class="ci-dot ${ok?'ok':'warn'}"></span>SYSTEM STATUS <b style="color:${ok?'#4ade80':'#ffb84d'}">${ok?'OPTIMAL':'DEGRADED'}</b>`;
+  }
+
+  // Core overview
+  const ov = document.getElementById('ci-overview');
+  if (ov) {
+    const rows = [];
+    const agents = sched?.agents || [];
+    const running = agents.filter(a=>a.scheduler_running).length;
+    rows.push({k:'Agents', v:`${agents.length} registered · ${running} scheduled`, ok:agents.length>0});
+    (pipeline?.steps||[]).forEach(st => rows.push({k:st.step, v:st.detail?.slice(0,42)||st.status, ok:st.status==='ok'}));
+    if (overview) rows.push({k:'Revenue today', v:'£'+(overview.revenue_today??0).toFixed(2), ok:true});
+    ov.innerHTML = rows.map(r=>`
+      <div class="ci-row">
+        <span class="ci-dot ${r.ok?'ok':'warn'}"></span>
+        <span class="ci-k">${escapeHtml(r.k)}</span>
+        <span class="ci-v">${escapeHtml(String(r.v))}</span>
+      </div>`).join('');
+  }
+
+  // Intelligence feed
+  const feed = document.getElementById('ci-feed');
+  if (feed) {
+    const items = (lessons?.lessons || lessons || []).slice(0,6);
+    feed.innerHTML = items.length ? items.map(l=>`
+      <div class="ci-row">
+        <span class="ci-dot ok"></span>
+        <div style="flex:1;min-width:0">
+          <div class="ci-feed-txt">${escapeHtml((l.lesson||'').slice(0,110))}</div>
+          <div class="ci-feed-src">${escapeHtml((l.source||'').toUpperCase())}</div>
+        </div>
+      </div>`).join('') : '<div class="ci-empty">No intelligence yet — run an agent.</div>';
+  }
+
+  // Active agents grid
+  const ag = document.getElementById('ci-agents');
+  if (ag && sched?.agents) {
+    ag.innerHTML = sched.agents.slice(0,8).map(a=>{
+      const bars = Array.from({length:10},(_,i)=>`<i style="height:${20+((a.name.charCodeAt(i%a.name.length)*7+i*13)%70)}%;animation-delay:${i*0.12}s"></i>`).join('');
+      return `<div class="ci-agent" onclick="triggerAgent('${a.name.replace(/'/g,"\\'")}')" style="cursor:pointer">
+        <div class="ci-agent-name">${escapeHtml(a.name)}</div>
+        <div class="ci-agent-state ${a.scheduler_running?'on':'off'}">● ${a.scheduler_running?'ACTIVE':'STANDBY'}</div>
+        <div class="ci-spark">${bars}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Gauges
+  const gg = document.getElementById('ci-gauges');
+  if (gg) {
+    const agents = sched?.agents || [];
+    const running = agents.filter(a=>a.scheduler_running).length;
+    const pctA = agents.length ? Math.round(running/agents.length*100) : 0;
+    let todayCount = 0;
+    try { const t = await fetchJSON('/today'); todayCount = t?.total||0; } catch(_){}
+    const rev = overview?.monthly_revenue ?? 0;
+    const gauge = (pct, val, label, col) => {
+      const r = 30, c = 2*Math.PI*r, off = c*(1-Math.min(pct,100)/100);
+      return `<div class="ci-gauge">
+        <svg viewBox="0 0 74 74">
+          <circle cx="37" cy="37" r="${r}" fill="none" stroke="rgba(120,180,255,0.12)" stroke-width="5"/>
+          <circle cx="37" cy="37" r="${r}" fill="none" stroke="${col}" stroke-width="5"
+            stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"
+            transform="rotate(-90 37 37)"/>
+          <text x="37" y="42" text-anchor="middle" class="gv">${val}</text>
+        </svg>
+        <div class="gl">${label}</div>
+      </div>`;
+    };
+    gg.innerHTML =
+      gauge(pctA, running, 'Agents on', '#39c4f2') +
+      gauge(Math.min(todayCount*20,100), todayCount, 'Need you', todayCount>0?'#ffb84d':'#4ade80') +
+      gauge(Math.min(rev,100), '£'+Math.round(rev), 'Month rev', '#4ade80');
+  }
+}
+
+// Boot the command home
+if (document.getElementById('command-home')) {
+  startCoreSphere();
+  startCIClock();
+  loadCommandHome();
+  setInterval(loadCommandHome, 30000);
 }

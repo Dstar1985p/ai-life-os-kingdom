@@ -19,7 +19,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <title>Kingdom OS — AI Revenue Command Centre</title>
-<link rel="stylesheet" href="/static/styles.css?v=5">
+<link rel="stylesheet" href="/static/styles.css?v=6">
 </head>
 <body>
 <!-- Update Banner -->
@@ -154,10 +154,65 @@
   </div>
 </div>
 
-<!-- ══════════════════════ GAME ROOT (fullscreen canvas) ══════════════════════ -->
-<div id="game-root">
+<!-- ══════════════════════ GAME ROOT (City view — toggled) ══════════════════════ -->
+<div id="game-root" style="display:none">
   <canvas id="kingdom-map-canvas-fullscreen"></canvas>
 </div>
+
+<!-- ══════════════════════ COMMAND CENTER (default home) ══════════════════════ -->
+<div id="command-home">
+  <div class="ci-topline">
+    <span class="ci-status-pill" id="ci-system-status"><span class="ci-dot ok"></span>SYSTEM STATUS <b>OPTIMAL</b></span>
+    <span class="ci-clock" id="ci-clock">--:--:--</span>
+  </div>
+
+  <div class="ci-core-wrap" onclick="toggleCityView()">
+    <canvas id="core-sphere"></canvas>
+    <div class="ci-core-label">
+      <div class="ci-core-name">K I N G D O M</div>
+      <div class="ci-core-sub">AI CORE</div>
+      <div class="ci-core-ver" id="ci-core-ver">v1.3.0</div>
+    </div>
+  </div>
+
+  <div class="ci-grid">
+    <section class="ci-panel">
+      <h3 class="ci-title">AI Core Overview</h3>
+      <div id="ci-overview" class="ci-list"><div class="ci-empty">Connecting…</div></div>
+    </section>
+
+    <section class="ci-panel">
+      <h3 class="ci-title">Live Intelligence Feed <span class="ci-live">● LIVE</span></h3>
+      <div id="ci-feed" class="ci-list"><div class="ci-empty">Listening…</div></div>
+    </section>
+
+    <section class="ci-panel">
+      <h3 class="ci-title">Active Agents</h3>
+      <div id="ci-agents" class="ci-agent-grid"><div class="ci-empty">Scanning…</div></div>
+    </section>
+
+    <section class="ci-panel">
+      <h3 class="ci-title">System Monitor</h3>
+      <div class="ci-gauges" id="ci-gauges"></div>
+    </section>
+
+    <section class="ci-panel">
+      <h3 class="ci-title">Quick Commands</h3>
+      <div class="ci-cmds">
+        <button class="ci-cmd" onclick="openPanel('today')">▶ Review approval queue</button>
+        <button class="ci-cmd" onclick="triggerAgent('Opportunity Scout')">▶ Run Opportunity Scout</button>
+        <button class="ci-cmd" onclick="openPanel('pulsebreak')">▶ Open PulseBreak studio</button>
+        <button class="ci-cmd" onclick="toggleCityView()">⬡ Enter City view</button>
+      </div>
+    </section>
+  </div>
+
+  <div style="height:170px"></div>
+</div>
+
+<button id="ci-talk-bar" onclick="toggleChat()">
+  <span class="ci-talk-wave">〰〰〰</span> TALK TO KINGDOM <span class="ci-talk-wave">〰〰〰</span>
+</button>
 
 <!-- ══ HUD OVERLAYS ══ -->
 <div id="hud-topleft">
@@ -1482,7 +1537,7 @@
 </div>
 </div>
 
-<script src="/static/app.js?v=15"></script>
+<script src="/static/app.js?v=16"></script>
 
 <!-- PWA Install Button (Android Chrome — beforeinstallprompt) -->
 <div id="pwa-install-btn" onclick="pwaInstall()" style="display:none;position:fixed;bottom:80px;right:20px;z-index:999;background:linear-gradient(135deg,#00ff88,#00ccff);color:#000;border:none;border-radius:12px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,255,136,0.4)">
