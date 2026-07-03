@@ -74,10 +74,6 @@ var KingdomISO = (function () {
   let _liveBubbles   = [];   // {buildingId, text, color, life, maxLife}
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  function shadeColor(hex, amount) {
-    const parse = (s, i) => Math.max(0, Math.min(255, parseInt(s.slice(i, i + 2), 16) + amount));
-    return `rgb(${parse(hex, 1)},${parse(hex, 3)},${parse(hex, 5)})`;
-  }
 
   function lerpPt(a, b, t) {
     return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };

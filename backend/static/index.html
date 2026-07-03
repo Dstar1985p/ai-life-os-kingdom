@@ -19,7 +19,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <title>Kingdom OS — AI Revenue Command Centre</title>
-<link rel="stylesheet" href="/static/styles.css?v=3">
+<link rel="stylesheet" href="/static/styles.css?v=4">
 </head>
 <body>
 <!-- Update Banner -->
@@ -221,111 +221,6 @@
 </div>
 
 <!-- ══ HEADER ══ -->
-<header>
-  <div class="header-brand">
-    <div class="header-logo">⚔</div>
-    <div class="header-title">
-      <h1>KINGDOM OS</h1>
-      <p>Autonomous AI Revenue Engine</p>
-    </div>
-  </div>
-  <div class="header-actions">
-    <span id="reminders-badge" class="tab-badge" style="display:none;cursor:pointer" onclick="showTab('overview')">0</span>
-    <button class="hdr-btn" onclick="openHelp()">? Help</button>
-    <button class="hdr-btn" onclick="openSettings()">⚙ Settings</button>
-    <button class="hdr-btn primary" onclick="triggerAgent('Opportunity Scout')">▶ Run Scouts</button>
-    <div id="action-result"></div>
-  </div>
-</header>
-
-<!-- Resource Bar -->
-<div class="resources-bar">
-  <div class="resource-item gold">
-    <div class="resource-icon">💰</div>
-    <div>
-      <div class="resource-label">Gold (Revenue)</div>
-      <div class="resource-value" id="res-gold">£0.00</div>
-    </div>
-  </div>
-  <div class="resource-item knowledge">
-    <div class="resource-icon">📚</div>
-    <div>
-      <div class="resource-label">Knowledge</div>
-      <div class="resource-value" id="res-knowledge">0</div>
-    </div>
-  </div>
-  <div class="resource-item focus">
-    <div class="resource-icon">⚡</div>
-    <div>
-      <div class="resource-label">Focus</div>
-      <div class="resource-value" id="res-focus">0%</div>
-    </div>
-  </div>
-  <div class="resource-item stability">
-    <div class="resource-icon">🛡</div>
-    <div>
-      <div class="resource-label">Stability</div>
-      <div class="resource-value" id="res-stability">0/100</div>
-    </div>
-  </div>
-</div>
-
-<!-- Ticker -->
-<div id="ticker-wrap"><div id="ticker-track"></div></div>
-
-<!-- ══ PERSISTENT KPI STRIP — visible on every screen ══ -->
-<div id="kpi-strip">
-  <div class="kpi-cell profit" title="Net profit this calendar month">
-    <div class="kpi-label">Net P&L · Month</div>
-    <div class="kpi-value" id="kpi-net-pnl">—</div>
-    <div class="kpi-sub" id="kpi-net-sub">loading…</div>
-  </div>
-  <div class="kpi-cell revenue" title="Revenue earned today">
-    <div class="kpi-label">Revenue · Today</div>
-    <div class="kpi-value" id="kpi-rev-today">—</div>
-    <div class="kpi-sub" id="kpi-rev-sub">vs yesterday</div>
-  </div>
-  <div class="kpi-cell target" title="Progress toward monthly revenue target">
-    <div class="kpi-label">Target · Progress</div>
-    <div class="kpi-value" id="kpi-target-pct">—</div>
-    <div class="kpi-mini-bar"><div class="kpi-mini-fill" id="kpi-target-bar" style="width:0%"></div></div>
-  </div>
-  <div class="kpi-cell cost" title="Claude API spend today (£)">
-    <div class="kpi-label">API Cost · Today</div>
-    <div class="kpi-value" id="kpi-api-cost">—</div>
-    <div class="kpi-sub" id="kpi-cost-sub">self-funded</div>
-  </div>
-  <div class="kpi-cell agents" title="Active / total agents">
-    <div class="kpi-label">Agents</div>
-    <div class="kpi-value" id="kpi-agents">—</div>
-    <div class="kpi-sub" id="kpi-agents-sub">running now</div>
-  </div>
-  <div class="kpi-cell queue" title="Opportunities scored and ready to action">
-    <div class="kpi-label">Queue · Ready</div>
-    <div class="kpi-value" id="kpi-queue">—</div>
-    <div class="kpi-sub">pursue now</div>
-  </div>
-  <div class="kpi-cell health" title="System health score">
-    <div class="kpi-label">System · Health</div>
-    <div class="kpi-value" id="kpi-health">—</div>
-    <div class="kpi-sub" id="kpi-health-sub">all systems</div>
-  </div>
-</div>
-
-<!-- Nav Tabs -->
-<nav class="nav-tabs" id="nav-tabs">
-  <button class="nav-tab active" data-tab="overview" onclick="showTab('overview')"><span class="tab-dot"></span> Overview</button>
-  <button class="nav-tab" data-tab="pitwall" onclick="showTab('pitwall')"><span class="tab-dot" style="background:var(--amber)"></span> Pitwall Classics</button>
-  <button class="nav-tab" data-tab="pulsebreak" onclick="showTab('pulsebreak')"><span class="tab-dot" style="background:var(--purple)"></span> PulseBreak</button>
-  <button class="nav-tab" data-tab="agents" onclick="showTab('agents')"><span class="tab-dot" style="background:var(--green)"></span> Agents</button>
-  <button class="nav-tab" data-tab="opportunities" onclick="showTab('opportunities')"><span class="tab-dot" style="background:var(--cyan)"></span> Opportunities</button>
-  <button class="nav-tab" data-tab="livery" onclick="showTab('livery')"><span class="tab-dot" style="background:#f97316"></span> Livery Forge</button>
-  <button class="nav-tab" data-tab="intelligence" onclick="showTab('intelligence')"><span class="tab-dot" style="background:var(--pink)"></span> Intelligence</button>
-  <button class="nav-tab" data-tab="command" onclick="showTab('command')"><span class="tab-dot" style="background:#ff3366"></span> Command Centre</button>
-  <button class="nav-tab" data-tab="tools" onclick="showTab('tools')"><span class="tab-dot"></span> Tools</button>
-  <button class="nav-tab" data-tab="roadmap" onclick="showTab('roadmap')"><span class="tab-dot" style="background:var(--cockpit-red)"></span> Roadmap</button>
-</nav>
-
 <!-- ══════════════════════════ PAGE: OVERVIEW ══════════════════════════ -->
 <div class="page active" id="page-overview">
 <div class="content-area">
@@ -1587,7 +1482,7 @@
 </div>
 </div>
 
-<script src="/static/app.js?v=12"></script>
+<script src="/static/app.js?v=13"></script>
 
 <!-- PWA Install Button (Android Chrome — beforeinstallprompt) -->
 <div id="pwa-install-btn" onclick="pwaInstall()" style="display:none;position:fixed;bottom:80px;right:20px;z-index:999;background:linear-gradient(135deg,#00ff88,#00ccff);color:#000;border:none;border-radius:12px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,255,136,0.4)">

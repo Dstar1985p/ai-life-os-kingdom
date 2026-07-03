@@ -157,9 +157,10 @@ def _process(job: dict) -> None:
                            "electronic music", "rave", "bass music"]
                 if release and release.sub_genre:
                     yt_tags.append(release.sub_genre.lower())
+                from backend.services.pulsebreak_watch import _generate_youtube_description
                 yt_result = upload_to_youtube(
                     str(video_path), yt_title,
-                    f"PulseBreak — {clean_title}\n\n#DnB #DrumAndBass #PulseBreak", yt_tags,
+                    _generate_youtube_description(track_name), yt_tags,
                 )
                 if release and yt_result.get("video_id"):
                     release.youtube_video_id = yt_result.get("video_id", "")

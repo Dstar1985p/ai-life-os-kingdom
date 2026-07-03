@@ -87,137 +87,18 @@ function initCanvas() {
   KingdomISO.init(canvas);
 }
 // ── LEGACY CANVAS STUB (replaced by KingdomISO) ──
-function _legacyCanvas_unused() {
-  const ctx = null;
-  const LW = 900, LH = 240;
-  const dpr = window.devicePixelRatio || 1;
 
-  const ROOMS = [
-    { key:'vibes',       label:'VIBES AI',      colour:'#c084fc', col:0, row:0 },
-    { key:'overseer',    label:'OVERSEER',       colour:'#fbbf24', col:1, row:0 },
-    { key:'licensing',   label:'MUSIC LIC.',     colour:'#34d399', col:2, row:0 },
-    { key:'printforge',  label:'PRINT FORGE',    colour:'#fb923c', col:0, row:1 },
-    { key:'questmaster', label:'QUEST MASTER',   colour:'#a78bfa', col:1, row:1 },
-    { key:'printify',    label:'PRINTIFY',       colour:'#22d3ee', col:2, row:1 },
-  ];
-  const MARGIN = 30, CORRIDOR = 24, COLS = 3, ROWS = 2;
-  function roomRect(col, row) {
-    const tw = LW - MARGIN*2, th = LH - MARGIN*2 - 20;
-    const cw = tw/COLS, ch = th/ROWS, pad = CORRIDOR/2 + 2;
-    return { x: MARGIN+col*cw+pad, y: MARGIN+20+row*ch+pad, w: cw-pad*2, h: ch-pad*2 };
-  }
-  const particles = Array.from({length:18}, () => ({
-    x: Math.random()*LW, y: Math.random()*LH,
-    vx: (Math.random()-0.5)*0.4, vy: (Math.random()-0.5)*0.4, r: 1+Math.random()
-  }));
-  const CORR = [[0,0,1,0],[1,0,2,0],[0,1,1,1],[1,1,2,1],[0,0,0,1],[1,0,1,1],[2,0,2,1]];
-  const packets = CORR.map(() => ({ t: Math.random() }));
-  let statusMap = {};
-
-  function corrEp(c) {
-    const [c1,r1,c2,r2] = c;
-    const ra = roomRect(c1,r1), rb = roomRect(c2,r2);
-    if (c1===c2) return {x1:ra.x+ra.w/2,y1:ra.y+ra.h,x2:rb.x+rb.w/2,y2:rb.y};
-    return {x1:ra.x+ra.w,y1:ra.y+ra.h/2,x2:rb.x,y2:rb.y+rb.h/2};
-  }
-  function hexRgb(h) { return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
-
-  function resize() {
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.scale(rect.width*dpr/LW, rect.height*dpr/LH);
-  }
-  window.addEventListener('resize', resize); resize();
-
-  function draw() {
-    ctx.fillStyle = '#030010'; ctx.fillRect(0,0,LW,LH);
-    // Grid
-    ctx.fillStyle = 'rgba(0,180,255,0.05)';
-    for(let x=0;x<LW;x+=28) for(let y=0;y<LH;y+=28) ctx.fillRect(x,y,1,1);
-    // Particles
-    particles.forEach(p => {
-      p.x+=p.vx; p.y+=p.vy;
-      if(p.x<0)p.x=LW; if(p.x>LW)p.x=0;
-      if(p.y<0)p.y=LH; if(p.y>LH)p.y=0;
-      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-      ctx.fillStyle='rgba(0,200,255,0.35)'; ctx.fill();
-    });
-    // Corridors
-    CORR.forEach((c,i) => {
-      const ep = corrEp(c);
-      ctx.strokeStyle='rgba(0,180,255,0.22)'; ctx.lineWidth=3;
-      ctx.beginPath(); ctx.moveTo(ep.x1,ep.y1); ctx.lineTo(ep.x2,ep.y2); ctx.stroke();
-      const pk=packets[i]; pk.t+=0.005; if(pk.t>1)pk.t=0;
-      const px=ep.x1+(ep.x2-ep.x1)*pk.t, py=ep.y1+(ep.y2-ep.y1)*pk.t;
-      ctx.save(); ctx.shadowBlur=8; ctx.shadowColor='#00e5ff';
-      ctx.beginPath(); ctx.arc(px,py,2.5,0,Math.PI*2);
-      ctx.fillStyle='#00e5ff'; ctx.fill(); ctx.restore();
-    });
-    // Rooms
-    const t = Date.now()/1000;
-    ROOMS.forEach(room => {
-      const r = roomRect(room.col, room.row);
-      const [rr,rg,rb] = hexRgb(room.colour);
-      const active = statusMap[room.key];
-      const pulse = active ? 0.5+Math.sin(t*3)*0.5 : 0;
-      // Glow
-      if(active) {
-        const g = ctx.createRadialGradient(r.x+r.w/2,r.y+r.h/2,0,r.x+r.w/2,r.y+r.h/2,r.w*0.7);
-        g.addColorStop(0,`rgba(${rr},${rg},${rb},${0.12+pulse*0.08})`);
-        g.addColorStop(1,'transparent');
-        ctx.fillStyle=g; ctx.fillRect(r.x,r.y,r.w,r.h);
-      }
-      // Room border
-      ctx.strokeStyle=`rgba(${rr},${rg},${rb},${active?0.7:0.35})`;
-      ctx.lineWidth=active?2:1;
-      ctx.strokeRect(r.x,r.y,r.w,r.h);
-      // Fill
-      ctx.fillStyle=`rgba(${rr},${rg},${rb},${active?0.08:0.04})`;
-      ctx.fillRect(r.x+1,r.y+1,r.w-2,r.h-2);
-      // Label
-      ctx.fillStyle=active?room.colour:`rgba(${rr},${rg},${rb},0.65)`;
-      ctx.font=`bold ${active?11:10}px 'Inter',sans-serif`;
-      ctx.textAlign='center';
-      ctx.fillText(room.label,r.x+r.w/2,r.y+r.h/2+4);
-      // Pulse dot
-      if(active) {
-        ctx.save(); ctx.shadowBlur=8; ctx.shadowColor=room.colour;
-        ctx.beginPath(); ctx.arc(r.x+r.w-10,r.y+10,4,0,Math.PI*2);
-        ctx.fillStyle=room.colour; ctx.fill(); ctx.restore();
-      }
-    });
-    // Throttle to ~30fps on mobile to avoid draining battery/locking up
-    const delay = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 33 : 16;
-    _animFrame = setTimeout(() => { _animFrame = requestAnimationFrame(draw); }, delay);
-  }
-  if(_animFrame) { clearTimeout(_animFrame); cancelAnimationFrame(_animFrame); }
-  draw();
-
-  // Click handling
-  canvas.addEventListener('click', e => {
-    const rect2 = canvas.getBoundingClientRect();
-    const mx = (e.clientX-rect2.left)/rect2.width*LW;
-    const my = (e.clientY-rect2.top)/rect2.height*LH;
-    const hit = ROOMS.find(room => {
-      const r = roomRect(room.col,room.row);
-      return mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h;
-    });
-    if(hit) openCharModal(hit.modal||hit.key);
-  });
-
-  _canvasData = { statusMap };
-}
 
 async function loadKingdomMap() {
   const data = await fetchJSON('/kingdom/map');
   if (!data) return null;
   _kingdomDistricts = data.districts || [];
   const res = data.resources || {};
-  document.getElementById('res-gold').textContent = fmtMoney(res.gold);
-  document.getElementById('res-knowledge').textContent = res.knowledge || 0;
-  document.getElementById('res-focus').textContent = fmtPct(res.focus);
-  document.getElementById('res-stability').textContent = (res.stability||0) + '/100';
+  const setRes = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setRes('res-gold', fmtMoney(res.gold));
+  setRes('res-knowledge', res.knowledge || 0);
+  setRes('res-focus', fmtPct(res.focus));
+  setRes('res-stability', (res.stability||0) + '/100');
 
   // Update canvas status
   if (_canvasData.statusMap) {
@@ -243,7 +124,6 @@ async function loadKingdomMap() {
     </div>`;
   }).join('');
   document.getElementById('kingdom-map').innerHTML = html;
-  buildTicker(data);
   return data;
 }
 
@@ -283,18 +163,7 @@ function toggleDistrict(id) {
 }
 
 /* ─── TICKER ─── */
-function buildTicker(data) {
-  if (!data) return;
-  const items = [
-    `💰 Revenue: ${fmtMoney(data.resources?.gold)}`,
-    `📚 Lessons: ${data.resources?.knowledge||0}`,
-    `⚡ Focus: ${data.resources?.focus||0}%`,
-    `🛡 Stability: ${data.resources?.stability||0}/100`,
-    ...(_kingdomDistricts||[]).map(d=>`${d.emoji} ${d.name}: ${d.top_action}`),
-  ];
-  document.getElementById('ticker-track').innerHTML = [...items,...items].map(i=>`<span class="ticker-item">◈ <span>${i}</span></span>`).join('');
-  document.getElementById('ticker-wrap').style.display = 'block';
-}
+
 
 /* ─── ACTIVITY FEED ─── */
 function renderActivity(runs, lessons) {
@@ -517,12 +386,14 @@ async function dismissReminder(id, btn) {
 
 /* ─── AGENT TRIGGER ─── */
 async function triggerAgent(name) {
-  const el = document.getElementById('action-result');
+  const el = document.getElementById('action-result');  // legacy hook, may be absent
+  showToast(`Running ${name}…`, 'info', 2500);
   if (el) { el.style.color='var(--amber)'; el.textContent=`Running ${name}...`; }
   try {
     const r = await fetch(`/scheduler/run/${encodeURIComponent(name)}`, {method:'POST'});
     const d = await r.json();
     if (d.status==='ok') {
+      showToast(`✓ ${name} finished`, 'success');
       if (el) { el.style.color='var(--green)'; el.textContent=`✓ ${name}: ${d.opportunities_created||0} new`; }
       if ((d.opportunities_created||0)>0) triggerCelebration('AGENT SUCCESS!', name+': '+(d.opportunities_created||0)+' new opportunities','🔥');
       setTimeout(() => { loadKingdomMap(); loadAttribution(); }, 800);
@@ -1948,7 +1819,6 @@ function toggleKeyVisibility(id, btn) {
 /* ─── HELP ─── */
 function openHelp() { document.getElementById('help-overlay')?.classList.add('open'); }
 function closeHelp() { document.getElementById('help-overlay')?.classList.remove('open'); }
-function closeHelpBg(e) { if(e.target===document.getElementById('help-overlay')) closeHelp(); }
 
 /* ─── UPDATE ─── */
 async function checkForUpdate() {

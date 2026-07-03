@@ -110,23 +110,6 @@ def _process_track(audio_file: Path, db) -> dict:
     return result
 
 
-def approve_track(track_name: str, db) -> dict:
-    """
-    Founder has approved a quarantined track.
-    Moves it from review/ back to the main queue for processing.
-    """
-    ensure_dirs()
-    audio_extensions = {".mp3", ".wav", ".m4a", ".flac"}
-    for ext in audio_extensions:
-        src = REVIEW_DIR / f"{track_name}{ext}"
-        if src.exists():
-            dest = TRACKS_DIR / src.name
-            shutil.move(str(src), str(dest))
-            return {"status": "queued", "file": src.name,
-                    "message": "Track moved to processing queue — will be picked up on next scan"}
-    return {"status": "not_found", "message": f"No track named '{track_name}' in review queue"}
-
-
 def reject_track(track_name: str, db) -> dict:
     """Founder has rejected a quarantined track — move to rejected/."""
     ensure_dirs()
