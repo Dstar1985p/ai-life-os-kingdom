@@ -205,11 +205,27 @@ class VibesAIAgent(BaseRevenueAgent):
                 "strategic_alignment_score": 78.0,
                 "kingdom_score": kingdom_score,
             }
+            # Keep new concepts on the PulseBreak sound: blend the library's
+            # DNA (measured from every uploaded track) into the Suno prompt
+            dna_prompt = concept.get("suno_prompt", "")
+            try:
+                from backend.services.sound_dna import get_sound_dna
+                dna = get_sound_dna(db)
+                if dna.get("status") == "ok":
+                    bank = {b["sub_genre"]: b for b in dna.get("prompt_bank", [])}
+                    if sub_genre in bank:
+                        dna_prompt = bank[sub_genre]["suno_prompt"]
+                    elif dna["dna"].get("bpm"):
+                        dna_prompt = (dna_prompt.rstrip(". ") +
+                                      f". Match the PulseBreak catalogue sound: ~{int(dna['dna']['bpm'])} bpm.")
+            except Exception:
+                pass
+
             evidence = json.dumps({
                 "sub_genre": sub_genre,
                 "bpm": concept.get("bpm", 174),
                 "mood": concept.get("mood", ""),
-                "suno_prompt": concept.get("suno_prompt", ""),
+                "suno_prompt": dna_prompt,
                 "cover_art": concept.get("cover_art", ""),
                 "platforms": concept.get("platforms", []),
                 "licensing_potential": pot,

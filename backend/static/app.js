@@ -716,6 +716,7 @@ async function loadPulsebreakTab() {
   loadTrackLibrary();
   loadLicensingConcepts();
   loadPitchTracker();
+  loadSoundDNA();
   loadLicensingRevenue();
   loadYouTubeContent();
   loadContentPosts();
@@ -911,7 +912,8 @@ async function generateLicensingConcepts() {
     const data = await res.json();
     showToast(`Generated ${data.opportunities_created||0} new concept(s)`, 'success');
     loadLicensingConcepts();
-  loadPitchTracker(); loadLicensingRevenue();
+  loadPitchTracker();
+  loadSoundDNA(); loadLicensingRevenue();
   } catch(e) { showToast('Failed', 'error'); }
 }
 
@@ -3098,4 +3100,39 @@ function asList(v) {
     return v ? v.split(',').map(s => s.trim()).filter(Boolean) : [];
   }
   return [];
+}
+
+
+/* ─── SOUND DNA ─── */
+async function loadSoundDNA() {
+  const el = document.getElementById('sound-dna');
+  if (!el) return;
+  try {
+    const d = await fetchJSON('/vibes/sound-dna');
+    if (d.status !== 'ok') { el.innerHTML = `<div style="color:var(--muted);font-size:0.7rem">${escapeHtml(d.message||'No data yet')}</div>`; return; }
+    const dna = d.dna || {};
+    el.innerHTML = `
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        ${dna.bpm?`<span class="badge">~${Math.round(dna.bpm)} BPM</span>`:''}
+        ${dna.dynamic_range_db?`<span class="badge">${dna.dynamic_range_db} dB dynamics</span>`:''}
+        ${(dna.genre_mix||[]).slice(0,3).map(g=>`<span class="badge" style="border-color:#bf5fff;color:#bf5fff">${escapeHtml(g.sub_genre)} ×${g.tracks}</span>`).join('')}
+        ${(dna.signature_moods||[]).map(m=>`<span class="badge" style="border-color:#00e676;color:#00e676">${escapeHtml(m)}</span>`).join('')}
+      </div>` +
+      (d.prompt_bank||[]).slice(0,4).map((b,i) => `
+      <div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:0.68rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <b>${escapeHtml(b.sub_genre)}</b>
+          <button class="btn btn-xs" onclick="copyDnaPrompt(${i},this)">Copy prompt</button>
+        </div>
+        <div id="dna-prompt-${i}" style="color:var(--muted);overflow-wrap:anywhere">${escapeHtml(b.suno_prompt)}</div>
+      </div>`).join('') +
+      `<div style="font-size:0.6rem;color:var(--muted);margin-top:4px">Built from ${d.tracks_analysed} track(s) in your library — updates as you upload more.</div>`;
+  } catch(_) { el.innerHTML = '<div style="color:var(--muted);font-size:0.7rem">Unavailable</div>'; }
+}
+
+async function copyDnaPrompt(i, btn) {
+  const el = document.getElementById('dna-prompt-' + i);
+  if (!el) return;
+  try { await navigator.clipboard.writeText(el.textContent); btn.textContent = 'Copied!'; }
+  catch(_) { btn.textContent = 'Failed'; }
 }

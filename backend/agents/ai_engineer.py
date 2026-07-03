@@ -165,8 +165,19 @@ class AIEngineerAgent(BaseRevenueAgent):
     mission = "Self-healing system guardian — scan, classify, learn, and fix agent errors"
 
     def run(self, db: Session) -> AgentRunResult:
+        # Operational self-healing first: retry failed agents, requeue failed
+        # renders, restart the scheduler if it died
+        heal_summary = ""
+        try:
+            from backend.services.self_healing import run_health_scan
+            heal = run_health_scan(db)
+            heal_summary = heal.get("summary", "")
+        except Exception:
+            pass
+
         errors = _get_recent_errors(db, hours=72)
         performance = _get_performance_insights(db)
+        result_extra_lesson = f"Health scan: {heal_summary}" if heal_summary else ""
         ai_calls = 0
 
         # Classify all errors
@@ -297,6 +308,9 @@ class AIEngineerAgent(BaseRevenueAgent):
         )
         if not actions:
             actions = ["System healthy — no critical errors detected"]
+
+        if result_extra_lesson:
+            actions.insert(0, result_extra_lesson)
 
         result = AgentRunResult(
             status="ok",

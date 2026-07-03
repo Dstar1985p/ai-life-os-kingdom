@@ -63,6 +63,13 @@ def pipeline_status(db: Session = Depends(get_db)) -> dict:
     return {"steps": steps}
 
 
+@router.get("/sound-dna")
+def sound_dna(db: Session = Depends(get_db)) -> dict:
+    """The PulseBreak sound profile learned from the library + Suno prompt bank."""
+    from backend.services.sound_dna import get_sound_dna
+    return get_sound_dna(db)
+
+
 @router.get("/weekly-plan")
 def weekly_plan(db: Session = Depends(get_db)) -> dict:
     """Return this week's Vibes AI release plan."""

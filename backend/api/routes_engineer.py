@@ -85,3 +85,17 @@ def get_engineer_status(db: Session = Depends(get_db)):
     from backend.agents.ai_engineer import AIEngineerAgent
     agent = AIEngineerAgent()
     return agent.get_status(db)
+
+
+@router.post("/heal")
+def run_heal(db: Session = Depends(get_db)):
+    """Run the self-healing scan now — retries failed agents, requeues failed renders."""
+    from backend.services.self_healing import run_health_scan
+    return run_health_scan(db)
+
+
+@router.get("/health-report")
+def health_report():
+    """Latest self-healing scan report."""
+    from backend.services.self_healing import get_last_report
+    return get_last_report()

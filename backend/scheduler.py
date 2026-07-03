@@ -201,6 +201,19 @@ def _run_etsy_order_sync() -> None:
         db.close()
 
 
+def _run_self_healing() -> None:
+    db = SessionLocal()
+    try:
+        from backend.services.self_healing import run_health_scan
+        report = run_health_scan(db)
+        if report.get("auto_fixed") or report.get("needs_founder"):
+            logger.info("Self-healing: %s", report.get("summary"))
+    except Exception:
+        logger.exception("Self-healing scan failed")
+    finally:
+        db.close()
+
+
 def _run_crisis_scan_job() -> None:
     from backend.services.crisis_engine import run_crisis_scan, save_crisis_scan
     db = SessionLocal()
@@ -243,6 +256,15 @@ def start_scheduler() -> BackgroundScheduler:
                 id=f"agent_{agent_name.lower().replace(' ', '_')}",
                 replace_existing=True,
             )
+
+    # Self-healing watchdog — every 30 minutes
+    _scheduler.add_job(
+        _run_self_healing,
+        trigger=IntervalTrigger(minutes=30),
+        id="self_healing",
+        name="Self-Healing Watchdog",
+        replace_existing=True,
+    )
 
     # Crisis scan — every 6 hours
     _scheduler.add_job(
