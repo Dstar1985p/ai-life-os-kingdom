@@ -104,6 +104,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Access-key gate — active only when KINGDOM_ACCESS_KEY env var is set
+from backend.auth import AccessKeyMiddleware  # noqa: E402
+app.add_middleware(AccessKeyMiddleware)
+
 # Mount static files
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_dir):
