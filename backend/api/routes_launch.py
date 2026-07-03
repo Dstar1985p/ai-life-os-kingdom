@@ -109,9 +109,51 @@ _DEFAULT_ITEMS: list[dict] = [
 ]
 
 
+# The go-live sprint: the exact steps between "platform ready" and
+# "first real revenue". Seeded once; ticking them off is the launch.
+_GO_LIVE_ITEMS = [
+    {"venture": "Kingdom", "category": "1. Lock it down",
+     "item": "Set KINGDOM_ACCESS_KEY env var on Railway (Settings → Variables) — app is public until you do",
+     "notes": "Any strong passphrase. You'll enter it once on each device (90-day cookie)."},
+    {"venture": "Kingdom", "category": "1. Lock it down",
+     "item": "Attach a Railway volume or Postgres plugin so the database survives redeploys",
+     "notes": "Postgres plugin: code switches automatically via DATABASE_URL."},
+    {"venture": "PulseBreak", "category": "2. Connect YouTube",
+     "item": "Create OAuth credentials at console.cloud.google.com (YouTube Data API v3, Desktop App)",
+     "notes": "Download as .youtube_credentials.json into the app folder."},
+    {"venture": "PulseBreak", "category": "2. Connect YouTube",
+     "item": "Run: python scripts/youtube_setup.py — authorise the PulseBreak channel",
+     "notes": "One-time browser login; token persists."},
+    {"venture": "PulseBreak", "category": "3. First real release",
+     "item": "Upload 5 real PulseBreak tracks via the Track Upload zone",
+     "notes": "Sound DNA and the sonic fingerprint sharpen from these."},
+    {"venture": "PulseBreak", "category": "3. First real release",
+     "item": "Listen + approve the best tracks — turntable videos render and upload automatically",
+     "notes": "Watch the render strip in the PulseBreak panel."},
+    {"venture": "PulseBreak", "category": "3. First real release",
+     "item": "Verify the first video is live on the PulseBreak channel and looks right",
+     "notes": "Check title, thumbnail, description before making it public if unlisted."},
+    {"venture": "Pitwall Classics", "category": "4. First sale push",
+     "item": "Pick the top 3 opportunities from the Opportunities panel and publish those listings",
+     "notes": "Drafts are ready — publishing is your click on Etsy/Printify."},
+    {"venture": "Pitwall Classics", "category": "4. First sale push",
+     "item": "Set KINGDOM_SMTP_USER / KINGDOM_SMTP_PASSWORD so the Monday digest reaches your inbox",
+     "notes": "Gmail app password works. Digest goes to prydeprydey@yahoo.co.uk."},
+    {"venture": "Kingdom", "category": "5. Watch the numbers",
+     "item": "After 2 weeks: review Portfolio Advisor + learning cards, cut anything with zero traction",
+     "notes": "Intelligence Hub → Portfolio advisor. Let data decide, not enthusiasm."},
+]
+
+
 def _seed_checklist(db: Session) -> None:
     if db.query(LaunchChecklist).count() == 0:
         for item in _DEFAULT_ITEMS:
+            db.add(LaunchChecklist(**item))
+        db.commit()
+    # Go-live sprint items (idempotent — keyed on first item's text)
+    marker = _GO_LIVE_ITEMS[0]["item"]
+    if not db.query(LaunchChecklist).filter(LaunchChecklist.item == marker).first():
+        for item in _GO_LIVE_ITEMS:
             db.add(LaunchChecklist(**item))
         db.commit()
 
