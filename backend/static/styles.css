@@ -20,7 +20,8 @@ header,#app-header,.resources-bar,.nav-tabs,#ticker-wrap,#kpi-strip,.iso-map-car
 
 /* ── SIDE PANEL ── */
 #side-panel{
-  position:fixed;top:0;right:-440px;width:420px;height:100vh;
+  position:fixed;top:0;right:-440px;width:420px;
+  height:100vh;height:100dvh;
   background:rgba(3,4,16,0.97);border-left:1px solid rgba(0,229,255,0.2);
   transition:right 0.3s ease;z-index:200;overflow:hidden;
   display:flex;flex-direction:column;
@@ -29,24 +30,25 @@ header,#app-header,.resources-bar,.nav-tabs,#ticker-wrap,#kpi-strip,.iso-map-car
 #side-panel-header{
   background:rgba(3,4,16,0.99);
   border-bottom:1px solid rgba(0,229,255,0.18);
-  padding:14px 52px 12px 20px;
+  padding:calc(14px + env(safe-area-inset-top,0px)) 64px 12px 20px;
   display:flex;align-items:center;
   flex-shrink:0;position:relative;z-index:202;
 }
 #side-panel-close{
-  position:absolute;top:10px;right:14px;background:rgba(0,229,255,0.12);
-  border:1px solid rgba(0,229,255,0.4);
-  color:#00e5ff;font-size:1.2rem;font-weight:700;cursor:pointer;z-index:203;
-  padding:6px 12px;border-radius:6px;transition:all 0.2s;
+  position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:12px;
+  background:rgba(0,229,255,0.15);
+  border:1.5px solid rgba(0,229,255,0.6);
+  color:#00e5ff;font-size:1.3rem;font-weight:700;cursor:pointer;z-index:203;
+  padding:6px 12px;border-radius:10px;transition:all 0.2s;
   touch-action:manipulation;-webkit-tap-highlight-color:transparent;
-  min-width:40px;min-height:40px;display:flex;align-items:center;justify-content:center;
+  min-width:48px;min-height:48px;display:flex;align-items:center;justify-content:center;
 }
 #side-panel-close:hover,#side-panel-close:active{color:#fff;background:rgba(0,229,255,0.25);border-color:#00e5ff;transform:scale(1.05)}
 #side-panel-title{
   font-family:'Press Start 2P',monospace;font-size:0.6rem;letter-spacing:2px;
   color:#00e5ff;text-transform:uppercase;margin:0;
 }
-#side-panel-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 20px 24px}
+#side-panel-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:16px 20px calc(32px + env(safe-area-inset-bottom,0px))}
 #side-panel-body .page{display:block!important}
 #side-panel-body .content-area{padding:0!important}
 #vis-canvas{width:100%;height:280px;border-radius:12px;background:#050012;display:block;margin-top:12px}
@@ -93,9 +95,11 @@ header,#app-header,.resources-bar,.nav-tabs,#ticker-wrap,#kpi-strip,.iso-map-car
 .hud-quest-dot{color:#00ff88;flex-shrink:0;margin-top:1px}
 
 #hud-bottom{
-  position:fixed;bottom:0;left:0;right:0;height:48px;z-index:150;
+  position:fixed;bottom:0;left:0;right:0;z-index:150;
+  height:calc(48px + env(safe-area-inset-bottom,0px));
   background:rgba(3,4,16,0.92);border-top:1px solid rgba(0,229,255,0.2);
-  display:flex;align-items:center;justify-content:space-between;padding:0 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px env(safe-area-inset-bottom,0px);
   font-family:'Press Start 2P',monospace;
 }
 #hud-bottom-left{font-size:0.4rem;color:rgba(192,132,252,0.9);display:flex;gap:24px}
@@ -138,16 +142,25 @@ header,#app-header,.resources-bar,.nav-tabs,#ticker-wrap,#kpi-strip,.iso-map-car
 /* ── All old pages hidden (content moves to panel) ── */
 .page{display:none!important}
 
-/* ── Mobile HUD adjustments ── */
+/* ── Mobile HUD: one slim bar, map gets the screen ── */
 @media(max-width:600px){
-  #hud-topleft,#hud-topright{font-size:0.8em;padding:8px 10px;min-width:0}
-  #hud-topleft{max-width:calc(50vw - 24px)}
-  #hud-topright{max-width:calc(50vw - 24px);right:8px}
-  #hud-topleft{left:8px;top:8px}
-  #hud-topright{top:8px}
-  #hud-bottom{padding:0 10px}
-  #hud-bottom-left{gap:10px;font-size:0.32rem}
+  html,body{overflow-x:hidden}
+  #hud-topleft{
+    left:8px;right:8px;top:calc(8px + env(safe-area-inset-top,0px));
+    max-width:none;min-width:0;padding:8px 12px;
+    display:flex;align-items:center;gap:10px;
+  }
+  #hud-topleft .hud-title{font-size:0.5rem;margin-bottom:0;white-space:nowrap}
+  #hud-topleft .hud-level{font-size:0.42rem;margin-left:4px}
+  #hud-xp-bar{flex:1;margin:0;min-width:30px}
+  #hud-xp-label{display:none}
+  #hud-stats{gap:10px;font-size:0.4rem;white-space:nowrap}
+  #hud-topright{display:none}   /* quest log lives in the menu on mobile */
+  #hud-bottom{padding:0 10px env(safe-area-inset-bottom,0px)}
+  #hud-bottom-left{gap:12px;font-size:0.36rem}
+  #hud-bottom-left span{padding:14px 2px}  /* bigger tap targets */
   #hud-bottom-center{display:none}
+  #hud-menu-inner{margin:0 16px;padding:24px;max-height:80dvh;overflow-y:auto}
 }
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 

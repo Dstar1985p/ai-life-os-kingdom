@@ -2809,6 +2809,28 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closePanel(); closeHudMenu(); }
 });
 
+// Mobile: make the close button respond to raw touches (some mobile browsers
+// swallow synthetic clicks over canvas-adjacent fixed elements), and support
+// swipe-right-to-close on the panel header.
+(function initPanelTouch() {
+  const btn = document.getElementById('side-panel-close');
+  if (btn) btn.addEventListener('touchend', e => { e.preventDefault(); closePanel(); }, { passive: false });
+  const header = document.getElementById('side-panel-header');
+  const panel = document.getElementById('side-panel');
+  if (!header || !panel) return;
+  let sx = null, sy = null;
+  panel.addEventListener('touchstart', e => {
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+  }, { passive: true });
+  panel.addEventListener('touchend', e => {
+    if (sx === null) return;
+    const dx = e.changedTouches[0].clientX - sx;
+    const dy = e.changedTouches[0].clientY - sy;
+    if (dx > 90 && Math.abs(dy) < 60) closePanel();   // swipe right anywhere → close
+    sx = sy = null;
+  }, { passive: true });
+})();
+
 function openHudMenu()  { const m = document.getElementById('hud-menu-modal'); if(m) m.classList.add('open'); }
 function closeHudMenu() { const m = document.getElementById('hud-menu-modal'); if(m) m.classList.remove('open'); }
 
