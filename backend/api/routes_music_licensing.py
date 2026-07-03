@@ -121,13 +121,51 @@ def pitch_concept(body: PitchRequest, db: Session = Depends(get_db)) -> dict:
         f"I'd love to discuss how we can work together.\n\n"
         f"Best regards,\nPulseBreak"
     )
+    # Persist so the follow-up tracker can chase replies
+    from backend.services.licensing_followups import record_pitch
+    saved = record_pitch(db, ", ".join(platforms[:2]), opp.title, pitch_body)
+
     return {
         "concept_id": opp.id,
+        "pitch_id": saved.id,
         "title": opp.title,
         "pitch_draft": pitch_body,
         "platforms": platforms,
         "status": "draft_ready",
     }
+
+
+@router.get("/pitches")
+def pitches(db: Session = Depends(get_db)) -> dict:
+    """All tracked pitches with their reply status."""
+    from backend.services.licensing_followups import list_pitches
+    p = list_pitches(db)
+    return {"pitches": p, "total": len(p)}
+
+
+@router.post("/pitch/{pitch_id}/mark-sent")
+def pitch_mark_sent(pitch_id: int, db: Session = Depends(get_db)) -> dict:
+    from backend.services.licensing_followups import mark_sent
+    r = mark_sent(db, pitch_id)
+    if "error" in r:
+        raise HTTPException(status_code=404, detail=r["error"])
+    return r
+
+
+@router.post("/pitch/{pitch_id}/mark-replied")
+def pitch_mark_replied(pitch_id: int, db: Session = Depends(get_db)) -> dict:
+    from backend.services.licensing_followups import mark_replied
+    r = mark_replied(db, pitch_id)
+    if "error" in r:
+        raise HTTPException(status_code=404, detail=r["error"])
+    return r
+
+
+@router.get("/follow-ups")
+def follow_ups(db: Session = Depends(get_db)) -> dict:
+    """Pitches waiting 7+ days with no reply, each with a ready follow-up email."""
+    from backend.services.licensing_followups import get_follow_ups
+    return get_follow_ups(db)
 
 
 @router.get("/revenue-estimate")

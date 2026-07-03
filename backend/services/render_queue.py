@@ -124,6 +124,15 @@ def _process(job: dict) -> None:
             job["finished_at"] = datetime.utcnow().isoformat()
             return
 
+        # Thumbnail from the most energetic frame (best-effort)
+        try:
+            from backend.services.thumbnailer import generate_thumbnail
+            thumb = generate_thumbnail(str(video_path))
+            if thumb:
+                job["thumbnail"] = thumb
+        except Exception:
+            pass
+
         job["detail"] = "Rendering TikTok vertical cut"
         try:
             generate_visualiser(str(audio_file), str(video_path_tt),

@@ -651,6 +651,10 @@
         <div class="card-action"><button class="btn btn-sm btn-primary" onclick="generateLicensingConcepts()">+ Generate</button></div>
       </div>
       <div id="licensing-concepts-list"><div class="loading">Loading</div></div>
+      <div style="margin-top:14px">
+        <h4 style="font-size:0.75rem;margin-bottom:6px">📬 Pitch tracker</h4>
+        <div id="pitch-tracker"><div style="color:var(--muted);font-size:0.7rem">No pitches sent yet — generate a pitch above and it lands here.</div></div>
+      </div>
     </div>
   </div>
 
@@ -992,8 +996,26 @@
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
     <div>
       <h2 style="font-size:1.2rem;font-weight:700;color:var(--text)">Intelligence Hub</h2>
-      <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">Lessons, council votes, crisis engine</p>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">What your agents learned, what's changing, and where to focus</p>
     </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3 style="font-size:0.85rem;margin-bottom:4px">🧠 What the agents learned</h3>
+    <p style="font-size:0.68rem;color:var(--muted);margin-bottom:10px">Each card shows the change an agent is making and the evidence behind it</p>
+    <div id="learning-cards"><div class="loading">Loading</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3 style="font-size:0.85rem;margin-bottom:4px">🎚 Sonic fingerprint</h3>
+    <p style="font-size:0.68rem;color:var(--muted);margin-bottom:10px">What your winning tracks have in common — and the brief for the next batch</p>
+    <div id="sonic-fingerprint"><div class="loading">Loading</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3 style="font-size:0.85rem;margin-bottom:4px">⚖️ Portfolio advisor</h3>
+    <p style="font-size:0.68rem;color:var(--muted);margin-bottom:10px">Revenue per approval-tap across ventures (advisory only)</p>
+    <div id="portfolio-advice"><div class="loading">Loading</div></div>
   </div>
 
   <div class="grid-2" style="margin-bottom:16px">
@@ -1560,7 +1582,7 @@
 </div>
 </div>
 
-<script src="/static/app.js?v=6"></script>
+<script src="/static/app.js?v=7"></script>
 
 <!-- PWA Install Button (Android Chrome — beforeinstallprompt) -->
 <div id="pwa-install-btn" onclick="pwaInstall()" style="display:none;position:fixed;bottom:80px;right:20px;z-index:999;background:linear-gradient(135deg,#00ff88,#00ccff);color:#000;border:none;border-radius:12px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,255,136,0.4)">

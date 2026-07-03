@@ -715,6 +715,7 @@ async function loadPulsebreakTab() {
   loadReviewQueue();
   loadTrackLibrary();
   loadLicensingConcepts();
+  loadPitchTracker();
   loadLicensingRevenue();
   loadYouTubeContent();
   loadContentPosts();
@@ -909,7 +910,8 @@ async function generateLicensingConcepts() {
     const res = await fetch('/music-licensing/generate', {method:'POST'});
     const data = await res.json();
     showToast(`Generated ${data.opportunities_created||0} new concept(s)`, 'success');
-    loadLicensingConcepts(); loadLicensingRevenue();
+    loadLicensingConcepts();
+  loadPitchTracker(); loadLicensingRevenue();
   } catch(e) { showToast('Failed', 'error'); }
 }
 
@@ -1194,6 +1196,101 @@ async function loadIntelligenceTab() {
   ]);
   renderLessons(lessons);
   renderCrisis(crisis);
+  loadLearningCards();
+  loadSonicFingerprint();
+  loadPortfolioAdvice();
+}
+
+async function loadLearningCards() {
+  const el = document.getElementById('learning-cards');
+  if (!el) return;
+  try {
+    const d = await fetchJSON('/insights/learning-cards');
+    if (!d.cards || !d.cards.length) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:0.72rem">No learnings yet — cards appear as agents gather performance data.</div>';
+      return;
+    }
+    el.innerHTML = d.cards.map(c => `
+      <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--surface)">
+        <div style="font-weight:700;font-size:0.8rem;margin-bottom:4px">${c.icon} ${escapeHtml(c.agent)} <span style="color:var(--muted);font-weight:400;font-size:0.62rem">· ${c.runs_7d||0} run(s) this week</span></div>
+        <div style="font-size:0.74rem;margin-bottom:4px"><span style="color:#00e676">Learned:</span> ${escapeHtml(c.learned)}</div>
+        <div style="font-size:0.74rem;margin-bottom:6px"><span style="color:#00e5ff">Changing:</span> ${escapeHtml(c.changing)}</div>
+        ${(c.evidence||[]).length ? `<details style="font-size:0.66rem;color:var(--muted)"><summary style="cursor:pointer">Evidence (${c.evidence.length})</summary>${c.evidence.map(e=>`<div style="padding:3px 0 0 10px">• <b>${escapeHtml(e.label)}</b> ${escapeHtml(e.value)}</div>`).join('')}</details>` : ''}
+      </div>`).join('');
+  } catch(e) { el.innerHTML = '<div style="color:var(--muted);font-size:0.72rem">Unavailable</div>'; }
+}
+
+async function loadSonicFingerprint() {
+  const el = document.getElementById('sonic-fingerprint');
+  if (!el) return;
+  try {
+    const d = await fetchJSON('/insights/sonic-fingerprint');
+    if (d.status !== 'ok') { el.innerHTML = `<div style="color:var(--muted);font-size:0.72rem">${escapeHtml(d.message||'No data yet')}</div>`; return; }
+    const p = d.winning_profile || {};
+    el.innerHTML = `
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        ${p.bpm?`<span class="badge">~${Math.round(p.bpm)} BPM</span>`:''}
+        ${(p.top_sub_genres||[]).map(g=>`<span class="badge" style="border-color:#bf5fff;color:#bf5fff">${escapeHtml(g)}</span>`).join('')}
+        ${p.dynamic_range_db?`<span class="badge">${p.dynamic_range_db} dB range</span>`:''}
+      </div>
+      <div style="font-size:0.76rem;margin-bottom:8px">${escapeHtml(d.brief||'')}</div>
+      ${d.suggested_suno_prompt?`<div style="border:1px dashed var(--border);border-radius:8px;padding:8px;font-size:0.7rem;color:var(--muted)">Suno prompt: <span style="color:var(--text)">${escapeHtml(d.suggested_suno_prompt)}</span>
+        <button class="btn btn-xs" style="margin-left:6px" onclick="navigator.clipboard.writeText('${d.suggested_suno_prompt.replace(/'/g,"\\'")}');this.textContent='Copied!'">Copy</button></div>`:''}
+      <div style="font-size:0.62rem;color:var(--muted);margin-top:6px">Based on ${d.tracks_analysed} track(s), top ${d.winners_count} by ${d.ranked_by.replace('_',' ')}</div>`;
+  } catch(e) { el.innerHTML = '<div style="color:var(--muted);font-size:0.72rem">Unavailable</div>'; }
+}
+
+async function loadPortfolioAdvice() {
+  const el = document.getElementById('portfolio-advice');
+  if (!el) return;
+  try {
+    const d = await fetchJSON('/insights/portfolio');
+    if (d.status !== 'ok') { el.innerHTML = `<div style="color:var(--muted);font-size:0.72rem">${escapeHtml(d.message||'No data yet')}</div>`; return; }
+    el.innerHTML = (d.table||[]).map(r => `
+      <div class="metric-row">
+        <span class="metric-key">${escapeHtml(r.venture)}</span>
+        <span class="metric-val">£${r.net_revenue} · ${r.founder_taps} tap(s)${r.revenue_per_tap!=null?` · £${r.revenue_per_tap}/tap`:''}</span>
+      </div>`).join('') +
+      (d.advice||[]).map(a=>`<div style="font-size:0.72rem;color:#ffd54f;margin-top:8px">💡 ${escapeHtml(a)}</div>`).join('');
+  } catch(e) { el.innerHTML = '<div style="color:var(--muted);font-size:0.72rem">Unavailable</div>'; }
+}
+
+async function loadPitchTracker() {
+  const el = document.getElementById('pitch-tracker');
+  if (!el) return;
+  try {
+    const d = await fetchJSON('/music-licensing/pitches');
+    if (!d.pitches || !d.pitches.length) return;
+    const STATUS_COL = { draft:'var(--muted)', sent:'#00e5ff', replied:'#00e676' };
+    el.innerHTML = d.pitches.slice(0,8).map(pt => `
+      <div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:6px;font-size:0.7rem">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;overflow-wrap:anywhere">${escapeHtml(pt.concept||'Pitch')}</div>
+          <div style="color:${STATUS_COL[pt.status]||'var(--muted)'}">${pt.status.toUpperCase()}${pt.days_waiting!=null?` · waiting ${pt.days_waiting}d`:''}${pt.needs_follow_up?' · ⚠ follow up':''}</div>
+        </div>
+        ${pt.status==='draft'?`<button class="btn btn-xs" onclick="pitchAction(${pt.id},'mark-sent',this)">Mark sent</button>`:''}
+        ${pt.status==='sent'?`<button class="btn btn-xs btn-green" onclick="pitchAction(${pt.id},'mark-replied',this)">Got reply</button>`:''}
+        ${pt.needs_follow_up?`<button class="btn btn-xs" onclick="copyFollowUp(${pt.id},this)">Copy follow-up</button>`:''}
+      </div>`).join('');
+  } catch(_) {}
+}
+
+async function pitchAction(id, action, btn) {
+  try {
+    await fetch(`/music-licensing/pitch/${id}/${action}`, { method:'POST' });
+    loadPitchTracker();
+  } catch(_) { if (btn) btn.textContent = 'Failed'; }
+}
+
+async function copyFollowUp(id, btn) {
+  try {
+    const d = await fetchJSON('/music-licensing/follow-ups');
+    const f = (d.follow_ups||[]).find(x => x.id === id);
+    if (f && f.follow_up_draft) {
+      await navigator.clipboard.writeText(f.follow_up_draft);
+      btn.textContent = 'Copied!';
+    }
+  } catch(_) { btn.textContent = 'Failed'; }
 }
 
 function renderLessons(lessons) {

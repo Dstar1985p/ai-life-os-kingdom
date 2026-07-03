@@ -375,12 +375,30 @@ def approve_and_upload(
         raise HTTPException(status_code=404, detail=f"Track '{track_name}' not in review queue")
 
     release = db.query(TrackRelease).filter_by(track_name=track_name).first()
-    if release:
-        release.status = "approved"
-        release.approved_at = datetime.utcnow()
-        release.founder_notes = body.founder_notes
-        release.updated_at = datetime.utcnow()
-        db.commit()
+    if not release:
+        # Review-path tracks may not have a DB row yet — create one so the
+        # approval, features, and eventual upload are all recorded
+        import json as _json
+        report = {}
+        report_path = REPORTS_DIR / f"{track_name}_quality.json"
+        if report_path.exists():
+            try:
+                report = _json.loads(report_path.read_text())
+            except Exception:
+                pass
+        release = TrackRelease(
+            track_name=track_name,
+            file_name=audio_file.name,
+            quality_score=report.get("score", 0),
+            quality_verdict=report.get("verdict", "review"),
+            quality_report=_json.dumps(report),
+        )
+        db.add(release)
+    release.status = "approved"
+    release.approved_at = datetime.utcnow()
+    release.founder_notes = body.founder_notes
+    release.updated_at = datetime.utcnow()
+    db.commit()
 
     from backend.services.render_queue import enqueue_render
     job = enqueue_render(track_name, body.founder_notes)
