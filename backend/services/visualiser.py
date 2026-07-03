@@ -177,6 +177,61 @@ def _apply_bloom(frame: 'np.ndarray', strength: float = 0.35) -> 'np.ndarray':
     return result
 
 
+# ── Turntable disc ────────────────────────────────────────────────────────────
+
+GREEN_HUE = 0.42          # PulseBreak neon green (#00ff88 territory)
+
+
+def _make_disc(disc_r: int, logo_path: str | None):
+    """Pre-render the spinning disc as an RGBA PIL image.
+
+    If a logo file is supplied it becomes the disc face (circle-cropped);
+    otherwise a procedural vinyl: grooved black disc, neon-green label,
+    PULSEBREAK wordmark, and a position marker so the spin reads clearly.
+    """
+    from PIL import Image, ImageDraw
+
+    size = disc_r * 2
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    if logo_path:
+        try:
+            logo = Image.open(logo_path).convert("RGBA").resize((size, size))
+            mask = Image.new("L", (size, size), 0)
+            ImageDraw.Draw(mask).ellipse([0, 0, size - 1, size - 1], fill=255)
+            img.paste(logo, (0, 0), mask)
+            return img
+        except Exception:
+            pass  # fall through to procedural vinyl
+
+    c = disc_r
+    # Vinyl body
+    draw.ellipse([0, 0, size - 1, size - 1], fill=(14, 14, 16, 255))
+    # Grooves
+    for gr in range(int(disc_r * 0.45), disc_r - 2, 5):
+        draw.ellipse([c - gr, c - gr, c + gr, c + gr],
+                     outline=(34, 38, 36, 255), width=1)
+    # Neon-green label
+    label_r = int(disc_r * 0.40)
+    draw.ellipse([c - label_r, c - label_r, c + label_r, c + label_r],
+                 fill=(0, 40, 20, 255), outline=(0, 255, 136, 255), width=3)
+    # Spindle
+    draw.ellipse([c - 4, c - 4, c + 4, c + 4], fill=(0, 255, 136, 255))
+    # Wordmark (pixel font onto the label via numpy then back)
+    arr = np.array(img).astype(np.float32)
+    text = "PULSEBREAK"
+    scale = max(1, label_r // 40)
+    tw = len(text) * (6 * scale + scale)
+    _draw_text_simple(arr[:, :, :3], text, x=c - tw // 2, y=c - label_r // 2,
+                      colour=(0, 255, 136), scale=scale)
+    img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+    draw = ImageDraw.Draw(img)
+    # Position marker on the rim so rotation is obvious
+    draw.ellipse([c - 6, 6, c + 6, 18], fill=(0, 255, 136, 255))
+    return img
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def generate_visualiser(
@@ -191,6 +246,8 @@ def generate_visualiser(
     height: int = 1080,
     fps: int = 30,
     fmt: str = "youtube",   # "youtube" | "tiktok" | "square"
+    style: str = "turntable",   # "turntable" (black + neon green + spinning logo) | "cosmic" (rainbow)
+    logo_path: str | None = None,   # optional PNG for the disc; auto-detects pulsebreak_tracks/logo.png
     # Legacy positional compat — ignored (format is now radial always)
     **_kwargs,
 ) -> str:
@@ -224,6 +281,26 @@ def generate_visualiser(
     r_inner = short * 0.13     # radius of center circle
     r_max = short * 0.44       # maximum bar reach
     r_wf = r_inner * 0.88      # waveform ring radius
+
+    # ── Turntable style setup ─────────────────────────────────────────────────
+    LIME = 0.195                       # PulseBreak electric lime (#c8ff00)
+    turntable = style == "turntable"
+    disc_r = int(r_inner * 1.30)
+    disc_img = None
+    if turntable:
+        if not logo_path:
+            import os as _os
+            for cand in ("pulsebreak_tracks/logo.png",
+                         _os.path.join(_os.path.dirname(__file__), "..", "static", "pulsebreak_logo.png")):
+                if _os.path.exists(cand):
+                    logo_path = cand
+                    break
+        try:
+            disc_img = _make_disc(disc_r, logo_path)
+        except Exception:
+            disc_img = None
+        if disc_img is None:
+            turntable = False   # fall back to cosmic style
 
     # ── Precompute polar grid ─────────────────────────────────────────────────
     ys_g, xs_g = np.mgrid[0:height, 0:width].astype(np.float32)
@@ -314,7 +391,7 @@ def generate_visualiser(
             p_head[0] += 1
 
     def make_frame(t: float):
-        hue_base = (t * _HUE_SPEED) % 1.0
+        hue_base = LIME if turntable else (t * _HUE_SPEED) % 1.0
 
         # ── Audio analysis ────────────────────────────────────────────────────
         fft_bars = _get_fft(audio_mono, t, fps_audio, _N_BARS, smooth_state, chunk_size)
@@ -343,21 +420,24 @@ def generate_visualiser(
         rot = rot_state[0]
 
         # ── Background: breathing nebula ─────────────────────────────────────
-        frame = bg.copy()
+        frame = bg.copy() if not turntable else np.zeros((height, width, 3), dtype=np.float32)
         breathe = 0.75 + e_bass * 0.9 + beat_flash[0] * 0.8
         neb_hue = (hue_base + 0.55) % 1.0
         neb_r, neb_g, neb_b = _hsv_to_rgb_scalar(neb_hue, 0.85, 1.0)
-        neb = np.clip(1.0 - r_g / (short * 0.75), 0.0, 1.0) ** 2 * 30.0 * breathe
-        frame[:, :, 0] += neb * (neb_r / 255.0)
-        frame[:, :, 1] += neb * (neb_g / 255.0)
-        frame[:, :, 2] += neb * (neb_b / 255.0)
+        if not turntable:
+            neb = np.clip(1.0 - r_g / (short * 0.75), 0.0, 1.0) ** 2 * 30.0 * breathe
+            frame[:, :, 0] += neb * (neb_r / 255.0)
+            frame[:, :, 1] += neb * (neb_g / 255.0)
+            frame[:, :, 2] += neb * (neb_b / 255.0)
 
         # ── Starfield twinkling with the highs ────────────────────────────────
         tw = (np.sin(star_phase + t * star_speed) * 0.5 + 0.5) * (0.35 + e_high * 1.6)
-        star_v = np.clip(tw, 0, 1) * 200
-        frame[star_ys, star_xs] = np.maximum(
-            frame[star_ys, star_xs],
-            np.stack([star_v, star_v, np.minimum(star_v * 1.15, 255)], axis=-1))
+        star_v = np.clip(tw, 0, 1) * (90 if turntable else 200)
+        if turntable:
+            star_rgb = np.stack([star_v * 0.75, star_v, star_v * 0.1], axis=-1)
+        else:
+            star_rgb = np.stack([star_v, star_v, np.minimum(star_v * 1.15, 255)], axis=-1)
+        frame[star_ys, star_xs] = np.maximum(frame[star_ys, star_xs], star_rgb)
 
         # ── Kick shockwave rings ──────────────────────────────────────────────
         for sw in shockwaves:
@@ -384,13 +464,15 @@ def generate_visualiser(
             np.concatenate([full_spec[-3:], full_spec, full_spec[:3]]),
             kernel, mode="same")[3:-3]
         pump = 1.0 + min(bass / max(rolling_bass[0], 0.01), 3.0) * 0.10 + beat_flash[0] * 0.25
+        core_r = disc_r if turntable else r_inner
         corona_amp = (r_inner * 0.05 + smooth_spec * r_inner * 0.85) * pump
-        corona_r_pix = r_inner * 1.02 + corona_amp[bar_idx_r]   # (H, W)
-        in_corona = (r_g >= r_inner * 0.9) & (r_g <= corona_r_pix)
+        corona_r_pix = core_r * 1.02 + corona_amp[bar_idx_r]   # (H, W)
+        in_corona = (r_g >= core_r * 0.9) & (r_g <= corona_r_pix)
         if in_corona.any():
             depth = np.clip((corona_r_pix[in_corona] - r_g[in_corona]) /
                             np.maximum(corona_amp[bar_idx_r][in_corona], 1.0), 0, 1)
-            h_cor = (hue_base + (bar_idx_r[in_corona] / _N_BARS) * 0.5) % 1.0
+            hue_spread_cor = 0.035 if turntable else 0.5
+            h_cor = (hue_base + (bar_idx_r[in_corona] / _N_BARS) * hue_spread_cor) % 1.0
             s_cor = np.full(h_cor.shape, 0.95, dtype=np.float32)
             v_cor = np.clip(0.35 + depth * 0.65, 0, 1)
             cor_rgb = _hsv_to_rgb_vec(h_cor, s_cor, v_cor)
@@ -412,7 +494,7 @@ def generate_visualiser(
         r_norm_in = np.clip((r_inner - r_g) / max(r_inner * 0.85, 1), 0.0, 1.0)
         lit_in = (r_g < r_inner) & in_bar_r & (r_norm_in <= bar_mags * 0.55)
 
-        bar_hue_r = (bar_idx_r / _N_BARS * 0.85).astype(np.float32)
+        bar_hue_r = (bar_idx_r / _N_BARS * (0.05 if turntable else 0.85)).astype(np.float32)
         for lit, v_scale in ((lit_out, 1.0), (lit_in, 0.55)):
             if lit.any():
                 h_lit = (hue_base + bar_hue_r[lit]) % 1.0
@@ -429,13 +511,26 @@ def generate_visualiser(
 
         # ── Inner circle: bass-pumping core ───────────────────────────────────
         bass_norm = min(bass / max(rolling_bass[0], 0.01), 3.0)
+        if turntable and disc_img is not None:
+            # Spin at 33⅓ rpm like a turntable, nudged faster by the bass
+            from PIL import Image as _PILImage
+            angle = -((t * (33.333 / 60.0)) * 360.0) - bass_norm * 4.0
+            rot_disc = disc_img.rotate(angle, resample=_PILImage.BILINEAR)
+            d_arr = np.asarray(rot_disc, dtype=np.float32)
+            y0, x0 = cy - disc_r, cx - disc_r
+            y1, x1 = y0 + disc_r * 2, x0 + disc_r * 2
+            if y0 >= 0 and x0 >= 0 and y1 <= height and x1 <= width:
+                alpha = d_arr[:, :, 3:4] / 255.0
+                region = frame[y0:y1, x0:x1]
+                region[:] = region * (1 - alpha) + d_arr[:, :, :3] * alpha
         core_v = min(0.35 + bass_norm * 0.22 + beat_flash[0] * 0.55, 1.0)
-        # Gradient orb: white-hot centre falling off to a saturated hue rim
-        h_core = np.full(ic_grad.shape, hue_base, dtype=np.float32)
-        s_core = (1.0 - ic_grad * 0.85).astype(np.float32)   # centre → white
-        v_core = np.clip(ic_grad * core_v * 1.6, 0, 1).astype(np.float32)
-        core_rgb = _hsv_to_rgb_vec(h_core, s_core, v_core)
-        frame[ic_ys, ic_xs] = np.maximum(frame[ic_ys, ic_xs], core_rgb)
+        if not (turntable and disc_img is not None):
+            # Gradient orb: white-hot centre falling off to a saturated hue rim
+            h_core = np.full(ic_grad.shape, hue_base, dtype=np.float32)
+            s_core = (1.0 - ic_grad * 0.85).astype(np.float32)   # centre → white
+            v_core = np.clip(ic_grad * core_v * 1.6, 0, 1).astype(np.float32)
+            core_rgb = _hsv_to_rgb_vec(h_core, s_core, v_core)
+            frame[ic_ys, ic_xs] = np.maximum(frame[ic_ys, ic_xs], core_rgb)
 
         # ── Waveform ring ─────────────────────────────────────────────────────
         wf_start = int(t * fps_audio)
@@ -447,11 +542,13 @@ def generate_visualiser(
             wf_a = np.linspace(0, 2 * math.pi, n_wf, endpoint=False) + rot
             wf_sub = np.interp(np.linspace(0, len(wf_norm) - 1, n_wf),
                                np.arange(len(wf_norm)), wf_norm)
-            wf_r = r_wf + wf_sub * (r_inner * 0.16)
+            wf_r = ((disc_r * 1.05) if turntable else r_wf) + wf_sub * (r_inner * (0.22 if turntable else 0.16))
             wxs = np.clip((cx + wf_r * np.cos(wf_a)).astype(int), 0, width - 1)
             wys = np.clip((cy + wf_r * np.sin(wf_a)).astype(int), 0, height - 1)
-            wf_col = np.array(_hsv_to_rgb_scalar((hue_base + 0.5) % 1.0, 0.5, 0.95),
-                              dtype=np.float32)
+            wf_col = np.array(
+                _hsv_to_rgb_scalar(hue_base if turntable else (hue_base + 0.5) % 1.0,
+                                   1.0 if turntable else 0.5, 1.0 if turntable else 0.95),
+                dtype=np.float32)
             for dy2, dx2 in [(-1, 0), (1, 0), (0, -1), (0, 1), (0, 0)]:
                 yy = np.clip(wys + dy2, 0, height - 1)
                 xx = np.clip(wxs + dx2, 0, width - 1)
@@ -506,11 +603,15 @@ def generate_visualiser(
             _draw_text_simple(frame, artist, x=57, y=100, colour=artist_col, scale=2)
 
         # Brand mark in the centre of the orb
-        brand = "PULSEBREAK"
-        bscale = 2 if short >= 900 else 1
-        bx = cx - (len(brand) * (6 * bscale + bscale)) // 2
-        _draw_text_simple(frame, brand, x=bx, y=cy - 3 * bscale,
-                          colour=(255, 255, 255), scale=bscale)
+        if turntable:
+            brand = ""
+        else:
+            brand = "PULSEBREAK"
+        if brand:
+            bscale = 2 if short >= 900 else 1
+            bx = cx - (len(brand) * (6 * bscale + bscale)) // 2
+            _draw_text_simple(frame, brand, x=bx, y=cy - 3 * bscale,
+                              colour=(255, 255, 255), scale=bscale)
 
         progress = min(t / max(duration, 1), 1.0)
         pb_col = np.array(_hsv_to_rgb_scalar(hue_base, 0.9, 1.0), dtype=np.float32)
