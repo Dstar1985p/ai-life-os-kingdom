@@ -19,7 +19,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <title>Kingdom OS — AI Revenue Command Centre</title>
-<link rel="stylesheet" href="/static/styles.css?v=6">
+<link rel="stylesheet" href="/static/styles.css?v=7">
 </head>
 <body>
 <!-- Update Banner -->
@@ -37,9 +37,9 @@
 <div id="toast-container"></div>
 
 <!-- Celebration Overlay -->
-<div id="celebration-overlay" onclick="this.classList.remove('active')">
+<div id="celebration-overlay">
   <div id="celeb-rain"></div>
-  <div id="celebration-box">
+  <div id="celebration-box" onclick="document.getElementById('celebration-overlay').classList.remove('active')">
     <span id="celebration-emoji-main">🏆</span>
     <div id="celebration-title">ACHIEVEMENT UNLOCKED</div>
     <div id="celebration-subtitle"></div>
@@ -1537,7 +1537,7 @@
 </div>
 </div>
 
-<script src="/static/app.js?v=16"></script>
+<script src="/static/app.js?v=17"></script>
 
 <!-- PWA Install Button (Android Chrome — beforeinstallprompt) -->
 <div id="pwa-install-btn" onclick="pwaInstall()" style="display:none;position:fixed;bottom:80px;right:20px;z-index:999;background:linear-gradient(135deg,#00ff88,#00ccff);color:#000;border:none;border-radius:12px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,255,136,0.4)">

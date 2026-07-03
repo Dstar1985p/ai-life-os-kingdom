@@ -685,6 +685,9 @@ header{
   background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);
 }
 #celebration-overlay.active{display:flex}
+/* Celebrate without hijacking the founder's next tap */
+#celebration-overlay{pointer-events:none}
+#celebration-box{pointer-events:auto;cursor:pointer}
 #celebration-box{
   text-align:center;padding:40px;border-radius:20px;
   background:rgba(6,8,24,0.95);border:2px solid rgba(255,179,0,0.5);

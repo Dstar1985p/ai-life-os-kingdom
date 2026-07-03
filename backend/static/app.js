@@ -1782,7 +1782,7 @@ function triggerCelebration(title, subtitle, emoji) {
     rain.appendChild(s);
   }
   overlay.classList.add('active');
-  setTimeout(()=>overlay.classList.remove('active'),5000);
+  setTimeout(()=>overlay.classList.remove('active'),3200);
 }
 
 /* ─── SETTINGS ─── */
