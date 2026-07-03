@@ -407,6 +407,17 @@ def approve_and_upload(
     release.updated_at = datetime.utcnow()
     db.commit()
 
+    # Move the audio out of the review folder immediately so the queue
+    # reflects the approval right away (the render worker also looks in
+    # processed/). Leaving it in review/ made approvals look like no-ops.
+    try:
+        dest = PROCESSED_DIR / audio_file.name
+        shutil.move(str(audio_file), str(dest))
+        release.audio_path = str(dest)
+        db.commit()
+    except Exception:
+        pass
+
     from backend.services.render_queue import enqueue_render
     job = enqueue_render(track_name, body.founder_notes)
 

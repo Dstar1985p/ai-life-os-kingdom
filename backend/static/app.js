@@ -800,21 +800,35 @@ async function loadTrackLibrary() {
 }
 
 async function approveTrack(id, btn) {
-  if (btn) btn.disabled = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'Approving…'; }
   try {
-    await fetch(`/vibes/review/${encodeURIComponent(id)}/approve`, {method:'POST'});
-    showToast('Track approved', 'success');
-    loadReviewQueue(); loadTrackLibrary();
-  } catch(e) { showToast('Error', 'error'); if(btn) btn.disabled=false; }
+    const r = await fetch(`/vibes/review/${encodeURIComponent(id)}/approve`, {method:'POST'});
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    showToast('✓ Approved — video render queued (takes a while, watch the strip above)', 'success', 5000);
+    loadReviewQueue(); loadTrackLibrary(); loadRenderStatus();
+  } catch(e) {
+    showToast('Approve failed: ' + e.message, 'error', 5000);
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Approve'; }
+  }
 }
 
 async function rejectTrack(id, btn) {
-  if (btn) btn.disabled = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'Rejecting…'; }
   try {
-    await fetch(`/vibes/review/${encodeURIComponent(id)}/reject`, {method:'POST'});
+    const r = await fetch(`/vibes/review/${encodeURIComponent(id)}/reject`, {method:'POST'});
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
     showToast('Track rejected', 'info');
     loadReviewQueue();
-  } catch(e) { showToast('Error', 'error'); if(btn) btn.disabled=false; }
+  } catch(e) {
+    showToast('Reject failed: ' + e.message, 'error', 5000);
+    if (btn) { btn.disabled = false; btn.textContent = '✗ Reject'; }
+  }
 }
 
 /* ─── FILE UPLOAD ─── */
