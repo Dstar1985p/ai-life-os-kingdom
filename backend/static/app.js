@@ -758,18 +758,19 @@ async function loadReviewQueue() {
       el.innerHTML = '<div style="color:var(--muted);font-size:0.75rem;padding:8px 0">Review queue empty — upload a track to get started</div>';
       return;
     }
-    el.innerHTML = queue.slice(0,5).map(t => `<div class="track-card">
+    el.innerHTML = queue.slice(0,5).map(t => { const name = t.track_name||t.id; return `<div class="track-card">
       <div class="track-art">🎵</div>
       <div class="track-info">
-        <div class="track-title">${t.track_name||t.title||t.filename||'Track'}</div>
+        <div class="track-title">${name}</div>
         <div class="track-genre">${t.sub_genre||t.genre||'DnB'} · ${t.bpm||'?'} BPM</div>
-        <div class="track-meta">Quality: ${t.quality_score||'pending'}</div>
+        <div class="track-meta">Quality: ${t.quality_score??'pending'}${t.duration_secs?` · ${Math.round(t.duration_secs)}s`:''}</div>
+        <audio controls preload="none" style="width:100%;height:36px;margin:8px 0 4px" src="/vibes/review/${encodeURIComponent(name)}/audio"></audio>
         <div class="track-actions">
-          <button class="btn btn-green btn-xs" onclick="approveTrack('${t.track_name||t.id}',this)">✓ Approve</button>
-          <button class="btn btn-red btn-xs" onclick="rejectTrack('${t.track_name||t.id}',this)">✗ Reject</button>
+          <button class="btn btn-green btn-xs" onclick="approveTrack('${name}',this)">✓ Approve</button>
+          <button class="btn btn-red btn-xs" onclick="rejectTrack('${name}',this)">✗ Reject</button>
         </div>
       </div>
-    </div>`).join('');
+    </div>`; }).join('');
   } catch(e) {
     el.innerHTML = '<div style="color:var(--muted);font-size:0.75rem">Review queue unavailable</div>';
   }

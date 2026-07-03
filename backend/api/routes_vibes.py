@@ -130,6 +130,20 @@ def review_queue() -> dict:
     return {"tracks": tracks, "count": len(tracks)}
 
 
+@router.get("/review/{track_name}/audio")
+def stream_review_audio(track_name: str):
+    """Stream a review-queue track so the founder can actually listen before approving."""
+    from fastapi.responses import FileResponse
+    MEDIA_TYPES = {".mp3": "audio/mpeg", ".wav": "audio/wav",
+                   ".m4a": "audio/mp4", ".flac": "audio/flac"}
+    for base in (REVIEW_DIR, PROCESSED_DIR, TRACKS_DIR):
+        for ext, mt in MEDIA_TYPES.items():
+            cand = base / f"{track_name}{ext}"
+            if cand.exists():
+                return FileResponse(str(cand), media_type=mt, filename=cand.name)
+    raise HTTPException(status_code=404, detail=f"No audio found for '{track_name}'")
+
+
 @router.post("/review/{track_name}/approve")
 def approve_queued_track(track_name: str, db: Session = Depends(get_db)) -> dict:
     """Approve a reviewed track — marks it approved and queues render + upload."""
