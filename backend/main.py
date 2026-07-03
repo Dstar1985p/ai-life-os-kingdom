@@ -14,13 +14,13 @@ from backend.api.routes_brief import router as brief_router
 from backend.api.routes_knowledge import router as knowledge_router
 from backend.api.routes_lessons import router as lessons_router
 from backend.api.routes_kingdom import router as kingdom_router
-from backend.api.routes_revenue import router as revenue_router
+from backend.api.routes_revenue import router as revenue_router, attribution_router
 from backend.api.routes_import import router as import_router
 from backend.api.routes_agent_economics import router as agent_economics_router
 from backend.api.routes_kingdom_map import router as kingdom_map_router
 from backend.api.routes_scheduler import router as scheduler_router
 from backend.seed.seed_data import seed_defaults
-from backend.api.routes_vibes import router as vibes_router, youtube_router
+from backend.api.routes_vibes import router as vibes_router, youtube_router, pipeline_router
 from backend.api.routes_action_queue import router as action_queue_router
 from backend.api.routes_digest import router as digest_router
 from backend.api.routes_intelligence import router as intelligence_router
@@ -114,12 +114,14 @@ app.include_router(knowledge_router)
 app.include_router(lessons_router)
 app.include_router(kingdom_router)
 app.include_router(revenue_router)
+app.include_router(attribution_router)
 app.include_router(import_router)
 app.include_router(agent_economics_router)
 app.include_router(kingdom_map_router)
 app.include_router(scheduler_router)
 app.include_router(vibes_router)
 app.include_router(youtube_router)
+app.include_router(pipeline_router)
 app.include_router(action_queue_router)
 app.include_router(digest_router)
 app.include_router(intelligence_router)

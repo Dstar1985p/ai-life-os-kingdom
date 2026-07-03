@@ -24,3 +24,13 @@ def revenue_trends(db: Session = Depends(get_db)):
 @router.get("/validation")
 def revenue_validation(db: Session = Depends(get_db)):
     return validate_revenue(db)
+
+
+attribution_router = APIRouter(prefix="/revenue-attribution", tags=["Revenue Attribution"])
+
+
+@attribution_router.get("/summary")
+def attribution_summary(db: Session = Depends(get_db)):
+    """Category-level attribution weights — which product categories are winning."""
+    from backend.services.revenue_attribution import get_attribution_summary
+    return get_attribution_summary(db)

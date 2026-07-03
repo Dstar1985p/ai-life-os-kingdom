@@ -19,6 +19,7 @@ from backend.services.pulsebreak_watch import (
 
 router = APIRouter(prefix="/vibes", tags=["Vibes AI"])
 youtube_router = APIRouter(prefix="/youtube", tags=["YouTube"])
+pipeline_router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
 
 AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".flac"}
 
@@ -26,7 +27,40 @@ AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".flac"}
 class ApproveRequest(BaseModel):
     founder_notes: str = ""
 
-AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".flac"}
+
+@pipeline_router.get("/status")
+def pipeline_status(db: Session = Depends(get_db)) -> dict:
+    """Health of each PulseBreak pipeline stage — consumed by the dashboard grid."""
+    import os
+    steps = []
+    try:
+        ensure_dirs()
+        steps.append({"step": "Watch folder", "status": "ok", "detail": str(TRACKS_DIR)})
+    except Exception as exc:
+        steps.append({"step": "Watch folder", "status": "fail", "detail": str(exc)})
+    try:
+        pending = db.query(TrackRelease).filter(TrackRelease.status == "pending_review").count()
+        steps.append({"step": "Review queue", "status": "ok",
+                      "detail": f"{pending} track(s) awaiting review"})
+    except Exception as exc:
+        steps.append({"step": "Review queue", "status": "fail", "detail": str(exc)})
+    yt = {}
+    try:
+        yt = get_youtube_status()
+    except Exception:
+        pass
+    steps.append({
+        "step": "YouTube upload",
+        "status": "ok" if yt.get("configured") else "optional",
+        "detail": "Authorised" if yt.get("configured") else "Not configured — uploads stay in the queue",
+    })
+    has_llm = bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
+    steps.append({
+        "step": "AI descriptions",
+        "status": "ok" if has_llm else "optional",
+        "detail": "OpenRouter connected" if has_llm else "Set OPENROUTER_API_KEY for AI-written descriptions",
+    })
+    return {"steps": steps}
 
 
 @router.get("/weekly-plan")
