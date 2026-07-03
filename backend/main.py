@@ -7,12 +7,11 @@ import os
 from backend.database import Base, engine, _apply_migrations
 from backend.api.routes_agents import router as agents_router
 from backend.api.routes_quests import router as quests_router
-from backend.api.routes_opportunities import router as opportunities_router
 from backend.api.routes_decisions import router as decisions_router
+from backend.api.routes_opportunities import router as opportunities_router
 from backend.api.routes_council import router as council_router
 from backend.api.routes_brief import router as brief_router
 from backend.api.routes_knowledge import router as knowledge_router
-from backend.api.routes_assumptions import router as assumptions_router
 from backend.api.routes_lessons import router as lessons_router
 from backend.api.routes_kingdom import router as kingdom_router
 from backend.api.routes_revenue import router as revenue_router
@@ -28,13 +27,10 @@ from backend.api.routes_intelligence import router as intelligence_router
 from backend.api.routes_etsy import router as etsy_router
 from backend.api.routes_printify import router as printify_router
 from backend.api.routes_treasury import router as treasury_router
-from backend.api.routes_images import router as images_router
 from backend.api.routes_market_scout import router as market_scout_router
 from backend.api.routes_gig_scout import router as gig_scout_router
 from backend.api.routes_livery import router as livery_router
-from backend.api.routes_sprint import router as sprint_router
 from backend.api.routes_log import router as log_router
-from backend.api.routes_achievements import router as achievements_router
 from backend.api.routes_learning import router as learning_router
 from backend.api.routes_music_licensing import router as music_licensing_router
 from backend.api.routes_crisis import router as crisis_router
@@ -45,11 +41,8 @@ from backend.api.routes_chat import router as chat_router
 from backend.api.routes_reminders import router as reminders_router
 from backend.api.routes_etsy_sync import router as etsy_sync_router
 from backend.api.routes_outcomes import router as outcomes_router
-from backend.api.routes_calendar import router as calendar_router
-from backend.api.routes_charts import router as charts_router
 from backend.api.routes_retro import router as retro_router
 from backend.api.routes_health_history import router as health_history_router
-from backend.api.routes_competitor import router as competitor_router
 from backend.api.routes_export import router as export_router
 from backend.api.routes_engineer import router as engineer_router
 from backend.api.routes_new_agents import router as new_agents_router
@@ -113,12 +106,11 @@ if os.path.isdir(static_dir):
 
 app.include_router(agents_router)
 app.include_router(quests_router)
-app.include_router(opportunities_router)
 app.include_router(decisions_router)
+app.include_router(opportunities_router)
 app.include_router(council_router)
 app.include_router(brief_router)
 app.include_router(knowledge_router)
-app.include_router(assumptions_router)
 app.include_router(lessons_router)
 app.include_router(kingdom_router)
 app.include_router(revenue_router)
@@ -134,9 +126,7 @@ app.include_router(intelligence_router)
 app.include_router(etsy_router)
 app.include_router(printify_router)
 app.include_router(treasury_router)
-app.include_router(sprint_router)
 app.include_router(log_router)
-app.include_router(achievements_router)
 app.include_router(learning_router)
 app.include_router(music_licensing_router)
 app.include_router(crisis_router)
@@ -147,11 +137,8 @@ app.include_router(chat_router)
 app.include_router(reminders_router)
 app.include_router(etsy_sync_router)
 app.include_router(outcomes_router)
-app.include_router(calendar_router)
-app.include_router(charts_router)
 app.include_router(retro_router)
 app.include_router(health_history_router)
-app.include_router(competitor_router)
 app.include_router(export_router)
 app.include_router(engineer_router)
 app.include_router(new_agents_router)
@@ -161,7 +148,6 @@ app.include_router(backup_router)
 app.include_router(launch_router)
 app.include_router(avatars_router)
 app.include_router(performance_router)
-app.include_router(images_router)
 app.include_router(market_scout_router)
 app.include_router(gig_scout_router)
 app.include_router(livery_router)
