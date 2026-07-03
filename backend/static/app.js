@@ -2381,6 +2381,7 @@ async function loadGoldStandard() {
 
 /* ─── GAME PANEL SYSTEM ─── */
 const PANEL_TAB_LABELS = {
+  today:         '★ TODAY — NEEDS YOU',
   overview:      '💰 TREASURY',
   pitwall:       '🏎 PITWALL CLASSICS',
   pulsebreak:    '🎵 PULSEBREAK DnB',
@@ -2429,6 +2430,7 @@ function openPanel(tab) {
 
   // Trigger lazy-loads — now getElementById finds the real elements
   const loaders = {
+    today:         loadTodayTab,
     pitwall:       loadPitwallTab,
     pulsebreak:    loadPulsebreakTab,
     agents:        loadAgentsTab,
@@ -2804,3 +2806,85 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChatMessage();}
   });
 });
+
+
+/* ─── TODAY QUEUE ─── */
+async function loadTodayTab() {
+  const el = document.getElementById('today-list');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem">Loading…</div>';
+  let data;
+  try {
+    data = await fetchJSON('/today');
+  } catch (e) {
+    el.innerHTML = '<div style="color:#ff5555;font-size:0.8rem">Could not load the Today queue.</div>';
+    return;
+  }
+  updateTodayBadge(data.total);
+  if (!data.items || !data.items.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px 12px;color:var(--muted)">
+      <div style="font-size:2rem;margin-bottom:10px">✅</div>
+      <div style="font-size:0.85rem">Nothing needs you right now.</div>
+      <div style="font-size:0.7rem;margin-top:6px">Agents will queue tracks, drafts and opportunities here for approval.</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = data.items.map((it, i) => `
+    <div class="today-item" id="today-item-${i}" style="border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--surface)">
+      <div style="display:flex;gap:8px;align-items:baseline">
+        <span>${it.icon || '•'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:0.85rem;overflow-wrap:anywhere">${escapeHtml(it.title || '')}</div>
+          ${it.venture ? `<div style="font-size:0.65rem;color:var(--accent);letter-spacing:1px">${escapeHtml(it.venture)}</div>` : ''}
+          ${it.detail ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:4px;overflow-wrap:anywhere">${escapeHtml(it.detail)}</div>` : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick='todayAct(${i}, ${JSON.stringify(JSON.stringify(it.approve))}, true)' style="flex:1;padding:10px;border-radius:8px;border:1px solid #00e676;background:rgba(0,230,118,0.12);color:#00e676;font-size:0.8rem;cursor:pointer">✓ Approve</button>
+        <button onclick='todayAct(${i}, ${JSON.stringify(JSON.stringify(it.reject))}, false)' style="flex:1;padding:10px;border-radius:8px;border:1px solid #ff5555;background:rgba(255,85,85,0.1);color:#ff5555;font-size:0.8rem;cursor:pointer">✕ Reject</button>
+      </div>
+    </div>`).join('');
+}
+
+async function todayAct(idx, actionJson, approved) {
+  const action = JSON.parse(actionJson);
+  const card = document.getElementById('today-item-' + idx);
+  try {
+    const r = await fetch(action.url, {
+      method: action.method || 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: action.body ? JSON.stringify(action.body) : undefined,
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (card) {
+      card.style.opacity = '0.45';
+      card.innerHTML = `<div style="text-align:center;color:${approved ? '#00e676' : '#ff5555'};font-size:0.8rem;padding:6px">${approved ? '✓ Approved' : '✕ Rejected'}</div>`;
+      setTimeout(() => card.remove(), 1200);
+    }
+    refreshTodayBadge();
+  } catch (e) {
+    if (card) card.insertAdjacentHTML('beforeend', '<div style="color:#ff5555;font-size:0.7rem;margin-top:6px">Failed — try again.</div>');
+  }
+}
+
+function updateTodayBadge(n) {
+  const b = document.getElementById('today-badge');
+  if (!b) return;
+  if (n > 0) { b.textContent = n; b.style.display = 'inline-block'; }
+  else b.style.display = 'none';
+}
+
+async function refreshTodayBadge() {
+  try {
+    const d = await fetchJSON('/today');
+    updateTodayBadge(d.total || 0);
+  } catch (_) {}
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Badge on load + periodic refresh
+refreshTodayBadge();
+setInterval(refreshTodayBadge, 60000);

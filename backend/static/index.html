@@ -181,6 +181,7 @@
 
 <div id="hud-bottom">
   <div id="hud-bottom-left">
+    <span onclick="openPanel('today')" style="color:#ffd54f">★ TODAY<span id="today-badge" style="display:none;margin-left:4px;background:#ff5555;color:#fff;border-radius:8px;padding:1px 6px;font-size:0.55rem"></span></span>
     <span onclick="openPanel('pitwall')">◆ PITWALL</span>
     <span onclick="openPanel('pulsebreak')">◆ PULSEBREAK</span>
   </div>
@@ -204,6 +205,7 @@
 <div id="hud-menu-modal">
   <div id="hud-menu-inner">
     <h2>⚔ KINGDOM MENU</h2>
+    <button class="hud-menu-item" onclick="openPanel('today');closeHudMenu()">★ Today — needs you</button>
     <button class="hud-menu-item" onclick="openPanel('overview');closeHudMenu()">💰 Treasury / Overview</button>
     <button class="hud-menu-item" onclick="openPanel('pitwall');closeHudMenu()">🏎 Pitwall Classics</button>
     <button class="hud-menu-item" onclick="openPanel('pulsebreak');closeHudMenu()">🎵 PulseBreak DnB</button>
@@ -466,6 +468,13 @@
   </div>
 
 </div>
+</div>
+
+<!-- ══════════════════════════ PAGE: TODAY ══════════════════════════ -->
+<div class="page" id="page-today">
+  <div id="today-list" style="display:flex;flex-direction:column;gap:10px;padding:4px 0">
+    <div style="color:var(--muted);font-size:0.8rem">Loading…</div>
+  </div>
 </div>
 
 <!-- ══════════════════════════ PAGE: PITWALL CLASSICS ══════════════════════════ -->
@@ -1551,7 +1560,7 @@
 </div>
 </div>
 
-<script src="/static/app.js?v=2"></script>
+<script src="/static/app.js?v=3"></script>
 
 <!-- PWA Install Button (Android Chrome — beforeinstallprompt) -->
 <div id="pwa-install-btn" onclick="pwaInstall()" style="display:none;position:fixed;bottom:80px;right:20px;z-index:999;background:linear-gradient(135deg,#00ff88,#00ccff);color:#000;border:none;border-radius:12px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,255,136,0.4)">

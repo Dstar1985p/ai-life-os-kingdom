@@ -15,6 +15,7 @@ from backend.api.routes_knowledge import router as knowledge_router
 from backend.api.routes_lessons import router as lessons_router
 from backend.api.routes_kingdom import router as kingdom_router
 from backend.api.routes_events import router as events_router
+from backend.api.routes_today import router as today_router
 from backend.api.routes_revenue import router as revenue_router, attribution_router
 from backend.api.routes_import import router as import_router
 from backend.api.routes_agent_economics import router as agent_economics_router
@@ -115,6 +116,7 @@ app.include_router(knowledge_router)
 app.include_router(lessons_router)
 app.include_router(kingdom_router)
 app.include_router(events_router)
+app.include_router(today_router)
 app.include_router(revenue_router)
 app.include_router(attribution_router)
 app.include_router(import_router)
