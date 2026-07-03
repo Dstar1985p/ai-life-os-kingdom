@@ -711,12 +711,41 @@ async function loadAvatars(venture) {
 
 /* ─── PULSEBREAK TAB ─── */
 async function loadPulsebreakTab() {
+  loadRenderStatus();
   loadReviewQueue();
   loadTrackLibrary();
   loadLicensingConcepts();
   loadLicensingRevenue();
   loadYouTubeContent();
   loadContentPosts();
+}
+
+async function loadRenderStatus() {
+  const host = document.getElementById('review-queue');
+  if (!host) return;
+  let strip = document.getElementById('render-status-strip');
+  try {
+    const d = await fetchJSON('/vibes/render-status');
+    const jobs = (d.jobs || []).filter(j => j.status !== 'done' || ((Date.now() - new Date(j.finished_at)) < 36e5));
+    if (!jobs.length) { if (strip) strip.remove(); return; }
+    if (!strip) {
+      strip = document.createElement('div');
+      strip.id = 'render-status-strip';
+      host.parentElement.insertBefore(strip, host);
+    }
+    const ICONS = { queued:'⏳', rendering:'🎬', uploading:'⬆️', done:'✅', error:'❌' };
+    strip.innerHTML = jobs.map(j => `
+      <div style="display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--surface);font-size:0.72rem">
+        <span>${ICONS[j.status]||'•'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600">${j.track_name}</div>
+          <div style="color:var(--muted)">${j.detail||j.status}</div>
+        </div>
+      </div>`).join('');
+    if (jobs.some(j => ['queued','rendering','uploading'].includes(j.status))) {
+      setTimeout(loadRenderStatus, 15000);
+    }
+  } catch (_) {}
 }
 
 async function loadReviewQueue() {

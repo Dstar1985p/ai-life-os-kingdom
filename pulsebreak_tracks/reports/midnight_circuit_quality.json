@@ -1,0 +1,65 @@
+{
+  "track_name": "midnight_circuit",
+  "score": 12,
+  "verdict": "fail",
+  "checks": [
+    {
+      "name": "duration",
+      "passed": false,
+      "score_impact": -60,
+      "detail": "Track is only 8s \u2014 minimum is 60s for a releasable track",
+      "severity": "critical"
+    },
+    {
+      "name": "peak_level",
+      "passed": true,
+      "score_impact": 0,
+      "detail": "Peak level -3.9dBFS \u2713",
+      "severity": "info"
+    },
+    {
+      "name": "loudness",
+      "passed": true,
+      "score_impact": 0,
+      "detail": "Loudness -22.2dBFS \u2713",
+      "severity": "info"
+    },
+    {
+      "name": "dynamic_range",
+      "passed": true,
+      "score_impact": 0,
+      "detail": "Dynamic range 18.2dB \u2713",
+      "severity": "info"
+    },
+    {
+      "name": "silence",
+      "passed": true,
+      "score_impact": 0,
+      "detail": "No excessive silence \u2713 (max 0.0s)",
+      "severity": "info"
+    },
+    {
+      "name": "frequency_balance",
+      "passed": false,
+      "score_impact": -20,
+      "detail": "Bass is 88% of total energy \u2014 extremely muddy, mids and highs are buried",
+      "severity": "fail"
+    },
+    {
+      "name": "stereo_width",
+      "passed": true,
+      "score_impact": -8,
+      "detail": "Track is effectively mono (L/R correlation 1.00) \u2014 sounds narrow on speakers",
+      "severity": "warning"
+    }
+  ],
+  "duration_secs": 8.0,
+  "peak_db": -3.9,
+  "rms_db": -22.2,
+  "dynamic_range_db": 18.2,
+  "bass_ratio": 0.876,
+  "high_ratio": 0.102,
+  "clipping_pct": 0.0,
+  "max_silence_secs": 0,
+  "summary": "Track FAILED quality gate (score 12/100) \u2014 auto-rejected. Technical problems: Track is only 8s \u2014 minimum is 60s for a releasable track; Bass is 88% of total energy \u2014 extremely muddy, mids and high."
+}

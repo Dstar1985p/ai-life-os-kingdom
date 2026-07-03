@@ -1,0 +1,65 @@
+{
+  "track_name": "neon_skyline",
+  "score": 82,
+  "verdict": "review",
+  "checks": [
+    {
+      "name": "duration",
+      "passed": true,
+      "score_impact": -10,
+      "detail": "Track is 75s \u2014 consider extending to 90s+ for better platform placement",
+      "severity": "warning"
+    },
+    {
+      "name": "peak_level",
+      "passed": true,
+      "score_impact": 0,
+      "detail": "Peak level -4.4dBFS \u2713",
+      "severity": "info"
+    },
+    {
+      "name": "loudness",
+      "passed": true,
+      "score_impact": 0,
+      "detail": "Loudness -22.1dBFS \u2713",
+      "severity": "info"
+    },
+    {
+      "name": "dynamic_range",
+      "passed": true,
+      "score_impact": 0,
+      "detail": "Dynamic range 17.7dB \u2713",
+      "severity": "info"
+    },
+    {
+      "name": "silence",
+      "passed": true,
+      "score_impact": 0,
+      "detail": "No excessive silence \u2713 (max 0.0s)",
+      "severity": "info"
+    },
+    {
+      "name": "frequency_balance",
+      "passed": true,
+      "score_impact": 0,
+      "detail": "Frequency balance OK \u2014 bass 62%, high 8% \u2713",
+      "severity": "info"
+    },
+    {
+      "name": "stereo_width",
+      "passed": true,
+      "score_impact": -8,
+      "detail": "Track is effectively mono (L/R correlation 1.00) \u2014 sounds narrow on speakers",
+      "severity": "warning"
+    }
+  ],
+  "duration_secs": 75.0,
+  "peak_db": -4.4,
+  "rms_db": -22.1,
+  "dynamic_range_db": 17.7,
+  "bass_ratio": 0.618,
+  "high_ratio": 0.081,
+  "clipping_pct": 0.0,
+  "max_silence_secs": 0,
+  "summary": "Track queued for your review (score 82/100). Manual approval required. Technically clean \u2014 listen and decide."
+}

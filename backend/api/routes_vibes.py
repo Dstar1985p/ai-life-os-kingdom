@@ -132,14 +132,8 @@ def review_queue() -> dict:
 
 @router.post("/review/{track_name}/approve")
 def approve_queued_track(track_name: str, db: Session = Depends(get_db)) -> dict:
-    """
-    Approve a quarantined track.
-    Moves it back to the processing queue — it will be picked up on the next scan.
-    """
-    result = approve_track(track_name, db)
-    if result.get("status") == "not_found":
-        raise HTTPException(status_code=404, detail=result["message"])
-    return result
+    """Approve a reviewed track — marks it approved and queues render + upload."""
+    return approve_and_upload(track_name, ApproveRequest(), db)
 
 
 @router.post("/review/{track_name}/reject")
@@ -351,25 +345,21 @@ def approve_and_upload(
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    Founder approves a track AND immediately triggers YouTube upload.
-    This is the one-click release flow.
+    Founder approves a track and queues render + YouTube upload in the
+    background. Rendering takes ~30-45 min at 1080p, so the actual work runs
+    on the render worker thread — poll /vibes/render-status for progress.
     """
     from datetime import datetime
-    import json
 
-    # Find in review dir
-    audio_extensions = {".mp3", ".wav", ".m4a", ".flac"}
     audio_file = None
-    for ext in audio_extensions:
+    for ext in AUDIO_EXTENSIONS:
         candidate = REVIEW_DIR / f"{track_name}{ext}"
         if candidate.exists():
             audio_file = candidate
             break
-
     if not audio_file:
         raise HTTPException(status_code=404, detail=f"Track '{track_name}' not in review queue")
 
-    # Update DB record
     release = db.query(TrackRelease).filter_by(track_name=track_name).first()
     if release:
         release.status = "approved"
@@ -378,83 +368,24 @@ def approve_and_upload(
         release.updated_at = datetime.utcnow()
         db.commit()
 
-    # Generate visualisers
-    clean_title = track_name.replace("_", " ").replace("-", " ").title()
-    from backend.services.pulsebreak_watch import VIDEOS_DIR
-    from backend.services.visualiser import generate_visualiser, VisualizerUnavailableError
-
-    video_path = VIDEOS_DIR / f"{track_name}.mp4"
-    video_path_tt = VIDEOS_DIR / f"{track_name}_tiktok.mp4"
-    vis_status = "skipped_no_ffmpeg"
-
-    try:
-        generate_visualiser(str(audio_file), str(video_path), title=clean_title, artist="PulseBreak", fmt="youtube")
-        vis_status = "generated"
-        if release:
-            release.video_youtube_path = str(video_path)
-    except VisualizerUnavailableError:
-        pass
-    except Exception as exc:
-        vis_status = f"error: {exc}"
-
-    try:
-        generate_visualiser(str(audio_file), str(video_path_tt), title=clean_title, artist="PulseBreak", fmt="tiktok")
-        if release:
-            release.video_tiktok_path = str(video_path_tt)
-    except Exception:
-        pass
-
-    # Upload to YouTube
-    yt_result = {"status": "not_attempted"}
-    if vis_status == "generated" and video_path.exists():
-        try:
-            from backend.services.youtube_uploader import upload_to_youtube, YouTubeUnavailableError, YouTubeNotAuthorisedError
-            from backend.services.pulsebreak_watch import _generate_youtube_description
-            from backend.services.track_quality import QualityReport
-            import json as _json
-
-            report_path = (REPORTS_DIR / f"{track_name}_quality.json") if (REPORTS_DIR / f"{track_name}_quality.json").exists() else None
-            report_data = _json.loads(report_path.read_text()) if report_path and report_path.exists() else {}
-            yt_title = f"{clean_title} | PulseBreak DnB"
-            yt_tags = ["drum and bass", "dnb", "PulseBreak", "electronic music", "rave", "bass music"]
-            if release and release.sub_genre:
-                yt_tags.append(release.sub_genre.lower())
-
-            upload = upload_to_youtube(str(video_path), yt_title, f"PulseBreak — {clean_title}\n\n#DnB #DrumAndBass #PulseBreak", yt_tags)
-            yt_result = upload
-
-            if release:
-                release.youtube_video_id = upload.get("video_id", "")
-                release.youtube_url = upload.get("url", "")
-                release.youtube_uploaded_at = datetime.utcnow()
-                release.status = "uploaded_youtube"
-
-            db.commit()
-
-        except (YouTubeUnavailableError, YouTubeNotAuthorisedError) as exc:
-            yt_result = {"status": "not_configured", "reason": str(exc)}
-        except Exception as exc:
-            yt_result = {"status": "error", "reason": str(exc)}
-
-    # Move audio to processed
-    dest = PROCESSED_DIR / audio_file.name
-    shutil.move(str(audio_file), str(dest))
-
-    if release:
-        release.audio_path = str(dest)
-        db.commit()
+    from backend.services.render_queue import enqueue_render
+    job = enqueue_render(track_name, body.founder_notes)
 
     return {
         "status": "approved",
         "track_name": track_name,
-        "visualiser": vis_status,
-        "youtube": yt_result,
-        "videos": {
-            "youtube": str(video_path) if video_path.exists() else None,
-            "tiktok": str(video_path_tt) if video_path_tt.exists() else None,
-        },
-        "founder_notes": body.founder_notes,
+        "render": job,
+        "message": "Track approved — rendering and upload run in the background. Check render status in the panel.",
     }
+
+
+@router.get("/render-status")
+def render_status() -> dict:
+    """Progress of all background render/upload jobs."""
+    from backend.services.render_queue import all_jobs
+    jobs = all_jobs()
+    active = [j for j in jobs if j["status"] in ("queued", "rendering", "uploading")]
+    return {"jobs": jobs, "active_count": len(active)}
 
 
 @router.get("/performance")

@@ -92,79 +92,21 @@ def _process_track(audio_file: Path, db) -> dict:
         result["status"] = "review_needed"
         return result
 
-    # ── Step 2: Generate visualisers ──────────────────────────────────────────
-    from backend.services.visualiser import generate_visualiser, VisualizerUnavailableError
-
-    video_path = VIDEOS_DIR / f"{track_name}.mp4"
-    video_path_tt = VIDEOS_DIR / f"{track_name}_tiktok.mp4"
-
-    try:
-        generate_visualiser(
-            audio_path=str(audio_file),
-            output_path=str(video_path),
-            title=clean_title,
-            artist="PulseBreak",
-            fmt="youtube",
-        )
-        result["video_youtube"] = str(video_path)
-        result["visualiser_status"] = "generated"
-    except VisualizerUnavailableError:
-        result["visualiser_status"] = "skipped_no_ffmpeg"
-        _move_to_processed(audio_file)
-        return result
-    except Exception as exc:
-        result["visualiser_status"] = f"error: {exc}"
-        result["status"] = "failed"
-        return result
-
-    # Vertical cut for TikTok / Instagram Reels (best-effort)
-    try:
-        generate_visualiser(
-            audio_path=str(audio_file),
-            output_path=str(video_path_tt),
-            title=clean_title,
-            artist="PulseBreak",
-            fmt="tiktok",
-        )
-        result["video_tiktok"] = str(video_path_tt)
-    except Exception:
-        pass
-
-    result["video"] = str(video_path)
-
-    # ── Step 3: Upload to YouTube ─────────────────────────────────────────────
-    from backend.services.youtube_uploader import (
-        upload_to_youtube, YouTubeUnavailableError, YouTubeNotAuthorisedError,
+    # ── Step 2: Passed the gate → founder review queue ───────────────────────
+    # Nothing goes live without the founder clicking approve. Approval then
+    # queues the render + upload on the background worker (render_queue).
+    dest = REVIEW_DIR / audio_file.name
+    shutil.move(str(audio_file), str(dest))
+    create_lesson(
+        db=db,
+        lesson=(
+            f"PulseBreak track '{clean_title}' passed the quality gate "
+            f"(score {report.score}/100) — ready for one-tap approval."
+        ),
+        source="quality_gate",
+        confidence_score=90.0,
     )
-
-    yt_title = f"{clean_title} | PulseBreak DnB"
-    description = _generate_youtube_description(track_name, report)
-    tags = ["drum and bass", "dnb", "PulseBreak", "electronic music",
-            "rave", "bass music", track_name.lower()]
-
-    try:
-        upload_result = upload_to_youtube(
-            video_path=str(video_path),
-            title=yt_title,
-            description=description,
-            tags=tags,
-        )
-        result["youtube"] = upload_result
-        result["status"] = "uploaded"
-        create_lesson(
-            db=db,
-            lesson=f"PulseBreak '{clean_title}' uploaded to YouTube: {upload_result['url']} (quality score {report.score}/100)",
-            source="vibes_ai",
-            confidence_score=90.0,
-        )
-    except (YouTubeUnavailableError, YouTubeNotAuthorisedError) as exc:
-        result["youtube_status"] = f"not_configured: {exc}"
-        result["status"] = "visualiser_only"
-    except Exception as exc:
-        result["youtube_status"] = f"error: {exc}"
-        result["status"] = "upload_failed"
-
-    _move_to_processed(audio_file)
+    result["status"] = "ready_for_approval"
     return result
 
 
