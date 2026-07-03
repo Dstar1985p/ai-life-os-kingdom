@@ -656,15 +656,16 @@ async function loadTrackLibrary() {
     const data = await fetchJSON('/vibes/library');
     const tracks = data?.tracks || data || [];
     if (!tracks.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.75rem;padding:8px 0">No tracks yet</div>'; return; }
-    el.innerHTML = tracks.slice(0,6).map(t => `<div class="track-card">
+    el.innerHTML = tracks.slice(0,10).map(t => `<div class="track-card">
       <div class="track-art" style="background:linear-gradient(135deg,#1a0533,#0a1a33)">🎵</div>
       <div class="track-info">
         <div class="track-title">${t.track_name||t.title||t.filename||'Track'}</div>
         <div class="track-genre">${t.sub_genre||t.genre||'DnB'} · ${t.bpm||'?'} BPM</div>
-        <div class="track-meta">${t.status||''}</div>
+        <div class="track-meta">${t.status||''}${t.audio_available===false?' · <span style="color:var(--amber)">⚠ audio file lost — metadata kept for Sound DNA; re-upload to release</span>':''}</div>
       </div>
       <div class="track-score">${t.quality_score||'—'}</div>
-    </div>`).join('');
+    </div>`).join('') +
+    `<div style="font-size:0.62rem;color:var(--muted);margin-top:6px">${tracks.length} track(s) in library — every upload feeds the Sound DNA, whatever its status.</div>`;
   } catch(e) {
     el.innerHTML = '<div style="color:var(--muted);font-size:0.75rem">Track library unavailable</div>';
   }

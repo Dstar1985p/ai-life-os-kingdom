@@ -10,15 +10,21 @@ Quality outcomes:
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
-TRACKS_DIR = Path("pulsebreak_tracks")
-PROCESSED_DIR = Path("pulsebreak_tracks/processed")
-VIDEOS_DIR = Path("pulsebreak_tracks/videos")
-REVIEW_DIR = Path("pulsebreak_tracks/review")
-REJECTED_DIR = Path("pulsebreak_tracks/rejected")
-REPORTS_DIR = Path("pulsebreak_tracks/reports")
+# Live on the Railway volume when one is attached so audio, videos, and
+# quality reports survive redeploys (the DB already does this — track rows
+# were persisting while their audio files vanished with every deploy).
+_BASE = Path(os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", ".")) / "pulsebreak_tracks"
+
+TRACKS_DIR = _BASE
+PROCESSED_DIR = _BASE / "processed"
+VIDEOS_DIR = _BASE / "videos"
+REVIEW_DIR = _BASE / "review"
+REJECTED_DIR = _BASE / "rejected"
+REPORTS_DIR = _BASE / "reports"
 
 
 def ensure_dirs():

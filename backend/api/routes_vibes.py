@@ -328,10 +328,27 @@ def track_library(db: Session = Depends(get_db)) -> dict:
     for t in tracks:
         import json
         perf = perf_summary.get(t.sub_genre, {}) if t.sub_genre else {}
+        # Audio may have been lost to an ephemeral-disk redeploy even though
+        # the DB row (and therefore Sound DNA) survived
+        audio_available = False
+        try:
+            if t.audio_path and Path(t.audio_path).exists():
+                audio_available = True
+            else:
+                for base in (REVIEW_DIR, PROCESSED_DIR, TRACKS_DIR):
+                    for ext in AUDIO_EXTENSIONS:
+                        if (base / f"{t.track_name}{ext}").exists():
+                            audio_available = True
+                            break
+                    if audio_available:
+                        break
+        except Exception:
+            pass
         result.append({
             "id": t.id,
             "track_name": t.track_name,
             "file_name": t.file_name,
+            "audio_available": audio_available,
             "sub_genre": t.sub_genre,
             "bpm": t.bpm,
             "status": t.status,
