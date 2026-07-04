@@ -588,10 +588,16 @@ class MusicLicensingAgent(BaseRevenueAgent):
         unused = [c for c in _TRACK_CONCEPTS if c["sub_genre"] not in used_sub]
         stale = [c for c in _TRACK_CONCEPTS if c["sub_genre"] in stale_sub]
         pool = unused or stale or list(_TRACK_CONCEPTS)
-        # Learn from the founder's release decisions: concepts in sub-genres
-        # that keep getting approved come first; heavily-rejected ones sink
-        approval = _sub_genre_approval_scores(db)
-        pool.sort(key=lambda c: approval.get(c["sub_genre"], 0.0), reverse=True)
+        # Learn from every feedback signal (founder approvals + YouTube
+        # performance): highest-fit sub-genres get generated first
+        try:
+            from backend.services.concept_fit import sub_genre_stats, fit_for
+            _stats = sub_genre_stats(db)
+            pool.sort(key=lambda c: fit_for(c["sub_genre"], _stats)["fit_score"],
+                      reverse=True)
+        except Exception:
+            approval = _sub_genre_approval_scores(db)
+            pool.sort(key=lambda c: approval.get(c["sub_genre"], 0.0), reverse=True)
         to_generate = pool[:3]
 
         ai_calls = 0

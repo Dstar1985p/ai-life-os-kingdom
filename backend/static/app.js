@@ -775,11 +775,17 @@ async function loadLicensingConcepts() {
       const platforms = ev.recommended_platforms||[];
       const hasStyle = !!(ev.style_prompt||ev.suno_prompt);
       const hasLyrics = !!ev.lyrics_prompt;
+      const fit = c.fit_score;
+      const fitColor = fit >= 65 ? 'var(--green)' : fit >= 45 ? 'var(--amber,#ffb020)' : '#ff5555';
       return `<div class="track-card" style="flex-direction:column;gap:8px">
         <div style="display:flex;gap:10px;align-items:flex-start">
           <div class="track-art" style="font-size:1.2rem">${hasLyrics?'🎤':'💿'}</div>
           <div class="track-info" style="flex:1">
-            <div class="track-title">${title}</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="track-title" style="flex:1">${title}</div>
+              ${fit!==undefined?`<span title="${escapeHtml(c.fit_basis||'')}" style="font-size:0.68rem;font-weight:700;color:${fitColor};border:1px solid ${fitColor};border-radius:20px;padding:2px 8px;white-space:nowrap">${fit} fit</span>`:''}
+            </div>
+            ${c.fit_basis?`<div style="font-size:0.6rem;color:var(--muted);margin-top:2px">${escapeHtml(c.fit_basis)}</div>`:''}
             <div class="track-genre">${ev.sub_genre||''} ${ev.bpm?'· '+ev.bpm+' BPM':''} ${hasLyrics?'· Vocal':'· Instrumental'}</div>
             <div class="track-meta">${platforms.join(', ')}</div>
             ${ev.estimated_monthly_revenue_gbp?`<div class="track-meta" style="color:var(--green)">Est. £${ev.estimated_monthly_revenue_gbp.toFixed(2)}/mo</div>`:''}

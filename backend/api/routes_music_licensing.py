@@ -38,7 +38,27 @@ def list_concepts(include_actioned: bool = False, db: Session = Depends(get_db))
     if not include_actioned:
         q = q.filter(Opportunity.status.notin_(["pitched", "declined", "generated"]))
     opps = q.order_by(Opportunity.id.desc()).all()
-    return {"concepts": [_parse_concept(o) for o in opps], "total": len(opps)}
+
+    # Live fit score per concept — recomputed from the latest approvals and
+    # YouTube performance every time the list is fetched
+    try:
+        from backend.services.concept_fit import sub_genre_stats, fit_for
+        stats = sub_genre_stats(db)
+    except Exception:
+        stats = None
+
+    concepts = []
+    for o in opps:
+        parsed = _parse_concept(o)
+        if stats is not None:
+            try:
+                parsed.update(fit_for(parsed["evidence"].get("sub_genre", ""), stats))
+            except Exception:
+                pass
+        concepts.append(parsed)
+    # Highest-fit concepts first
+    concepts.sort(key=lambda cnc: cnc.get("fit_score", 50), reverse=True)
+    return {"concepts": concepts, "total": len(concepts)}
 
 
 @router.post("/concept/{opp_id}/mark-generated")
