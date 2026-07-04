@@ -207,7 +207,10 @@ app.include_router(content_router)
 def root():
     index_path = os.path.join(static_dir, "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        # no-cache: iOS PWA/Safari heuristically caches the app shell, which
+        # left users on stale JS for hours after a deploy
+        return FileResponse(index_path,
+                            headers={"Cache-Control": "no-cache, must-revalidate"})
     return {"status": "Kingdom API running", "version": "1.3.0", "docs": "/docs"}
 
 
@@ -246,4 +249,5 @@ def serve_pwa_file(filename: str):
     if not os.path.exists(path):
         from fastapi import HTTPException
         raise HTTPException(status_code=404)
-    return FileResponse(path, media_type=_PWA_FILES[filename])
+    return FileResponse(path, media_type=_PWA_FILES[filename],
+                        headers={"Cache-Control": "no-cache, must-revalidate"})

@@ -406,10 +406,15 @@ async function triggerAgent(name) {
           if (typeof refreshTodayBadge === 'function') refreshTodayBadge();
         } catch(_) {}
       }, 800);
+    } else if (d.status === 'skip') {
+      const why = (d.lessons && d.lessons[0]) || d.message || 'Nothing to do right now';
+      showToast(`${name} skipped: ${String(why).replace(/^[^:]*skipped:\s*/i,'')}`, 'info', 5000);
+      if (el) { el.style.color='var(--amber)'; el.textContent=`⏭ ${name}: skipped`; }
+      return;
     } else {
       if (el) { el.style.color='var(--red)'; el.textContent=`✗ ${d.error||'Error'}`; }
     }
-    showToast(`${name}: ${d.status==='ok'?'Success':'Failed'}`, d.status==='ok'?'success':'error');
+    showToast(`${name}: ${d.status==='ok'?'Success':(d.error||'Failed').slice(0,80)}`, d.status==='ok'?'success':'error');
   } catch(e) {
     if (el) { el.style.color='var(--red)'; el.textContent='✗ Request failed'; }
     showToast('Request failed', 'error');
@@ -3059,21 +3064,34 @@ async function loadTodayTab() {
     </div>`;
     return;
   }
+  window._todayItems = data.items;
   el.innerHTML = data.items.map((it, i) => `
     <div class="today-item" id="today-item-${i}" style="border:1px solid var(--border);border-radius:10px;padding:12px;background:var(--surface)">
-      <div style="display:flex;gap:8px;align-items:baseline">
+      <div style="display:flex;gap:8px;align-items:baseline;cursor:pointer" onclick="toggleTodayDetail(${i})">
         <span>${it.icon || '•'}</span>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:0.85rem;overflow-wrap:anywhere">${escapeHtml(it.title || '')}</div>
           ${it.venture ? `<div style="font-size:0.65rem;color:var(--accent);letter-spacing:1px">${escapeHtml(it.venture)}</div>` : ''}
           ${it.detail ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:4px;overflow-wrap:anywhere">${escapeHtml(it.detail)}</div>` : ''}
+          ${it.reason ? `<div style="font-size:0.65rem;color:var(--cyan);margin-top:4px">ⓘ tap for details</div>` : ''}
         </div>
       </div>
+      <div id="today-detail-${i}" style="display:none;margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:0.75rem;color:var(--muted);line-height:1.6;white-space:pre-wrap"></div>
       <div style="display:flex;gap:8px;margin-top:10px">
         <button onclick='todayAct(${i}, ${JSON.stringify(JSON.stringify(it.approve))}, true)' style="flex:1;padding:10px;border-radius:8px;border:1px solid #00e676;background:rgba(0,230,118,0.12);color:#00e676;font-size:0.8rem;cursor:pointer">✓ ${escapeHtml(it.approve?.label || 'Approve')}</button>
         <button onclick='todayAct(${i}, ${JSON.stringify(JSON.stringify(it.reject))}, false)' style="flex:1;padding:10px;border-radius:8px;border:1px solid #ff5555;background:rgba(255,85,85,0.1);color:#ff5555;font-size:0.8rem;cursor:pointer">✕ ${escapeHtml(it.reject?.label || 'Reject')}</button>
       </div>
     </div>`).join('');
+}
+
+function toggleTodayDetail(i) {
+  const box = document.getElementById('today-detail-' + i);
+  const it = (window._todayItems || [])[i];
+  if (!box || !it) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  box.innerHTML = escapeHtml(it.reason || it.detail || 'No further detail.') +
+    (it.tab ? `<div style="margin-top:8px"><button class="btn btn-xs btn-primary" onclick="event.stopPropagation();closePanel();setTimeout(()=>openPanel('${it.tab}'),350)">↗ Open ${it.tab === 'pulsebreak' ? 'PulseBreak' : 'Pitwall'} section</button></div>` : '');
+  box.style.display = 'block';
 }
 
 async function todayAct(idx, actionJson, approved) {
@@ -3085,16 +3103,25 @@ async function todayAct(idx, actionJson, approved) {
       headers: { 'Content-Type': 'application/json' },
       body: action.body ? JSON.stringify(action.body) : undefined,
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) {
+      let msg = 'HTTP ' + r.status;
+      try { const j = await r.json(); if (j.detail) msg += ' — ' + String(j.detail).slice(0, 120); } catch(_) {}
+      throw new Error(msg);
+    }
     buzz(12);
     if (card) {
       card.style.opacity = '0.45';
-      card.innerHTML = `<div style="text-align:center;color:${approved ? '#00e676' : '#ff5555'};font-size:0.8rem;padding:6px">${approved ? '✓ Approved' : '✕ Rejected'}</div>`;
+      card.innerHTML = `<div style="text-align:center;color:${approved ? '#00e676' : '#ff5555'};font-size:0.8rem;padding:6px">${approved ? '✓ ' + (action.label || 'Approved') : '✕ ' + (action.label || 'Rejected')}</div>`;
       setTimeout(() => card.remove(), 1200);
     }
     refreshTodayBadge();
   } catch (e) {
-    if (card) card.insertAdjacentHTML('beforeend', '<div style="color:#ff5555;font-size:0.7rem;margin-top:6px">Failed — try again.</div>');
+    const msg = (e && e.message && e.message.startsWith('HTTP'))
+      ? `Server said: ${e.message}`
+      : 'No connection — the app may be redeploying. Wait ~1 min and try again.';
+    const old = card ? card.querySelector('.today-err') : null;
+    if (old) old.remove();
+    if (card) card.insertAdjacentHTML('beforeend', `<div class="today-err" style="color:#ff5555;font-size:0.7rem;margin-top:6px">${escapeHtml(msg)}</div>`);
   }
 }
 
