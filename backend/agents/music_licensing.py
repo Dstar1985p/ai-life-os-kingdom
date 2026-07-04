@@ -459,6 +459,62 @@ _TRACK_CONCEPTS = [
 ]
 
 
+def _pulsebreak_sound_section(db: Session) -> tuple[str, int]:
+    """Build a compact 'PulseBreak sound' section from the measured Sound DNA.
+
+    Returns (section_text, tracks_analysed). Empty text when the library has
+    no tracks yet — the section grows richer as more tracks are uploaded.
+    """
+    try:
+        from backend.services.sound_dna import get_sound_dna
+        dna = get_sound_dna(db)
+        if dna.get("status") != "ok":
+            return "", 0
+        overall = dna.get("dna", {})
+        n = dna.get("tracks_analysed", 0)
+        bits = []
+        if overall.get("bpm"):
+            bits.append(f"~{int(round(overall['bpm']))} BPM centre")
+        moods = overall.get("signature_moods") or []
+        if moods:
+            bits.append("signature moods: " + ", ".join(moods[:3]))
+        try:
+            from backend.services.sound_dna import _dynamics_word
+            dyn = _dynamics_word(overall.get("dynamic_range_db"))
+            if dyn:
+                bits.append(dyn)
+        except Exception:
+            pass
+        bits.append("heavy sub bass and crisp engineered breaks")
+        section = (
+            f"PulseBreak sound:\nMatch the PulseBreak catalogue ({n} track"
+            f"{'s' if n != 1 else ''} analysed) — " + "; ".join(bits) + "."
+        )
+        return section, n
+    except Exception:
+        return "", 0
+
+
+def _blend_style_prompt(style: str, sound_section: str, limit: int = 980) -> str:
+    """Insert the learned PulseBreak-sound section into a style prompt,
+    keeping the whole thing inside the style box character limit."""
+    if not style or not sound_section:
+        return style
+    if "Important:" in style:
+        blended = style.replace("Important:", sound_section + "\n\nImportant:", 1)
+    else:
+        blended = style + "\n\n" + sound_section
+    if len(blended) <= limit:
+        return blended
+    # Too long: fall back to just the first clause of the sound section
+    short = sound_section.split(";")[0].rstrip(".") + "."
+    if "Important:" in style:
+        blended = style.replace("Important:", short + "\n\nImportant:", 1)
+    else:
+        blended = style + "\n\n" + short
+    return blended if len(blended) <= limit else style
+
+
 def _revenue_to_kingdom_score(revenue_gbp: float) -> float:
     """Map £2–£25 estimated monthly revenue to kingdom_score 30–95."""
     clamped = max(2.0, min(25.0, revenue_gbp))
@@ -493,12 +549,19 @@ class MusicLicensingAgent(BaseRevenueAgent):
 
         used_sub = _used_sub_genres(existing_opps)
 
-        # Sub-genres whose stored concept predates the style/lyrics prompt format
+        # Learned library profile — keeps every concept on the PulseBreak sound
+        sound_section, dna_tracks = _pulsebreak_sound_section(db)
+
+        # Stale = predates the style/lyrics prompt format, OR was generated
+        # against an older library snapshot (the sound grows with every upload)
         stale_sub: set[str] = set()
         for opp in existing_opps:
             try:
                 ev = json.loads(opp.evidence or "{}")
-                if ev.get("sub_genre") and not ev.get("style_prompt"):
+                if ev.get("sub_genre") and (
+                    not ev.get("style_prompt")
+                    or ev.get("dna_tracks_analysed", 0) != dna_tracks
+                ):
                     stale_sub.add(ev["sub_genre"])
             except (json.JSONDecodeError, TypeError):
                 pass
@@ -552,7 +615,11 @@ class MusicLicensingAgent(BaseRevenueAgent):
                 "mood_tags": concept["mood_tags"],
                 "use_case_tags": concept["use_case_tags"],
                 "has_vocals": concept.get("has_vocals", False),
-                "style_prompt": concept.get("style_prompt", concept.get("suno_prompt", "")),
+                "style_prompt": _blend_style_prompt(
+                    concept.get("style_prompt", concept.get("suno_prompt", "")),
+                    sound_section,
+                ),
+                "dna_tracks_analysed": dna_tracks,
                 "lyrics_prompt": concept.get("lyrics_prompt", ""),
                 "suno_prompt": concept.get("suno_prompt", concept.get("style_prompt", "")),
                 "recommended_platforms": concept["recommended_platforms"],
