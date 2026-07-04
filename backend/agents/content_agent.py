@@ -245,4 +245,22 @@ class ContentAgent(BaseRevenueAgent):
             confidence_score=75.0,
             evidence=json.dumps({**brief, "generated_at": datetime.utcnow().isoformat()}),
         ))
+        # Also file it where the Content Planner and Today queue actually look —
+        # posts saved only as lessons were invisible in the UI
+        try:
+            from backend.models.tables import ContentDraft
+            db.add(ContentDraft(
+                venture=venture,
+                content_type="social_post",
+                platform=platform,
+                content_json=json.dumps({
+                    "content": content,
+                    "type": brief.get("type", ""),
+                    "scheduled_for": brief.get("scheduled_for", ""),
+                }),
+                status="draft",
+                source_agent="Content Agent",
+            ))
+        except Exception:
+            pass
         db.commit()

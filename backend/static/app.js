@@ -396,7 +396,16 @@ async function triggerAgent(name) {
       showToast(`✓ ${name} finished`, 'success');
       if (el) { el.style.color='var(--green)'; el.textContent=`✓ ${name}: ${d.opportunities_created||0} new`; }
       if ((d.opportunities_created||0)>0) triggerCelebration('AGENT SUCCESS!', name+': '+(d.opportunities_created||0)+' new opportunities','🔥');
-      setTimeout(() => { loadKingdomMap(); loadAttribution(); }, 800);
+      setTimeout(() => {
+        loadKingdomMap(); loadAttribution();
+        // Refresh visible panel content so the run's output appears immediately
+        try {
+          if (typeof loadLicensingConcepts === 'function') loadLicensingConcepts();
+          if (typeof loadContentPosts === 'function') loadContentPosts();
+          if (typeof loadReviewQueue === 'function') loadReviewQueue();
+          if (typeof refreshTodayBadge === 'function') refreshTodayBadge();
+        } catch(_) {}
+      }, 800);
     } else {
       if (el) { el.style.color='var(--red)'; el.textContent=`✗ ${d.error||'Error'}`; }
     }
@@ -797,7 +806,8 @@ async function generateLicensingConcepts() {
   try {
     const res = await fetch('/music-licensing/generate', {method:'POST'});
     const data = await res.json();
-    showToast(`Generated ${data.opportunities_created||0} new concept(s)`, 'success');
+    const total = (data.opportunities_created||0) + (data.opportunities_updated||0);
+    showToast(total ? `✓ ${total} licensing concept(s) ready below` : 'No concepts generated — check Vibes AI has tracks', total ? 'success' : 'error', 4000);
     loadLicensingConcepts();
   loadPitchTracker();
   loadSoundDNA(); loadLicensingRevenue();
