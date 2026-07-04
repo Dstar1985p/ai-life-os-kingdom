@@ -31,15 +31,30 @@ def _parse_concept(opp: Opportunity) -> dict:
 
 
 @router.get("/concepts")
-def list_concepts(db: Session = Depends(get_db)) -> dict:
-    """Return all music licensing opportunities with parsed evidence."""
-    opps = (
-        db.query(Opportunity)
-        .filter(Opportunity.source == "music_licensing")
-        .order_by(Opportunity.id.desc())
-        .all()
-    )
+def list_concepts(include_actioned: bool = False, db: Session = Depends(get_db)) -> dict:
+    """Active licensing concepts (pitched/declined ones are cleared from the
+    list; pass include_actioned=true to see everything)."""
+    q = db.query(Opportunity).filter(Opportunity.source == "music_licensing")
+    if not include_actioned:
+        q = q.filter(Opportunity.status.notin_(["pitched", "declined"]))
+    opps = q.order_by(Opportunity.id.desc()).all()
     return {"concepts": [_parse_concept(o) for o in opps], "total": len(opps)}
+
+
+@router.post("/concept/{opp_id}/decline")
+def decline_concept(opp_id: int, db: Session = Depends(get_db)) -> dict:
+    """Founder declines a concept — clears it from the active list. The agent
+    won't recreate it (the sub-genre stays 'used'), but it remains queryable
+    with include_actioned=true."""
+    opp = db.query(Opportunity).filter(
+        Opportunity.id == opp_id,
+        Opportunity.source == "music_licensing",
+    ).first()
+    if not opp:
+        raise HTTPException(status_code=404, detail=f"Licensing concept {opp_id} not found")
+    opp.status = "declined"
+    db.commit()
+    return {"status": "declined", "id": opp.id, "title": opp.title}
 
 
 @router.get("/concept/{opp_id}")
@@ -121,9 +136,12 @@ def pitch_concept(body: PitchRequest, db: Session = Depends(get_db)) -> dict:
         f"I'd love to discuss how we can work together.\n\n"
         f"Best regards,\nPulseBreak"
     )
-    # Persist so the follow-up tracker can chase replies
+    # Persist so the follow-up tracker can chase replies, and clear the
+    # concept from the active list — it now lives in the Pitch Tracker
     from backend.services.licensing_followups import record_pitch
     saved = record_pitch(db, ", ".join(platforms[:2]), opp.title, pitch_body)
+    opp.status = "pitched"
+    db.commit()
 
     return {
         "concept_id": opp.id,

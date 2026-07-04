@@ -790,6 +790,7 @@ async function loadLicensingConcepts() {
           ${hasLyrics?`<button class="btn btn-xs" style="border-color:rgba(200,255,0,0.5);color:var(--lime,#c8ff00)" onclick="copyLyricsPrompt(${i})">🎤 Copy Lyrics</button>`:''}
           <button class="btn btn-xs" style="border-color:rgba(0,229,255,0.4);color:var(--cyan)" onclick="pitchConcept(${i},'${encodeURIComponent(title)}')">📤 Pitch</button>
           <button class="btn btn-xs" style="border-color:rgba(0,255,102,0.4);color:var(--green)" onclick="draftLicenseEmail(${i},'${encodeURIComponent(title)}','${platforms[0]||''}')">✉ Draft Email</button>
+          <button class="btn btn-xs" style="border-color:rgba(255,85,85,0.4);color:#ff5555" onclick="declineConcept(${c.id})">✕ Decline</button>
         </div>
       </div>`;
     }).join('');
@@ -844,10 +845,21 @@ function pitchConcept(idx, titleEnc) {
     .then(data => {
       if (data?.pitch_draft) {
         navigator.clipboard.writeText(data.pitch_draft).catch(() => {});
-        showToast('Pitch drafted & copied to clipboard!', 'success');
+        showToast('📤 Pitch drafted & copied — concept moved to Pitch Tracker below', 'success', 4500);
       }
+      loadLicensingConcepts(); loadPitchTracker(); refreshTodayBadge();
     })
     .catch(() => showToast('Pitch failed', 'error'));
+}
+
+function declineConcept(id) {
+  fetch(`/music-licensing/concept/${id}/decline`, {method:'POST'})
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(() => {
+      showToast('✕ Concept declined — cleared from the list', 'info');
+      loadLicensingConcepts(); refreshTodayBadge();
+    })
+    .catch(() => showToast('Decline failed — try again', 'error'));
 }
 
 function copyConceptBrief(idx, evEnc) {
@@ -901,15 +913,25 @@ async function loadContentPosts() {
   try {
     const data = await fetchJSON('/content/posts');
     const posts = data?.posts || data || [];
-    if (!posts.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.75rem">No content posts yet — run Content Agent</div>'; return; }
-    el.innerHTML = posts.slice(0,4).map(p => `<div class="opp-card">
+    if (!posts.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.75rem">No content posts yet — tap Generate</div>'; return; }
+    window._contentPosts = posts.slice(0,6);
+    el.innerHTML = window._contentPosts.map((p, i) => {
+      const body = p.content||p.caption||'';
+      const isDraft = (p.status||'draft') === 'draft';
+      return `<div class="opp-card" id="content-post-${p.id}">
       <div class="opp-card-header">
-        <div class="opp-title">${p.platform||'Social'}</div>
-        <span class="badge badge-purple">${p.venture||''}</span>
+        <div class="opp-title">${escapeHtml(p.platform||'Social')}</div>
+        <span class="badge badge-purple">${escapeHtml(p.venture||'')}</span>
+        <span class="badge" style="color:${isDraft?'var(--amber,#ffb020)':'var(--green)'}">${escapeHtml(p.status||'draft')}</span>
       </div>
-      <div style="font-size:0.75rem;color:var(--text);line-height:1.6;margin:6px 0">${(p.content||p.caption||'').slice(0,150)}${(p.content||p.caption||'').length>150?'…':''}</div>
-      ${p.hashtags?`<div style="font-size:0.65rem;color:var(--cyan);margin-top:4px">${p.hashtags}</div>`:''}
-    </div>`).join('');
+      <div style="font-size:0.75rem;color:var(--text);line-height:1.6;margin:6px 0">${escapeHtml(body.slice(0,200))}${body.length>200?'…':''}</div>
+      ${p.hashtags?`<div style="font-size:0.65rem;color:var(--cyan);margin-top:4px">${escapeHtml(p.hashtags)}</div>`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn btn-xs btn-primary" onclick="copyContentPost(${i})">📋 Copy Post</button>
+        ${isDraft?`<button class="btn btn-xs" style="border-color:rgba(0,255,102,0.4);color:var(--green)" onclick="actionContentPost(${p.id},'approve')">✓ Approve</button>
+        <button class="btn btn-xs" style="border-color:rgba(255,85,85,0.4);color:#ff5555" onclick="actionContentPost(${p.id},'reject')">✕ Reject</button>`:''}
+      </div>
+    </div>`;}).join('');
   } catch(e) {
     el.innerHTML = '<div style="color:var(--muted);font-size:0.75rem">Content unavailable</div>';
   }
@@ -2739,9 +2761,33 @@ async function generateContentPosts() {
   if (!el) return;
   el.innerHTML = '<div class="loading">Generating content…</div>';
   try {
-    await fetch('/agents/trigger', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({agent:'Content Agent'}) });
-  } catch(_) {}
-  setTimeout(loadContentPosts, 2500);
+    const r = await fetch('/agents/trigger', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({agent:'Content Agent'}) });
+    const d = await r.json();
+    const n = (d.actions_taken||[]).length;
+    showToast(n ? `✓ Content Agent drafted ${n} post(s) — approve or reject below` : 'Content Agent ran — no new posts this time', n ? 'success' : 'info', 4000);
+  } catch(_) { showToast('Content Agent failed — try again', 'error'); }
+  setTimeout(() => { loadContentPosts(); refreshTodayBadge(); }, 1500);
+}
+
+function copyContentPost(i) {
+  const p = (window._contentPosts||[])[i] || {};
+  const txt = [(p.content||p.caption||''), p.hashtags||''].filter(Boolean).join('\n\n');
+  if (!txt) { showToast('Nothing to copy', 'error'); return; }
+  navigator.clipboard.writeText(txt)
+    .then(() => showToast(`📋 ${p.platform||'Post'} copied — ready to paste`, 'success'))
+    .catch(() => showToast('Copy failed — long-press to copy manually', 'error'));
+}
+
+async function actionContentPost(id, action) {
+  try {
+    const r = await fetch(`/content-drafts/${id}/${action}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({founder_notes:''}) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    showToast(action === 'approve' ? '✓ Post approved — copy it and publish when ready' : '✕ Post rejected', action === 'approve' ? 'success' : 'info');
+    const card = document.getElementById('content-post-' + id);
+    if (card && action === 'reject') { card.style.opacity = '0.4'; setTimeout(() => card.remove(), 800); }
+    else loadContentPosts();
+    refreshTodayBadge();
+  } catch(e) { showToast('Action failed — try again', 'error'); }
 }
 
 // Close panel on Escape key
@@ -2884,8 +2930,8 @@ async function loadTodayTab() {
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px">
-        <button onclick='todayAct(${i}, ${JSON.stringify(JSON.stringify(it.approve))}, true)' style="flex:1;padding:10px;border-radius:8px;border:1px solid #00e676;background:rgba(0,230,118,0.12);color:#00e676;font-size:0.8rem;cursor:pointer">✓ Approve</button>
-        <button onclick='todayAct(${i}, ${JSON.stringify(JSON.stringify(it.reject))}, false)' style="flex:1;padding:10px;border-radius:8px;border:1px solid #ff5555;background:rgba(255,85,85,0.1);color:#ff5555;font-size:0.8rem;cursor:pointer">✕ Reject</button>
+        <button onclick='todayAct(${i}, ${JSON.stringify(JSON.stringify(it.approve))}, true)' style="flex:1;padding:10px;border-radius:8px;border:1px solid #00e676;background:rgba(0,230,118,0.12);color:#00e676;font-size:0.8rem;cursor:pointer">✓ ${escapeHtml(it.approve?.label || 'Approve')}</button>
+        <button onclick='todayAct(${i}, ${JSON.stringify(JSON.stringify(it.reject))}, false)' style="flex:1;padding:10px;border-radius:8px;border:1px solid #ff5555;background:rgba(255,85,85,0.1);color:#ff5555;font-size:0.8rem;cursor:pointer">✕ ${escapeHtml(it.reject?.label || 'Reject')}</button>
       </div>
     </div>`).join('');
 }

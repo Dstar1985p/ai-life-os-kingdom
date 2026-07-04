@@ -93,4 +93,40 @@ def today_queue(db: Session = Depends(get_db)) -> dict:
     except Exception:
         pass
 
+    # 4. Fresh licensing concepts awaiting pitch/decline
+    try:
+        from backend.models.tables import Opportunity
+        concepts = (
+            db.query(Opportunity)
+            .filter(
+                Opportunity.source == "music_licensing",
+                Opportunity.status.notin_(["pitched", "declined"]),
+            )
+            .order_by(Opportunity.id.desc())
+            .limit(10)
+            .all()
+        )
+        for o in concepts:
+            try:
+                ev = json.loads(o.evidence or "{}")
+            except Exception:
+                ev = {}
+            title = ev.get("track_title") or o.title
+            platforms = ", ".join((ev.get("recommended_platforms") or [])[:2])
+            items.append({
+                "type": "licensing_concept",
+                "icon": "🎛",
+                "venture": "PulseBreak",
+                "title": title,
+                "detail": (f"{ev.get('sub_genre','')} · {platforms}"
+                           + (f" · est. £{ev['estimated_monthly_revenue_gbp']:.0f}/mo"
+                              if ev.get("estimated_monthly_revenue_gbp") else "")).strip(" ·"),
+                "approve": {"method": "POST", "url": "/music-licensing/pitch",
+                            "body": {"title": title}, "label": "Pitch"},
+                "reject": {"method": "POST", "url": f"/music-licensing/concept/{o.id}/decline",
+                           "label": "Decline"},
+            })
+    except Exception:
+        pass
+
     return {"total": len(items), "items": items}
