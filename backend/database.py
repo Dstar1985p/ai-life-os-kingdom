@@ -28,8 +28,13 @@ def _sqlite_engine():
 
 if _IS_POSTGRES:
     try:
-        engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10)
-        # Fail fast here (not mid-request) so a bad Postgres config is caught
+        # Hard 5s connect timeout: Railway's private network can be slow on a
+        # cold start, and a hanging connect here blows the 30s healthcheck and
+        # gets the whole deploy killed ("Application failed to respond")
+        engine = create_engine(
+            DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10,
+            connect_args={"connect_timeout": 5},
+        )
         with engine.connect() as _c:
             _c.execute(text("SELECT 1"))
     except Exception as exc:
@@ -42,6 +47,29 @@ if _IS_POSTGRES:
         _IS_POSTGRES = False
 else:
     engine = _sqlite_engine()
+
+
+def retry_postgres() -> bool:
+    """Called at startup: if boot fell back to SQLite because Postgres was
+    briefly unreachable, try once more and swap the engine back."""
+    global engine, _IS_POSTGRES, DB_BOOT_WARNING
+    if _IS_POSTGRES or not DB_BOOT_WARNING:
+        return False
+    try:
+        eng = create_engine(
+            DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10,
+            connect_args={"connect_timeout": 5},
+        )
+        with eng.connect() as c:
+            c.execute(text("SELECT 1"))
+        engine = eng
+        SessionLocal.configure(bind=eng)
+        _IS_POSTGRES = True
+        DB_BOOT_WARNING = ""
+        logger.warning("Postgres recovered on retry — switched back from SQLite fallback")
+        return True
+    except Exception:
+        return False
 
 
 def _apply_migrations(eng) -> None:

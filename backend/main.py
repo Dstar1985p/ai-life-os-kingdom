@@ -74,6 +74,13 @@ except Exception:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # If boot fell back to SQLite because Postgres was briefly unreachable,
+    # give it one more shot now that the network has settled.
+    try:
+        from backend.database import retry_postgres
+        retry_postgres()
+    except Exception:
+        pass
     # Also run on app startup (for uvicorn / production)
     try:
         Base.metadata.create_all(bind=engine)
