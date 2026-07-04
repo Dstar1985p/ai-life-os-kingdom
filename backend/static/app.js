@@ -768,22 +768,27 @@ async function loadLicensingConcepts() {
   try {
     const data = await fetchJSON('/music-licensing/concepts');
     if (!data?.concepts?.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.75rem">No concepts yet — click Generate</div>'; return; }
+    window._licConcepts = data.concepts.slice(0,5).map(c => c.evidence||{});
     el.innerHTML = data.concepts.slice(0,5).map((c, i) => {
       const ev=c.evidence||{};
       const title = ev.track_title||c.title||'Concept';
       const platforms = ev.recommended_platforms||[];
+      const hasStyle = !!(ev.style_prompt||ev.suno_prompt);
+      const hasLyrics = !!ev.lyrics_prompt;
       return `<div class="track-card" style="flex-direction:column;gap:8px">
         <div style="display:flex;gap:10px;align-items:flex-start">
-          <div class="track-art" style="font-size:1.2rem">💿</div>
+          <div class="track-art" style="font-size:1.2rem">${hasLyrics?'🎤':'💿'}</div>
           <div class="track-info" style="flex:1">
             <div class="track-title">${title}</div>
-            <div class="track-genre">${ev.sub_genre||''} ${platforms.length?'· '+platforms.join(', '):''}</div>
+            <div class="track-genre">${ev.sub_genre||''} ${ev.bpm?'· '+ev.bpm+' BPM':''} ${hasLyrics?'· Vocal':'· Instrumental'}</div>
+            <div class="track-meta">${platforms.join(', ')}</div>
             ${ev.estimated_monthly_revenue_gbp?`<div class="track-meta" style="color:var(--green)">Est. £${ev.estimated_monthly_revenue_gbp.toFixed(2)}/mo</div>`:''}
           </div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-xs btn-primary" onclick="pitchConcept(${i},'${encodeURIComponent(title)}')">📤 Pitch</button>
-          <button class="btn btn-xs" style="border-color:rgba(0,229,255,0.4);color:var(--cyan)" onclick="copyConceptBrief(${i},'${encodeURIComponent(JSON.stringify(ev))}')">📋 Copy Brief</button>
+          ${hasStyle?`<button class="btn btn-xs btn-primary" onclick="copyStylePrompt(${i})">🎛 Copy Style Prompt</button>`:''}
+          ${hasLyrics?`<button class="btn btn-xs" style="border-color:rgba(200,255,0,0.5);color:var(--lime,#c8ff00)" onclick="copyLyricsPrompt(${i})">🎤 Copy Lyrics</button>`:''}
+          <button class="btn btn-xs" style="border-color:rgba(0,229,255,0.4);color:var(--cyan)" onclick="pitchConcept(${i},'${encodeURIComponent(title)}')">📤 Pitch</button>
           <button class="btn btn-xs" style="border-color:rgba(0,255,102,0.4);color:var(--green)" onclick="draftLicenseEmail(${i},'${encodeURIComponent(title)}','${platforms[0]||''}')">✉ Draft Email</button>
         </div>
       </div>`;
@@ -812,6 +817,23 @@ async function generateLicensingConcepts() {
   loadPitchTracker();
   loadSoundDNA(); loadLicensingRevenue();
   } catch(e) { showToast('Failed', 'error'); }
+}
+
+function copyStylePrompt(i) {
+  const ev = (window._licConcepts||[])[i] || {};
+  const txt = ev.style_prompt || ev.suno_prompt || '';
+  if (!txt) { showToast('No style prompt on this concept — regenerate concepts', 'error'); return; }
+  navigator.clipboard.writeText(txt)
+    .then(() => showToast('🎛 Style prompt copied — paste into the Style box', 'success'))
+    .catch(() => showToast('Copy failed — long-press to copy manually', 'error'));
+}
+
+function copyLyricsPrompt(i) {
+  const ev = (window._licConcepts||[])[i] || {};
+  if (!ev.lyrics_prompt) { showToast('This concept is instrumental — no lyrics', 'info'); return; }
+  navigator.clipboard.writeText(ev.lyrics_prompt)
+    .then(() => showToast('🎤 Lyrics copied — paste into the Lyrics box', 'success'))
+    .catch(() => showToast('Copy failed — long-press to copy manually', 'error'));
 }
 
 function pitchConcept(idx, titleEnc) {
