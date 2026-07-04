@@ -460,6 +460,81 @@ async function loadPitwallTab() {
   loadABTests();
   renderOrders(orders);
   loadAvatars('Pitwall Classics');
+  loadMarketRadar();
+}
+
+/* ─── MARKET RADAR ─── */
+async function loadMarketRadar() {
+  const el = document.getElementById('market-radar-list');
+  if (!el) return;
+  try {
+    const d = await fetchJSON('/market-scout/radar');
+    const items = d?.items || [];
+    const note = d?.etsy_connected
+      ? ''
+      : `<div style="font-size:0.65rem;color:var(--muted);margin-bottom:8px">Etsy research activates once your Etsy shop is connected (Settings) — until then the radar runs on intel you log.</div>`;
+    if (!items.length) {
+      el.innerHTML = note + '<div style="color:var(--muted);font-size:0.75rem">Nothing on the radar yet — spot a competitor selling well? Tap <strong>+ Log Intel</strong> and the agents will factor it in.</div>';
+      return;
+    }
+    el.innerHTML = note + items.map(it => {
+      const ev = it.evidence || {};
+      const bits = [];
+      if (ev.competitor) bits.push(escapeHtml(ev.competitor));
+      if (ev.price_gbp) bits.push('£' + Number(ev.price_gbp).toFixed(2));
+      if (ev.sales_per_day) bits.push(`~${ev.sales_per_day}/day`);
+      if (ev.estimated_monthly_gbp) bits.push(`est. £${Number(ev.estimated_monthly_gbp).toFixed(0)}/mo`);
+      if (ev.style) bits.push(escapeHtml(ev.style));
+      const detail = bits.join(' · ') || escapeHtml((ev.analysis || ev.reason || '').slice(0, 120));
+      const scoreColor = it.kingdom_score >= 70 ? 'var(--green)' : it.kingdom_score >= 50 ? 'var(--amber,#ffb020)' : 'var(--muted)';
+      return `<div class="opp-card" id="radar-${it.id}">
+        <div class="opp-card-header">
+          <div class="opp-title" style="flex:1">${escapeHtml(it.title.replace(/^Competitor intel: /,''))}</div>
+          <span style="font-size:0.68rem;font-weight:700;color:${scoreColor}">${Math.round(it.kingdom_score||0)}</span>
+        </div>
+        <div style="font-size:0.68rem;color:var(--muted);margin:4px 0">${detail}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="badge badge-purple">${escapeHtml(it.source)}</span>
+          <button class="btn btn-xs btn-primary" onclick="triggerAgent('Print Forge AI')">🖨 Make ours</button>
+          <button class="btn btn-xs" style="border-color:rgba(255,85,85,0.4);color:#ff5555" onclick="dismissRadar(${it.id})">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { el.innerHTML = '<div style="color:var(--muted);font-size:0.75rem">Radar unavailable</div>'; }
+}
+
+function toggleIntelForm() {
+  const f = document.getElementById('intel-form');
+  if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+async function submitIntel() {
+  const product = document.getElementById('intel-product')?.value?.trim();
+  if (!product) { showToast('Give the product a name (e.g. "Ferrari F40 canvas")', 'error'); return; }
+  const body = {
+    product,
+    competitor: document.getElementById('intel-competitor')?.value?.trim() || '',
+    price_gbp: parseFloat(document.getElementById('intel-price')?.value) || 0,
+    sales_per_day: parseFloat(document.getElementById('intel-sales')?.value) || 0,
+    style: document.getElementById('intel-style')?.value?.trim() || '',
+  };
+  try {
+    const r = await fetch('/market-scout/intel', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    showToast(`📡 Logged — scored ${Math.round(d.kingdom_score)}${d.estimated_monthly_gbp?`, est. £${d.estimated_monthly_gbp.toFixed(0)}/mo if we capture half`:''}`, 'success', 4500);
+    toggleIntelForm();
+    ['intel-product','intel-competitor','intel-price','intel-sales','intel-style'].forEach(id => { const x=document.getElementById(id); if(x) x.value=''; });
+    loadMarketRadar();
+  } catch(e) { showToast('Could not log intel — try again', 'error'); }
+}
+
+async function dismissRadar(id) {
+  try {
+    await fetch(`/market-scout/intel/${id}`, {method:'DELETE'});
+    const card = document.getElementById('radar-' + id);
+    if (card) { card.style.opacity = '0.4'; setTimeout(() => card.remove(), 500); }
+  } catch(e) { showToast('Failed', 'error'); }
 }
 
 function renderPitwallListings(data) {
@@ -467,11 +542,32 @@ function renderPitwallListings(data) {
   if (!el) return;
   const items = Array.isArray(data) ? data.filter(o=>(o.category||'').includes('Pitwall')) : [];
   if (!items.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.75rem">No Pitwall listings yet — run Print Forge AI</div>'; return; }
-  el.innerHTML = items.slice(0,6).map((o,i) => `<div class="lb-row">
+  window._pitwallListings = items.slice(0,6);
+  el.innerHTML = window._pitwallListings.map((o,i) => `<div class="lb-row" onclick="toggleListingDetail(${i})" style="cursor:pointer">
     <div class="lb-rank ${['r1','r2','r3'][i]||'rn'}">${i+1}</div>
-    <div><div class="lb-title">${o.title.slice(0,45)}</div><div class="lb-cat">${o.category||''}</div></div>
+    <div style="flex:1"><div class="lb-title">${escapeHtml(o.title.slice(0,45))}</div><div class="lb-cat">${escapeHtml(o.category||'')}</div></div>
     <div class="lb-score">${o.kingdom_score||0}</div>
-  </div>`).join('');
+  </div>
+  <div id="listing-detail-${i}" style="display:none;padding:10px 12px;margin:2px 0 8px;border:1px solid var(--border);border-radius:8px;font-size:0.72rem;line-height:1.6"></div>`).join('');
+}
+
+function toggleListingDetail(i) {
+  const box = document.getElementById('listing-detail-' + i);
+  const o = (window._pitwallListings||[])[i];
+  if (!box || !o) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  const rec = {pursue_now:'🟢 Pursue now', consider:'🟡 Consider', pass:'🔴 Pass'}[o.recommendation] || (o.recommendation||'');
+  box.innerHTML = `
+    <div style="font-weight:600;margin-bottom:4px">${escapeHtml(o.title)}</div>
+    ${o.evidence?`<div style="color:var(--muted);margin-bottom:6px">${escapeHtml(String(o.evidence).slice(0,300))}</div>`:''}
+    <div style="display:flex;gap:12px;flex-wrap:wrap;color:var(--muted)">
+      <span>Score: <strong style="color:var(--text)">${o.kingdom_score||0}</strong></span>
+      ${rec?`<span>${rec}</span>`:''}
+      ${o.status?`<span>Status: ${escapeHtml(o.status)}</span>`:''}
+      ${o.estimated_revenue?`<span>Est: £${o.estimated_revenue}/mo</span>`:''}
+    </div>
+    <div style="margin-top:8px"><button class="btn btn-xs btn-primary" onclick="triggerAgent('Print Forge AI')">🖨 Send to Print Forge</button></div>`;
+  box.style.display = 'block';
 }
 
 function renderPitwallEtsy(data) {
@@ -579,14 +675,43 @@ async function loadAvatars(venture) {
   const data = await fetchJSON(url);
   const avatars = data?.avatars || data || [];
   if (!avatars.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.75rem">No customer avatars yet</div>'; return; }
-  el.innerHTML = avatars.slice(0,4).map(a => `<div class="track-card">
+  window._avatars = avatars.slice(0,4);
+  el.innerHTML = window._avatars.map((a,i) => `<div class="track-card" onclick="toggleAvatarDetail(${i})" style="cursor:pointer">
     <div class="track-art" style="background:linear-gradient(135deg,#0a1a0a,#0a1433)">🧑</div>
     <div class="track-info">
-      <div class="track-title">${a.name||'Avatar'}</div>
-      <div class="track-genre">${a.venture||''} · ${a.age_range||''}</div>
-      <div class="track-meta">${asList(a.pain_points).slice(0,2).join(' · ')}</div>
+      <div class="track-title">${escapeHtml(a.name||'Avatar')}</div>
+      <div class="track-genre">${escapeHtml(a.venture||'')} · ${escapeHtml(a.age_range||'')} · tap for full profile</div>
+      <div class="track-meta">${asList(a.pain_points).slice(0,2).map(escapeHtml).join(' · ')}</div>
     </div>
-  </div>`).join('');
+  </div>
+  <div id="avatar-detail-${i}" style="display:none;padding:10px 12px;margin:2px 0 8px;border:1px solid var(--border);border-radius:8px;font-size:0.72rem;line-height:1.7"></div>`).join('');
+}
+
+function toggleAvatarDetail(i) {
+  const box = document.getElementById('avatar-detail-' + i);
+  const a = (window._avatars||[])[i];
+  if (!box || !a) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  const row = (k,v) => v ? `<div><strong style="color:var(--text)">${k}:</strong> <span style="color:var(--muted)">${escapeHtml(v)}</span></div>` : '';
+  const list = (k,v) => { const l = asList(v); return l.length ? row(k, l.join(' · ')) : ''; };
+  box.innerHTML =
+    row('Occupation', a.occupation) + row('Location', a.location) +
+    list('Pain points', a.pain_points) + list('Desires', a.desires) +
+    list('Buying triggers', a.buying_triggers) + list('Platforms', a.platforms) +
+    row('Price sensitivity', a.price_sensitivity) + row('Notes', a.notes) +
+    `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-xs btn-primary" onclick="event.stopPropagation();copyAvatarBrief(${i})">📋 Copy for ad targeting</button>
+      <button class="btn btn-xs" onclick="event.stopPropagation();triggerAgent('Marketing Factory')">📣 Draft content for this buyer</button>
+    </div>`;
+  box.style.display = 'block';
+}
+
+function copyAvatarBrief(i) {
+  const a = (window._avatars||[])[i] || {};
+  const txt = `Target customer: ${a.name||''} (${a.venture||''})\nAge: ${a.age_range||''} · ${a.occupation||''} · ${a.location||''}\nPain points: ${asList(a.pain_points).join('; ')}\nDesires: ${asList(a.desires).join('; ')}\nBuying triggers: ${asList(a.buying_triggers).join('; ')}\nWhere they are: ${asList(a.platforms).join(', ')}\nPrice sensitivity: ${a.price_sensitivity||''}`;
+  navigator.clipboard.writeText(txt)
+    .then(() => showToast('📋 Avatar brief copied — use it for ad audiences or listing copy', 'success'))
+    .catch(() => showToast('Copy failed', 'error'));
 }
 
 /* ─── PULSEBREAK TAB ─── */

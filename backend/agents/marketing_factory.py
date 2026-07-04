@@ -170,20 +170,22 @@ class MarketingFactoryAgent(BaseRevenueAgent):
             result.lessons.append(lesson_text)
             result.actions_taken.append(f"Generated content pack for {venture}")
 
-            # Save individual content pieces to ContentDraft for review/publish workflow
-            for caption in data.get("instagram_captions", []):
-                db.add(ContentDraft(venture=venture, content_type="social_post", platform="Instagram",
-                                    content_json=json.dumps(caption), source_agent="Marketing Factory"))
-            for script in data.get("tiktok_scripts", []):
-                db.add(ContentDraft(venture=venture, content_type="social_post", platform="TikTok",
-                                    content_json=json.dumps(script), source_agent="Marketing Factory"))
-            for email in data.get("email_subjects", []):
-                db.add(ContentDraft(venture=venture, content_type="email", platform="Email",
-                                    content_json=json.dumps(email), source_agent="Marketing Factory"))
+            # Save individual content pieces to ContentDraft for review/publish
+            # workflow — guarded so scheduled reruns don't resurrect drafts the
+            # founder already actioned or flood the Today queue
+            from backend.services.draft_guard import should_add_draft
+            pieces = (
+                [("social_post", "Instagram", json.dumps(x)) for x in data.get("instagram_captions", [])]
+                + [("social_post", "TikTok", json.dumps(x)) for x in data.get("tiktok_scripts", [])]
+                + [("email", "Email", json.dumps(x)) for x in data.get("email_subjects", [])]
+            )
             if data.get("youtube_description"):
-                db.add(ContentDraft(venture=venture, content_type="social_post", platform="YouTube",
-                                    content_json=json.dumps({"description": data["youtube_description"]}),
-                                    source_agent="Marketing Factory"))
+                pieces.append(("social_post", "YouTube",
+                               json.dumps({"description": data["youtube_description"]})))
+            for ctype, platform, payload in pieces:
+                if should_add_draft(db, venture, platform, payload):
+                    db.add(ContentDraft(venture=venture, content_type=ctype, platform=platform,
+                                        content_json=payload, source_agent="Marketing Factory"))
 
         db.commit()
         self._record_run(result, db)

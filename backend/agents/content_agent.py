@@ -249,18 +249,21 @@ class ContentAgent(BaseRevenueAgent):
         # posts saved only as lessons were invisible in the UI
         try:
             from backend.models.tables import ContentDraft
-            db.add(ContentDraft(
-                venture=venture,
-                content_type="social_post",
-                platform=platform,
-                content_json=json.dumps({
-                    "content": content,
-                    "type": brief.get("type", ""),
-                    "scheduled_for": brief.get("scheduled_for", ""),
-                }),
-                status="draft",
-                source_agent="Content Agent",
-            ))
+            from backend.services.draft_guard import should_add_draft
+            payload = json.dumps({
+                "content": content,
+                "type": brief.get("type", ""),
+                "scheduled_for": brief.get("scheduled_for", ""),
+            })
+            if should_add_draft(db, venture, platform, payload):
+                db.add(ContentDraft(
+                    venture=venture,
+                    content_type="social_post",
+                    platform=platform,
+                    content_json=payload,
+                    status="draft",
+                    source_agent="Content Agent",
+                ))
         except Exception:
             pass
         db.commit()
