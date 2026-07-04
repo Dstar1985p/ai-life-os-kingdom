@@ -36,9 +36,25 @@ def list_concepts(include_actioned: bool = False, db: Session = Depends(get_db))
     list; pass include_actioned=true to see everything)."""
     q = db.query(Opportunity).filter(Opportunity.source == "music_licensing")
     if not include_actioned:
-        q = q.filter(Opportunity.status.notin_(["pitched", "declined"]))
+        q = q.filter(Opportunity.status.notin_(["pitched", "declined", "generated"]))
     opps = q.order_by(Opportunity.id.desc()).all()
     return {"concepts": [_parse_concept(o) for o in opps], "total": len(opps)}
+
+
+@router.post("/concept/{opp_id}/mark-generated")
+def mark_concept_generated(opp_id: int, db: Session = Depends(get_db)) -> dict:
+    """Founder has taken this concept to the AI music generator — clears it
+    from the active list. The resulting track comes back through the upload
+    → review → approve/reject pipeline."""
+    opp = db.query(Opportunity).filter(
+        Opportunity.id == opp_id,
+        Opportunity.source == "music_licensing",
+    ).first()
+    if not opp:
+        raise HTTPException(status_code=404, detail=f"Licensing concept {opp_id} not found")
+    opp.status = "generated"
+    db.commit()
+    return {"status": "generated", "id": opp.id, "title": opp.title}
 
 
 @router.post("/concept/{opp_id}/decline")

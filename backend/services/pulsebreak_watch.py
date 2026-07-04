@@ -117,15 +117,31 @@ def _process_track(audio_file: Path, db) -> dict:
 
 
 def reject_track(track_name: str, db) -> dict:
-    """Founder has rejected a quarantined track — move to rejected/."""
+    """Founder has rejected a track — move the file to rejected/ and mark the
+    release row rejected so it stops teaching the Sound DNA."""
     ensure_dirs()
+
+    def _mark_rejected() -> None:
+        try:
+            from backend.models.tables import TrackRelease
+            row = db.query(TrackRelease).filter(
+                TrackRelease.track_name == track_name).first()
+            if row:
+                row.status = "rejected"
+                db.commit()
+        except Exception:
+            db.rollback()
+
     audio_extensions = {".mp3", ".wav", ".m4a", ".flac"}
     for ext in audio_extensions:
         src = REVIEW_DIR / f"{track_name}{ext}"
         if src.exists():
             dest = REJECTED_DIR / src.name
             shutil.move(str(src), str(dest))
+            _mark_rejected()
             return {"status": "rejected", "file": src.name}
+    # Audio file may already be gone (ephemeral disk) — still record the decision
+    _mark_rejected()
     return {"status": "not_found", "message": f"No track named '{track_name}' in review queue"}
 
 

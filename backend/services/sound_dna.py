@@ -67,7 +67,13 @@ def _dynamics_word(dr) -> str:
 
 
 def get_sound_dna(db: Session) -> dict:
-    tracks = db.query(TrackRelease).all()
+    # Rejected tracks don't teach the sound — the DNA learns only from what
+    # the founder kept. Every approval sharpens what PulseBreak wants to release.
+    tracks = (
+        db.query(TrackRelease)
+        .filter(TrackRelease.status != "rejected")
+        .all()
+    )
     if not tracks:
         return {
             "status": "no_data",
@@ -146,7 +152,8 @@ def get_sound_dna(db: Session) -> dict:
 def dna_bpm_hint(db: Session) -> int | None:
     """Cheap accessor used by Vibes AI concept generation."""
     try:
-        rows = [t.bpm for t in db.query(TrackRelease).all() if t.bpm]
+        rows = [t.bpm for t in db.query(TrackRelease)
+                .filter(TrackRelease.status != "rejected").all() if t.bpm]
         return int(round(sum(rows) / len(rows))) if rows else None
     except Exception:
         return None

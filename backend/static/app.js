@@ -788,8 +788,7 @@ async function loadLicensingConcepts() {
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           ${hasStyle?`<button class="btn btn-xs btn-primary" onclick="copyStylePrompt(${i})">🎛 Copy Style Prompt</button>`:''}
           ${hasLyrics?`<button class="btn btn-xs" style="border-color:rgba(200,255,0,0.5);color:var(--lime,#c8ff00)" onclick="copyLyricsPrompt(${i})">🎤 Copy Lyrics</button>`:''}
-          <button class="btn btn-xs" style="border-color:rgba(0,229,255,0.4);color:var(--cyan)" onclick="pitchConcept(${i},'${encodeURIComponent(title)}')">📤 Pitch</button>
-          <button class="btn btn-xs" style="border-color:rgba(0,255,102,0.4);color:var(--green)" onclick="draftLicenseEmail(${i},'${encodeURIComponent(title)}','${platforms[0]||''}')">✉ Draft Email</button>
+          <button class="btn btn-xs" style="border-color:rgba(0,255,102,0.4);color:var(--green)" onclick="markConceptGenerated(${c.id})">✓ Track Created</button>
           <button class="btn btn-xs" style="border-color:rgba(255,85,85,0.4);color:#ff5555" onclick="declineConcept(${c.id})">✕ Decline</button>
         </div>
       </div>`;
@@ -850,6 +849,16 @@ function pitchConcept(idx, titleEnc) {
       loadLicensingConcepts(); loadPitchTracker(); refreshTodayBadge();
     })
     .catch(() => showToast('Pitch failed', 'error'));
+}
+
+function markConceptGenerated(id) {
+  fetch(`/music-licensing/concept/${id}/mark-generated`, {method:'POST'})
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(() => {
+      showToast('✓ Marked as created — upload the track to the review queue when it\'s ready', 'success', 4500);
+      loadLicensingConcepts(); refreshTodayBadge();
+    })
+    .catch(() => showToast('Failed — try again', 'error'));
 }
 
 function declineConcept(id) {

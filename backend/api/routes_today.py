@@ -121,8 +121,9 @@ def today_queue(db: Session = Depends(get_db)) -> dict:
                 "detail": (f"{ev.get('sub_genre','')} · {platforms}"
                            + (f" · est. £{ev['estimated_monthly_revenue_gbp']:.0f}/mo"
                               if ev.get("estimated_monthly_revenue_gbp") else "")).strip(" ·"),
-                "approve": {"method": "POST", "url": "/music-licensing/pitch",
-                            "body": {"title": title}, "label": "Pitch"},
+                "approve": {"method": "POST",
+                            "url": f"/music-licensing/concept/{o.id}/mark-generated",
+                            "label": "Track Created"},
                 "reject": {"method": "POST", "url": f"/music-licensing/concept/{o.id}/decline",
                            "label": "Decline"},
             })

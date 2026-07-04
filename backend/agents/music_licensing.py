@@ -515,6 +515,23 @@ def _blend_style_prompt(style: str, sound_section: str, limit: int = 980) -> str
     return blended if len(blended) <= limit else style
 
 
+def _sub_genre_approval_scores(db: Session) -> dict[str, float]:
+    """What the founder actually releases, per sub-genre: +1 for every track
+    kept (approved/uploaded/live), -1 for every rejection. Concepts in
+    well-received sub-genres get generated first."""
+    scores: dict[str, float] = {}
+    try:
+        from backend.models.tables import TrackRelease
+        for t in db.query(TrackRelease).all():
+            sg = (t.sub_genre or "").strip()
+            if not sg:
+                continue
+            scores[sg] = scores.get(sg, 0.0) + (-1.0 if t.status == "rejected" else 1.0)
+    except Exception:
+        pass
+    return scores
+
+
 def _revenue_to_kingdom_score(revenue_gbp: float) -> float:
     """Map £2–£25 estimated monthly revenue to kingdom_score 30–95."""
     clamped = max(2.0, min(25.0, revenue_gbp))
@@ -571,6 +588,10 @@ class MusicLicensingAgent(BaseRevenueAgent):
         unused = [c for c in _TRACK_CONCEPTS if c["sub_genre"] not in used_sub]
         stale = [c for c in _TRACK_CONCEPTS if c["sub_genre"] in stale_sub]
         pool = unused or stale or list(_TRACK_CONCEPTS)
+        # Learn from the founder's release decisions: concepts in sub-genres
+        # that keep getting approved come first; heavily-rejected ones sink
+        approval = _sub_genre_approval_scores(db)
+        pool.sort(key=lambda c: approval.get(c["sub_genre"], 0.0), reverse=True)
         to_generate = pool[:3]
 
         ai_calls = 0
