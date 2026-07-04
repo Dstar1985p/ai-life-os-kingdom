@@ -74,6 +74,34 @@ def run_health_scan(db: Session) -> dict:
         "needs_founder": [],
     }
 
+    # ── 0. Database: if we're on the SQLite fallback, try to reconnect ────────
+    try:
+        import backend.database as _dbmod
+        if _dbmod.DB_BOOT_WARNING:
+            if _dbmod.retry_postgres():
+                try:
+                    _dbmod.Base.metadata.create_all(bind=_dbmod.engine)
+                    _dbmod._apply_migrations(_dbmod.engine)
+                except Exception:
+                    pass
+                report["auto_fixed"].append(
+                    "Database was on SQLite fallback — reconnected to Postgres")
+                _log(db, "Self-healing: Postgres was unreachable at boot — reconnected "
+                         "automatically. Persistence restored.", 95.0)
+                report["checks"].append({"check": "database", "status": "ok",
+                                         "detail": "Postgres reconnected"})
+            else:
+                report["needs_founder"].append(
+                    "Database is running on SQLite fallback (Postgres unreachable) — "
+                    "data written now will not persist. Check the Postgres service on Railway.")
+                report["checks"].append({"check": "database", "status": "fail",
+                                         "detail": "On SQLite fallback; Postgres still unreachable"})
+        else:
+            report["checks"].append({"check": "database", "status": "ok",
+                                     "detail": "Primary database connected"})
+    except Exception as exc:
+        report["checks"].append({"check": "database", "status": "fail", "detail": str(exc)[:150]})
+
     # ── 1. Agents whose last run errored → one retry ──────────────────────────
     try:
         retry_agents = _agents_needing_retry(db)

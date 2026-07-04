@@ -78,9 +78,9 @@ async def lifespan(app: FastAPI):
     # give it one more shot now that the network has settled.
     try:
         from backend.database import retry_postgres
-        retry_postgres()
+        _recovered = retry_postgres()
     except Exception:
-        pass
+        _recovered = False
     # Also run on app startup (for uvicorn / production)
     try:
         Base.metadata.create_all(bind=engine)
@@ -89,6 +89,25 @@ async def lifespan(app: FastAPI):
     except Exception:
         import logging
         logging.getLogger(__name__).exception("Startup DB setup failed — serving anyway")
+    # Record boot health in the captain's log so self-recoveries are visible
+    try:
+        from backend.database import SessionLocal, DB_BOOT_WARNING
+        from backend.models.tables import Lesson
+        _note = None
+        if _recovered:
+            _note = ("Self-healing: Postgres was slow to answer at boot — recovered "
+                     "automatically on startup retry. No downtime.")
+        elif DB_BOOT_WARNING:
+            _note = f"Boot warning: {DB_BOOT_WARNING} The AI Engineer will keep retrying every 30 minutes."
+        if _note:
+            _db = SessionLocal()
+            try:
+                _db.add(Lesson(lesson=_note[:500], source="self_healing", confidence_score=95.0))
+                _db.commit()
+            finally:
+                _db.close()
+    except Exception:
+        pass
     # Start background scheduler
     try:
         from backend.scheduler import start_scheduler
