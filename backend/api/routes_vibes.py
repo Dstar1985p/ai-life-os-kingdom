@@ -1,0 +1,525 @@
+"""Vibes AI API routes — weekly release plan, track status, YouTube pipeline."""
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from backend.database import get_db
+from backend.models.tables import TrackRelease
+from backend.services.vibes_report import get_weekly_release_plan, mark_track_status
+from backend.services.youtube_uploader import get_youtube_status
+from backend.services.pulsebreak_watch import (
+    scan_and_process, reject_track, list_review_queue,
+    TRACKS_DIR, PROCESSED_DIR, REVIEW_DIR, REJECTED_DIR, REPORTS_DIR, ensure_dirs,
+)
+
+router = APIRouter(prefix="/vibes", tags=["Vibes AI"])
+youtube_router = APIRouter(prefix="/youtube", tags=["YouTube"])
+pipeline_router = APIRouter(prefix="/pipeline", tags=["Pipeline"])
+
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".flac"}
+
+
+class ApproveRequest(BaseModel):
+    founder_notes: str = ""
+
+
+@pipeline_router.get("/status")
+def pipeline_status(db: Session = Depends(get_db)) -> dict:
+    """Health of each PulseBreak pipeline stage — consumed by the dashboard grid."""
+    import os
+    steps = []
+    try:
+        ensure_dirs()
+        steps.append({"step": "Watch folder", "status": "ok", "detail": str(TRACKS_DIR)})
+    except Exception as exc:
+        steps.append({"step": "Watch folder", "status": "fail", "detail": str(exc)})
+    try:
+        pending = db.query(TrackRelease).filter(TrackRelease.status == "pending_review").count()
+        steps.append({"step": "Review queue", "status": "ok",
+                      "detail": f"{pending} track(s) awaiting review"})
+    except Exception as exc:
+        steps.append({"step": "Review queue", "status": "fail", "detail": str(exc)})
+    yt = {}
+    try:
+        yt = get_youtube_status()
+    except Exception:
+        pass
+    steps.append({
+        "step": "YouTube upload",
+        "status": "ok" if yt.get("configured") else "optional",
+        "detail": "Authorised" if yt.get("configured") else "Not configured — uploads stay in the queue",
+    })
+    has_llm = bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
+    steps.append({
+        "step": "AI descriptions",
+        "status": "ok" if has_llm else "optional",
+        "detail": "OpenRouter connected" if has_llm else "Set OPENROUTER_API_KEY for AI-written descriptions",
+    })
+    return {"steps": steps}
+
+
+@router.get("/sound-dna")
+def sound_dna(db: Session = Depends(get_db)) -> dict:
+    """The PulseBreak sound profile learned from the library + Suno prompt bank."""
+    from backend.services.sound_dna import get_sound_dna
+    return get_sound_dna(db)
+
+
+@router.get("/weekly-plan")
+def weekly_plan(db: Session = Depends(get_db)) -> dict:
+    """Return this week's Vibes AI release plan."""
+    return get_weekly_release_plan(db)
+
+
+@router.patch("/track/{track_id}/status")
+def update_track_status(
+    track_id: int,
+    status: str,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Update a track's status: draft -> ready -> released."""
+    valid_statuses = {"draft", "ready", "released"}
+    if status not in valid_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status '{status}'. Must be one of: {valid_statuses}",
+        )
+    result = mark_track_status(track_id, status, db)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.get("/youtube-status")
+def youtube_status() -> dict:
+    """Check if YouTube is configured and authorised."""
+    return get_youtube_status()
+
+
+@router.post("/process-tracks")
+def process_tracks(db: Session = Depends(get_db)) -> dict:
+    """Manually trigger the PulseBreak track processing pipeline."""
+    return scan_and_process(db)
+
+
+@router.get("/upload-queue")
+def upload_queue() -> dict:
+    """List audio files waiting to be processed in pulsebreak_tracks/."""
+    if not TRACKS_DIR.exists():
+        return {"files": [], "count": 0}
+    files = [
+        f.name for f in TRACKS_DIR.iterdir()
+        if f.is_file() and f.suffix.lower() in AUDIO_EXTENSIONS
+    ]
+    return {"files": files, "count": len(files)}
+
+
+@router.get("/processed")
+def processed_tracks() -> dict:
+    """List files that have been processed (moved to pulsebreak_tracks/processed/)."""
+    if not PROCESSED_DIR.exists():
+        return {"files": [], "count": 0}
+    files = [f.name for f in PROCESSED_DIR.iterdir() if f.is_file()]
+    return {"files": files, "count": len(files)}
+
+
+# ── Quality gate / review queue ──────────────────────────────────────────────
+
+@router.get("/review")
+def review_queue() -> dict:
+    """List tracks quarantined for founder review with full quality reports."""
+    tracks = list_review_queue()
+    return {"tracks": tracks, "count": len(tracks)}
+
+
+@router.get("/review/{track_name}/audio")
+def stream_review_audio(track_name: str):
+    """Stream a review-queue track so the founder can actually listen before approving."""
+    from fastapi.responses import FileResponse
+    MEDIA_TYPES = {".mp3": "audio/mpeg", ".wav": "audio/wav",
+                   ".m4a": "audio/mp4", ".flac": "audio/flac"}
+    for base in (REVIEW_DIR, PROCESSED_DIR, TRACKS_DIR):
+        for ext, mt in MEDIA_TYPES.items():
+            cand = base / f"{track_name}{ext}"
+            if cand.exists():
+                return FileResponse(str(cand), media_type=mt, filename=cand.name)
+    raise HTTPException(status_code=404, detail=f"No audio found for '{track_name}'")
+
+
+@router.post("/review/{track_name}/approve")
+def approve_queued_track(track_name: str, db: Session = Depends(get_db)) -> dict:
+    """Approve a reviewed track — marks it approved and queues render + upload."""
+    return approve_and_upload(track_name, ApproveRequest(), db)
+
+
+@router.post("/review/{track_name}/reject")
+def reject_queued_track(track_name: str, db: Session = Depends(get_db)) -> dict:
+    """Reject a quarantined track — moves it to rejected/ folder."""
+    result = reject_track(track_name, db)
+    if result.get("status") == "not_found":
+        raise HTTPException(status_code=404, detail=result["message"])
+    return result
+
+
+@router.post("/quality-check")
+def quality_check_upload_queue(db: Session = Depends(get_db)) -> dict:
+    """
+    Run quality analysis on all files currently in the upload queue (without processing them).
+    Useful for previewing scores before committing to the pipeline.
+    """
+    from backend.services.track_quality import analyse_track
+    if not TRACKS_DIR.exists():
+        return {"results": []}
+    audio_extensions = {".mp3", ".wav", ".m4a", ".flac"}
+    results = []
+    for f in TRACKS_DIR.iterdir():
+        if f.is_file() and f.suffix.lower() in audio_extensions:
+            report = analyse_track(f)
+            results.append({
+                "file": f.name,
+                "score": report.score,
+                "verdict": report.verdict,
+                "summary": report.summary,
+                "duration_secs": report.duration_secs,
+                "peak_db": report.peak_db,
+                "rms_db": report.rms_db,
+                "dynamic_range_db": report.dynamic_range_db,
+                "checks": [
+                    {"name": c.name, "passed": c.passed, "detail": c.detail, "severity": c.severity}
+                    for c in report.checks
+                ],
+            })
+    return {"results": results, "count": len(results)}
+
+
+@router.get("/rejected")
+def rejected_tracks() -> dict:
+    """List tracks that failed the quality gate or were manually rejected."""
+    if not REJECTED_DIR.exists():
+        return {"files": [], "count": 0}
+    files = [f.name for f in REJECTED_DIR.iterdir() if f.is_file()]
+    return {"files": sorted(files), "count": len(files)}
+
+
+# ── Track library (upload your own tracks) ───────────────────────────────────
+
+@router.post("/library/upload")
+async def upload_track_to_library(
+    file: UploadFile = File(...),
+    sub_genre: str = Form(default=""),
+    bpm: int = Form(default=0),
+    mood_tags: str = Form(default=""),       # comma-separated
+    use_case_tags: str = Form(default=""),   # comma-separated
+    suno_prompt: str = Form(default=""),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Upload an audio track directly to the library.
+    Runs through the quality gate immediately and queues for founder review.
+    Accepted formats: mp3, wav, m4a, flac.
+    """
+    ensure_dirs()
+    suffix = Path(file.filename or "track.mp3").suffix.lower()
+    if suffix not in AUDIO_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported format '{suffix}'. Use: {', '.join(AUDIO_EXTENSIONS)}",
+        )
+
+    # Save to tracks dir for processing
+    safe_name = Path(file.filename or "uploaded_track").stem
+    safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in safe_name)
+    dest = TRACKS_DIR / f"{safe_name}{suffix}"
+
+    # If file already exists, add a counter suffix
+    counter = 1
+    while dest.exists():
+        dest = TRACKS_DIR / f"{safe_name}_{counter}{suffix}"
+        counter += 1
+
+    content = await file.read()
+    dest.write_bytes(content)
+
+    # Run quality gate immediately
+    from backend.services.track_quality import analyse_track
+    from backend.services.lessons import create_lesson
+    from datetime import datetime
+    import json
+
+    report = analyse_track(dest)
+
+    if report.verdict == "fail":
+        dest.unlink(missing_ok=True)
+        return {
+            "status": "rejected",
+            "reason": report.summary,
+            "score": report.score,
+            "checks": [{"name": c.name, "detail": c.detail, "severity": c.severity} for c in report.checks],
+        }
+
+    # Save to REVIEW_DIR (always — manual approval required)
+    review_dest = REVIEW_DIR / dest.name
+    shutil.move(str(dest), str(review_dest))
+
+    # Save quality report
+    from backend.services.pulsebreak_watch import REPORTS_DIR
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    (REPORTS_DIR / f"{dest.stem}_quality.json").write_text(report.to_json())
+
+    # Record in TrackRelease table
+    track_name = dest.stem
+    existing = db.query(TrackRelease).filter_by(track_name=track_name).first()
+    if not existing:
+        release = TrackRelease(
+            track_name=track_name,
+            file_name=dest.name,
+            audio_path=str(review_dest),
+            quality_score=report.score,
+            quality_verdict=report.verdict,
+            quality_report=report.to_json(),
+            sub_genre=sub_genre,
+            bpm=bpm,
+            mood_tags=json.dumps([t.strip() for t in mood_tags.split(",") if t.strip()]),
+            use_case_tags=json.dumps([t.strip() for t in use_case_tags.split(",") if t.strip()]),
+            suno_prompt=suno_prompt,
+            status="pending_review",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db.add(release)
+        db.commit()
+
+    create_lesson(
+        db=db,
+        lesson=f"Track uploaded to library: '{track_name}' (score {report.score}/100). Awaiting founder review.",
+        source="track_library",
+        confidence_score=85.0,
+    )
+
+    return {
+        "status": "queued_for_review",
+        "track_name": track_name,
+        "file": dest.name,
+        "quality_score": report.score,
+        "quality_summary": report.summary,
+        "checks": [
+            {"name": c.name, "passed": c.passed, "detail": c.detail, "severity": c.severity}
+            for c in report.checks
+        ],
+        "message": "Track is in your review queue. Go to /vibes/review to approve or reject.",
+    }
+
+
+@router.get("/library")
+def track_library(db: Session = Depends(get_db)) -> dict:
+    """
+    Full track library — all tracks across all statuses with performance data.
+    """
+    from backend.services.youtube_analytics import get_performance_summary
+    perf_summary = get_performance_summary(db)
+
+    tracks = db.query(TrackRelease).order_by(TrackRelease.created_at.desc()).all()
+    result = []
+    for t in tracks:
+        import json
+        perf = perf_summary.get(t.sub_genre, {}) if t.sub_genre else {}
+        # Audio may have been lost to an ephemeral-disk redeploy even though
+        # the DB row (and therefore Sound DNA) survived
+        audio_available = False
+        try:
+            if t.audio_path and Path(t.audio_path).exists():
+                audio_available = True
+            else:
+                for base in (REVIEW_DIR, PROCESSED_DIR, TRACKS_DIR):
+                    for ext in AUDIO_EXTENSIONS:
+                        if (base / f"{t.track_name}{ext}").exists():
+                            audio_available = True
+                            break
+                    if audio_available:
+                        break
+        except Exception:
+            pass
+        result.append({
+            "id": t.id,
+            "track_name": t.track_name,
+            "file_name": t.file_name,
+            "audio_available": audio_available,
+            "sub_genre": t.sub_genre,
+            "bpm": t.bpm,
+            "status": t.status,
+            "quality_score": t.quality_score,
+            "quality_verdict": t.quality_verdict,
+            "youtube_video_id": t.youtube_video_id,
+            "youtube_url": t.youtube_url,
+            "youtube_uploaded_at": t.youtube_uploaded_at.isoformat() if t.youtube_uploaded_at else None,
+            "approved_at": t.approved_at.isoformat() if t.approved_at else None,
+            "founder_notes": t.founder_notes,
+            # Live performance data for this sub-genre
+            "genre_performance": perf,
+        })
+
+    return {
+        "tracks": result,
+        "total": len(result),
+        "by_status": {
+            "pending_review": sum(1 for t in result if t["status"] == "pending_review"),
+            "approved": sum(1 for t in result if t["status"] == "approved"),
+            "live": sum(1 for t in result if t["status"] in ("uploaded_youtube", "live")),
+            "rejected": sum(1 for t in result if t["status"] == "rejected"),
+        },
+        "genre_performance": perf_summary,
+    }
+
+
+@router.post("/review/{track_name}/approve-and-upload")
+def approve_and_upload(
+    track_name: str,
+    body: ApproveRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Founder approves a track and queues render + YouTube upload in the
+    background. Rendering takes ~30-45 min at 1080p, so the actual work runs
+    on the render worker thread — poll /vibes/render-status for progress.
+    """
+    from datetime import datetime
+
+    audio_file = None
+    for ext in AUDIO_EXTENSIONS:
+        candidate = REVIEW_DIR / f"{track_name}{ext}"
+        if candidate.exists():
+            audio_file = candidate
+            break
+    if not audio_file:
+        raise HTTPException(status_code=404, detail=f"Track '{track_name}' not in review queue")
+
+    release = db.query(TrackRelease).filter_by(track_name=track_name).first()
+    if not release:
+        # Review-path tracks may not have a DB row yet — create one so the
+        # approval, features, and eventual upload are all recorded
+        import json as _json
+        report = {}
+        report_path = REPORTS_DIR / f"{track_name}_quality.json"
+        if report_path.exists():
+            try:
+                report = _json.loads(report_path.read_text())
+            except Exception:
+                pass
+        release = TrackRelease(
+            track_name=track_name,
+            file_name=audio_file.name,
+            quality_score=report.get("score", 0),
+            quality_verdict=report.get("verdict", "review"),
+            quality_report=_json.dumps(report),
+        )
+        db.add(release)
+    release.status = "approved"
+    release.approved_at = datetime.utcnow()
+    release.founder_notes = body.founder_notes
+    release.updated_at = datetime.utcnow()
+    db.commit()
+
+    # Move the audio out of the review folder immediately so the queue
+    # reflects the approval right away (the render worker also looks in
+    # processed/). Leaving it in review/ made approvals look like no-ops.
+    try:
+        dest = PROCESSED_DIR / audio_file.name
+        shutil.move(str(audio_file), str(dest))
+        release.audio_path = str(dest)
+        db.commit()
+    except Exception:
+        pass
+
+    from backend.services.render_queue import enqueue_render
+    job = enqueue_render(track_name, body.founder_notes)
+
+    return {
+        "status": "approved",
+        "track_name": track_name,
+        "render": job,
+        "message": "Track approved — rendering and upload run in the background. Check render status in the panel.",
+    }
+
+
+@router.get("/render-status")
+def render_status() -> dict:
+    """Progress of all background render/upload jobs."""
+    from backend.services.render_queue import all_jobs
+    jobs = all_jobs()
+    active = [j for j in jobs if j["status"] in ("queued", "rendering", "uploading")]
+    return {"jobs": jobs, "active_count": len(active)}
+
+
+@router.get("/performance")
+def performance_dashboard(db: Session = Depends(get_db)) -> dict:
+    """
+    YouTube performance summary by sub-genre.
+    Shows what's working and what Vibes AI is being told to produce more/less of.
+    """
+    from backend.services.youtube_analytics import get_performance_summary
+    from backend.models.tables import VideoPerformance
+
+    summary = get_performance_summary(db)
+    recent_snaps = (
+        db.query(VideoPerformance)
+        .order_by(VideoPerformance.snapshotted_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    return {
+        "genre_summary": summary,
+        "recent_snapshots": [
+            {
+                "track": s.track_name,
+                "sub_genre": s.sub_genre,
+                "views": s.views,
+                "likes": s.likes,
+                "engagement_score": s.engagement_score,
+                "days_live": s.days_live,
+                "snapshotted_at": s.snapshotted_at.isoformat() if s.snapshotted_at else None,
+            }
+            for s in recent_snaps
+        ],
+        "learning_active": bool(summary),
+        "message": (
+            "Performance learning active — Vibes AI is weighting sub-genres by engagement."
+            if summary else
+            "No performance data yet. Upload and release tracks to start learning."
+        ),
+    }
+
+
+@youtube_router.get("/performance")
+def youtube_performance(db: Session = Depends(get_db)) -> dict:
+    """YouTube performance data — alias route for frontend compatibility."""
+    from backend.services.youtube_analytics import get_performance_summary
+    try:
+        summary = get_performance_summary(db)
+    except Exception:
+        summary = {}
+    from backend.models.tables import TrackRelease as _TR
+    recent = db.query(_TR).order_by(_TR.created_at.desc()).limit(10).all()
+    tracks = [
+        {
+            "track_name": t.track_name,
+            "status": t.status,
+            "score": t.quality_score,
+            "released_at": t.youtube_uploaded_at.isoformat() if t.youtube_uploaded_at else None,
+        }
+        for t in recent
+    ]
+    return {
+        "genre_summary": summary,
+        "recent_tracks": tracks,
+        "track_count": len(tracks),
+        "message": (
+            "YouTube performance data active." if summary
+            else "No YouTube data yet. Release tracks to start tracking."
+        ),
+    }

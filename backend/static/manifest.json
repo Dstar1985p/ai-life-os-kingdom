@@ -1,0 +1,70 @@
+{
+  "name": "Kingdom AI \u2014 Life OS",
+  "short_name": "Kingdom",
+  "description": "Autonomous AI agents that find, test, and execute money-making opportunities for you.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04060c",
+  "theme_color": "#060a14",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "categories": [
+    "business",
+    "finance",
+    "productivity"
+  ],
+  "shortcuts": [
+    {
+      "name": "Today \u2014 needs you",
+      "short_name": "Today",
+      "description": "Approve what's waiting",
+      "url": "/?tab=today",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "PulseBreak studio",
+      "short_name": "PulseBreak",
+      "description": "Tracks, review queue, sound DNA",
+      "url": "/?tab=pulsebreak",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

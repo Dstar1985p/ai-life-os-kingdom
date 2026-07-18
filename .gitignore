@@ -1,0 +1,22 @@
+.claude/
+
+# Build artifacts and local DB
+__pycache__/
+*.pyc
+*.pyo
+*.db
+test_*.db
+
+# YouTube OAuth tokens
+.youtube_token.json
+.youtube_credentials.json
+
+# Etsy OAuth tokens
+.etsy_token.json
+.etsy_credentials.json
+
+# Kingdom email config
+.kingdom_email.json
+
+# PulseBreak audio/video files
+pulsebreak_tracks/

@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#060818">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kingdom">
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<script src="/static/kingdom_iso.js?v=6"></script>
+<!-- iOS home screen icons (must be PNG — iOS Safari ignores SVG) -->
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<!-- Standard favicon -->
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+<title>Kingdom OS — AI Revenue Command Centre</title>
+<link rel="stylesheet" href="/static/styles.css?v=9">
+</head>
+<body>
+<!-- Update Banner -->
+<div id="update-banner">
+  <span class="upd-icon">⚡</span>
+  <span class="upd-text">Update available — <span id="upd-version"></span></span>
+  <button class="upd-btn" onclick="applyUpdate()">UPDATE NOW</button>
+  <button class="upd-dismiss" onclick="this.closest('#update-banner').classList.remove('show')">✕</button>
+</div>
+
+<!-- Crisis Banner -->
+<div id="crisis-banner" id="crisis-banner"></div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Celebration Overlay -->
+<div id="celebration-overlay">
+  <div id="celeb-rain"></div>
+  <div id="celebration-box" onclick="document.getElementById('celebration-overlay').classList.remove('active')">
+    <span id="celebration-emoji-main">🏆</span>
+    <div id="celebration-title">ACHIEVEMENT UNLOCKED</div>
+    <div id="celebration-subtitle"></div>
+    <button class="celebration-dismiss" onclick="document.getElementById('celebration-overlay').classList.remove('active')">CLAIM REWARD</button>
+  </div>
+</div>
+
+<!-- Settings Panel -->
+<div id="settings-panel">
+  <div class="settings-header">
+    <h2>⚙ Settings</h2>
+    <button class="settings-close" onclick="closeSettings()">✕</button>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Ventures</div>
+    <div class="settings-row">
+      <div><div class="settings-label">Pitwall Classics</div><div style="font-size:0.65rem;color:var(--muted)">Motorsport art &amp; prints</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="set-pitwall" checked onchange="saveVentureSettings()"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="settings-row">
+      <div><div class="settings-label">PulseBreak</div><div style="font-size:0.65rem;color:var(--muted)">DnB music &amp; licensing</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="set-pulsebreak" checked onchange="saveVentureSettings()"><span class="toggle-slider"></span></label>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Revenue Targets</div>
+    <label class="ob-label">Monthly Target — Pitwall (£)</label>
+    <input type="number" class="settings-input" id="set-target-pitwall" placeholder="500" value="500">
+    <label class="ob-label">Monthly Target — PulseBreak (£)</label>
+    <input type="number" class="settings-input" id="set-target-pulsebreak" placeholder="500" value="500">
+    <button class="settings-btn" onclick="saveRevenueTargets()">💾 Save Targets</button>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Notifications</div>
+    <div class="settings-row">
+      <div class="settings-label">Digest Email</div>
+      <label class="toggle-switch"><input type="checkbox" id="set-digest" checked><span class="toggle-slider"></span></label>
+    </div>
+    <label class="ob-label" style="margin-top:10px">Email Address</label>
+    <input type="email" class="settings-input" id="set-email" value="prydeprydey@yahoo.co.uk">
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">API Keys</div>
+    <label class="ob-label">ANTHROPIC_API_KEY</label>
+    <div class="ob-key-field"><input type="password" class="settings-input ob-input" id="set-anthropic-key" placeholder="sk-ant-..."><button class="ob-key-show" onclick="toggleKeyVisibility('set-anthropic-key',this)">SHOW</button></div>
+    <label class="ob-label">PRINTIFY_API_TOKEN</label>
+    <div class="ob-key-field"><input type="password" class="settings-input ob-input" id="set-printify-key" placeholder="API token..."><button class="ob-key-show" onclick="toggleKeyVisibility('set-printify-key',this)">SHOW</button></div>
+    <label class="ob-label">ETSY_CLIENT_ID</label>
+    <div class="ob-key-field"><input type="password" class="settings-input ob-input" id="set-etsy-key" placeholder="Client ID..."><button class="ob-key-show" onclick="toggleKeyVisibility('set-etsy-key',this)">SHOW</button></div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Agent Schedule</div>
+    <a href="/scheduler/status" target="_blank" class="settings-link">📅 View Scheduler Status →</a>
+    <div id="settings-scheduler" style="margin-top:8px;font-size:0.72rem;color:var(--muted)">Loading...</div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Export Data</div>
+    <a href="/export/treasury.csv" download class="settings-link">💾 Treasury CSV</a>
+    <a href="/export/opportunities.csv" download class="settings-link">💾 Opportunities CSV</a>
+    <a href="/export/weekly-report.txt" download class="settings-link">📄 Weekly Report TXT</a>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title" style="color:var(--red)">Danger Zone</div>
+    <button class="settings-btn danger" onclick="resetLearningWeights()">⚠ Reset All Learning Weights</button>
+    <div id="settings-danger-result" style="font-size:0.72rem;margin-top:6px;color:var(--muted)"></div>
+  </div>
+</div>
+
+<!-- Char Modal -->
+<div id="char-modal-bg" onclick="if(event.target===this)closeCharModal()">
+  <div id="char-modal"><div id="modal-body"></div></div>
+</div>
+
+<!-- Help Overlay -->
+<div id="help-overlay" onclick="if(event.target===this)closeHelp()">
+  <div id="help-box">
+    <div class="help-header">
+      <h2>? Help &amp; Shortcuts</h2>
+      <button class="help-close" onclick="closeHelp()">✕</button>
+    </div>
+    <div class="help-body">
+      <div class="help-section-title">Keyboard Shortcuts</div>
+      <div class="help-shortcut"><span class="help-key">?</span><span class="help-desc">Show this help</span></div>
+      <div class="help-shortcut"><span class="help-key">Esc</span><span class="help-desc">Close all panels</span></div>
+      <div class="help-shortcut"><span class="help-key">R</span><span class="help-desc">Refresh dashboard</span></div>
+      <div class="help-shortcut"><span class="help-key">C</span><span class="help-desc">Open agent chat</span></div>
+      <div class="help-shortcut"><span class="help-key">M</span><span class="help-desc">Daily mission</span></div>
+      <div class="help-section-title">Quick Links</div>
+      <div class="help-link"><span>API Docs</span><a href="/docs" target="_blank">/docs →</a></div>
+      <div class="help-link"><span>Health Check</span><a href="/health" target="_blank">/health →</a></div>
+      <div class="help-link"><span>Scheduler</span><a href="/scheduler/status" target="_blank">/scheduler/status →</a></div>
+      <div class="help-about">Kingdom OS v2.0 · 14 agents · Built for autonomous founders</div>
+    </div>
+  </div>
+</div>
+
+<!-- Onboarding Wizard -->
+<div id="onboarding-overlay" class="hidden">
+  <div id="onboarding-box">
+    <div class="ob-header">
+      <h2>⚔ KINGDOM OS</h2>
+      <p>Your autonomous AI revenue command centre</p>
+    </div>
+    <div class="ob-steps">
+      <div class="ob-step-dot active" id="ob-dot-1">01 WELCOME</div>
+      <div class="ob-step-dot" id="ob-dot-2">02 TARGETS</div>
+      <div class="ob-step-dot" id="ob-dot-3">03 API KEYS</div>
+      <div class="ob-step-dot" id="ob-dot-4">04 READY</div>
+    </div>
+    <div class="ob-body" id="ob-body"></div>
+    <div class="ob-footer" id="ob-footer"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ GAME ROOT (City view — toggled) ══════════════════════ -->
+<div id="game-root" style="display:none">
+  <canvas id="kingdom-map-canvas-fullscreen"></canvas>
+</div>
+
+<!-- ══════════════════════ COMMAND CENTER (default home) ══════════════════════ -->
+<div id="command-home">
+  <div class="ci-topline">
+    <span class="ci-status-pill" id="ci-system-status"><span class="ci-dot ok"></span>SYSTEM STATUS <b>OPTIMAL</b></span>
+    <span class="ci-clock" id="ci-clock">--:--:--</span>
+  </div>
+
+  <div class="ci-core-wrap" onclick="toggleCityView()">
+    <canvas id="core-sphere"></canvas>
+    <div class="ci-core-label">
+      <div class="ci-core-name">K I N G D O M</div>
+      <div class="ci-core-sub">AI CORE</div>
+      <div class="ci-core-ver" id="ci-core-ver">v1.3.0</div>
+    </div>
+  </div>
+
+  <div class="ci-grid">
+    <section class="ci-panel">
+      <h3 class="ci-title">AI Core Overview</h3>
+      <div id="ci-overview" class="ci-list"><div class="ci-empty">Connecting…</div></div>
+    </section>
+
+    <section class="ci-panel">
+      <h3 class="ci-title">Live Intelligence Feed <span class="ci-live">● LIVE</span></h3>
+      <div id="ci-feed" class="ci-list"><div class="ci-empty">Listening…</div></div>
+    </section>
+
+    <section class="ci-panel">
+      <h3 class="ci-title">Active Agents</h3>
+      <div id="ci-agents" class="ci-agent-grid"><div class="ci-empty">Scanning…</div></div>
+    </section>
+
+    <section class="ci-panel">
+      <h3 class="ci-title">System Monitor</h3>
+      <div class="ci-gauges" id="ci-gauges"></div>
+    </section>
+
+    <section class="ci-panel ci-tap" onclick="openPanel('overview')">
+      <h3 class="ci-title">Revenue</h3>
+      <div id="ci-revenue"><div class="ci-empty">Loading…</div></div>
+    </section>
+
+    <section class="ci-panel">
+      <h3 class="ci-title">Quick Commands</h3>
+      <div class="ci-cmds">
+        <button class="ci-cmd" onclick="openPanel('today')">▶ Review approval queue</button>
+        <button class="ci-cmd" onclick="triggerAgent('Opportunity Scout')">▶ Run Opportunity Scout</button>
+        <button class="ci-cmd" onclick="openPanel('pulsebreak')">▶ Open PulseBreak studio</button>
+        <button class="ci-cmd" onclick="toggleCityView()">⬡ Enter City view</button>
+      </div>
+    </section>
+  </div>
+
+  <div style="height:170px"></div>
+</div>
+
+<button id="ci-talk-bar" onclick="talkToKingdom()">
+  <span class="ci-talk-wave">〰〰〰</span> TALK TO KINGDOM <span class="ci-talk-wave">〰〰〰</span>
+</button>
+
+<!-- ══ HUD OVERLAYS ══ -->
+<div id="hud-topleft">
+  <div class="hud-title">KINGDOM OS <span class="hud-level" id="hud-level-badge">LVL 1</span></div>
+  <div id="hud-xp-bar"><div id="hud-xp-fill"></div></div>
+  <div id="hud-xp-label">XP 0 / 1,000</div>
+  <div id="hud-stats">
+    <span id="hud-gold">💰 £0.00 GOLD</span>
+    <span id="hud-agents">⚡ 0 AGENTS</span>
+  </div>
+</div>
+
+<div id="hud-topright">
+  <div class="hud-title">QUEST LOG</div>
+  <div id="hud-quests">
+    <div class="hud-quest"><span class="hud-quest-dot">●</span>Run Opportunity Scout</div>
+    <div class="hud-quest"><span class="hud-quest-dot">●</span>Log revenue entries</div>
+    <div class="hud-quest"><span class="hud-quest-dot">●</span>Advance quest: Recon Alpha</div>
+  </div>
+</div>
+
+<div id="hud-bottom">
+  <div id="hud-bottom-left">
+    <span onclick="openPanel('today')" style="color:#ffd54f">★ TODAY<span id="today-badge" style="display:none;margin-left:4px;background:#ff5555;color:#fff;border-radius:8px;padding:1px 6px;font-size:0.55rem"></span></span>
+    <span onclick="openPanel('pitwall')">◆ PITWALL</span>
+    <span onclick="openPanel('pulsebreak')">◆ PULSEBREAK</span>
+  </div>
+  <div id="hud-bottom-center" id="hud-ticker">Loading…</div>
+  <div id="hud-bottom-right">
+    <button id="hud-menu-btn" onclick="openHudMenu()">⚔ MENU</button>
+  </div>
+</div>
+
+<!-- ══ SIDE PANEL ══ -->
+<div id="panel-backdrop" onclick="closePanel()" style="display:none;position:fixed;inset:0;z-index:199;background:rgba(0,0,0,0.4)"></div>
+<div id="side-panel">
+  <div id="side-panel-header">
+    <div id="side-panel-title">PANEL</div>
+    <button id="side-panel-close" onclick="closePanel()" aria-label="Close panel">✕</button>
+  </div>
+  <div id="side-panel-body"></div>
+</div>
+
+<!-- ══ MENU MODAL ══ -->
+<div id="hud-menu-modal">
+  <div id="hud-menu-inner">
+    <h2>⚔ KINGDOM MENU</h2>
+    <button class="hud-menu-item" onclick="openPanel('today');closeHudMenu()">★ Today — needs you</button>
+    <button class="hud-menu-item" onclick="openPanel('overview');closeHudMenu()">💰 Treasury / Overview</button>
+    <button class="hud-menu-item" onclick="openPanel('pitwall');closeHudMenu()">🏎 Pitwall Classics</button>
+    <button class="hud-menu-item" onclick="openPanel('pulsebreak');closeHudMenu()">🎵 PulseBreak DnB</button>
+    <button class="hud-menu-item" onclick="openPanel('agents');closeHudMenu()">🤖 Agents</button>
+    <button class="hud-menu-item" onclick="openPanel('opportunities');closeHudMenu()">🎯 Opportunities</button>
+    <button class="hud-menu-item" onclick="openPanel('livery');closeHudMenu()">🏁 Livery Forge</button>
+    <button class="hud-menu-item" onclick="openPanel('intelligence');closeHudMenu()">🔮 Intelligence</button>
+    <button class="hud-menu-item" onclick="openPanel('command');closeHudMenu()">⚡ Command Centre</button>
+    <button class="hud-menu-item" onclick="openPanel('tools');closeHudMenu()">🔧 Tools</button>
+    <button class="hud-menu-item" onclick="openPanel('roadmap');closeHudMenu()">🗺 Roadmap</button>
+    <div id="hud-menu-close" onclick="closeHudMenu()">[ CLOSE ]</div>
+  </div>
+</div>
+
+<!-- ══ HEADER ══ -->
+<!-- ══════════════════════════ PAGE: OVERVIEW ══════════════════════════ -->
+<div class="page active" id="page-overview">
+<div class="content-area">
+
+  <!-- HERO STATS ROW -->
+  <div class="hero-stats">
+    <div class="hero-stat hs-amber">
+      <div class="hs-label">Monthly Revenue</div>
+      <div class="hs-value" id="ov-rev-month">—</div>
+      <div class="hs-trend neutral" id="ov-rev-trend">loading…</div>
+    </div>
+    <div class="hero-stat hs-green">
+      <div class="hs-label">Net P&amp;L · This Month</div>
+      <div class="hs-value" id="ov-pnl">—</div>
+      <div class="hs-trend neutral" id="ov-pnl-trend">loading…</div>
+    </div>
+    <div class="hero-stat hs-cyan">
+      <div class="hs-label">Opportunities</div>
+      <div class="hs-value" id="ov-opps">—</div>
+      <div class="hs-trend neutral" id="ov-opps-trend">in queue</div>
+    </div>
+  </div>
+
+  <!-- Hidden district-detail (kept for JS compatibility) -->
+  <div id="district-detail" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 id="detail-title" style="font-size:0.9rem;font-weight:700;color:var(--text)"></h3>
+      <button class="btn btn-sm" onclick="document.getElementById('district-detail').classList.remove('active')">✕</button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+  <!-- Hidden kingdom-map (kept for JS) -->
+  <div id="kingdom-map" style="display:none"></div>
+
+  <!-- ══ ISOMETRIC KINGDOM MAP ══ -->
+  <div class="card iso-map-card" style="padding:0;overflow:hidden;margin-bottom:16px;background:#030410;border-color:rgba(0,229,255,0.15)">
+    <div style="padding:12px 16px;border-bottom:1px solid rgba(0,229,255,0.1);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="card-icon" style="background:linear-gradient(135deg,#0a0d1a,#030410);font-size:1rem">⚔️</div>
+        <div>
+          <div class="card-title">Kingdom Map</div>
+          <div class="card-subtitle" id="map-subtitle">Live agent activity</div>
+        </div>
+      </div>
+      <div style="font-family:'Press Start 2P',monospace;font-size:0.55rem;color:var(--green)" id="iso-agent-counter">— AGENTS</div>
+    </div>
+    <canvas id="kingdom-map-canvas" style="display:block;width:100%;cursor:pointer"></canvas>
+  </div>
+
+  <!-- MAIN 2-COL: Daily Mission + Agent Scheduler -->
+  <div class="overview-main-grid">
+    <div class="card glow-cyan">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(6,182,212,0.1))">🎯</div>
+        <div>
+          <div class="card-title">Daily Mission</div>
+          <div class="card-subtitle">AI-generated focus for today</div>
+        </div>
+      </div>
+      <div id="mission-panel-content"><div class="loading">Loading mission</div></div>
+    </div>
+
+    <div class="card glow-purple">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(192,132,252,0.2),rgba(139,92,246,0.1))">🤖</div>
+        <div class="card-title">Agent Status</div>
+      </div>
+      <div id="scheduler-status"><div class="loading">Loading</div></div>
+    </div>
+  </div>
+
+  <!-- Pipeline Health (condensed) -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(6,182,212,0.1))">🔗</div>
+      <div>
+        <div class="card-title">Pipeline Health</div>
+        <div class="card-subtitle" id="pipeline-score">Checking…</div>
+      </div>
+      <div class="card-action">
+        <button class="btn btn-sm btn-cyan" onclick="loadPipelineStatus()">↻ Check</button>
+      </div>
+    </div>
+    <div id="pipeline-status-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;padding:4px 0">
+      <div class="loading">Checking pipeline…</div>
+    </div>
+  </div>
+
+  <!-- Revenue Intelligence (full width, condensed) -->
+  <div class="card glow-amber" id="revenue-card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,179,0,0.25),rgba(255,100,0,0.15))">📈</div>
+      <div class="card-title">Revenue Intelligence</div>
+    </div>
+    <div id="revenue-content"><div class="loading">Loading</div></div>
+  </div>
+
+  <!-- Kingdom Health -->
+  <div class="card" id="health-card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(0,180,100,0.1))">🏥</div>
+      <div class="card-title">Kingdom Health</div>
+    </div>
+    <div id="health-content"><div class="loading">Loading</div></div>
+  </div>
+
+  <!-- Live Activity + Reminders side by side -->
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(100,116,139,0.3),rgba(51,65,85,0.2))">📡</div>
+        <div class="card-title">Live Activity</div>
+      </div>
+      <div id="activity-feed"><div class="loading">Loading activity</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,179,0,0.2),rgba(255,100,0,0.1))">🔔</div>
+        <div class="card-title">Smart Reminders</div>
+        <div class="card-action"><span id="reminder-count-badge" class="badge badge-amber" style="display:none">0</span></div>
+      </div>
+      <div id="reminders-panel-content"><div class="loading">Loading reminders</div></div>
+    </div>
+  </div>
+
+  <!-- Attribution (hidden but IDs kept for JS) -->
+  <div style="display:none">
+    <div id="attribution-content"></div>
+  </div>
+
+  <!-- Weekly Retro (hidden by default, kept for JS) -->
+  <div class="card" id="retro-card" style="display:none">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(192,132,252,0.2),rgba(139,92,246,0.1))">📋</div>
+      <div class="card-title">Weekly Retrospective</div>
+      <div class="card-action"><button class="btn btn-sm" onclick="generateRetro()">↻ Regenerate</button></div>
+    </div>
+    <div id="retro-content"></div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════ PAGE: TODAY ══════════════════════════ -->
+<div class="page" id="page-today">
+  <div id="today-list" style="display:flex;flex-direction:column;gap:10px;padding:4px 0">
+    <div style="color:var(--muted);font-size:0.8rem">Loading…</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ PAGE: PITWALL CLASSICS ══════════════════════════ -->
+<div class="page" id="page-pitwall">
+<div class="content-area">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,rgba(255,179,0,0.3),rgba(255,100,0,0.2));display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:1px solid rgba(255,179,0,0.3)">🏎</div>
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;background:linear-gradient(90deg,var(--amber),#ff6600);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Pitwall Classics</h2>
+      <p style="font-size:0.7rem;color:var(--muted);margin-top:2px">Motorsport art prints · Etsy/Printify POD · A/B testing</p>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-amber btn-sm" onclick="triggerAgent('Print Forge AI')">▶ Print Forge</button>
+      <button class="btn btn-sm" onclick="triggerAgent('Printify Studio')">▶ Printify Studio</button>
+      <button class="btn btn-sm" onclick="triggerAgent('Price Optimizer')">💰 Prices</button>
+      <button class="btn btn-sm" onclick="triggerAgent('SEO Agent')">🔍 SEO</button>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card glow-amber">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,179,0,0.3),rgba(255,100,0,0.1))">🖨</div>
+        <div class="card-title">Print Listings</div>
+      </div>
+      <div id="pitwall-listings"><div class="loading">Loading listings</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(6,182,212,0.1))">💰</div>
+        <div class="card-title">Etsy Performance</div>
+      </div>
+      <div id="pitwall-etsy"><div class="loading">Loading Etsy data</div></div>
+    </div>
+  </div>
+
+  <!-- Market Radar -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.25),rgba(255,179,0,0.1))">📡</div>
+      <div>
+        <div class="card-title">Market Radar</div>
+        <div class="card-subtitle">What's selling out there — Etsy research + your competitor spots</div>
+      </div>
+      <div class="card-action">
+        <button class="btn btn-sm" onclick="triggerAgent('Market Scout')">🔍 Scan</button>
+        <button class="btn btn-sm btn-primary" onclick="toggleIntelForm()">+ Log Intel</button>
+      </div>
+    </div>
+    <div id="intel-form" style="display:none;margin-bottom:12px;padding:12px;border:1px solid var(--border);border-radius:10px">
+      <div class="grid-2" style="gap:10px;margin-bottom:10px">
+        <div><label class="ob-label">Product you spotted</label>
+          <input id="intel-product" class="settings-input" placeholder="e.g. Ferrari F40 canvas"></div>
+        <div><label class="ob-label">Competitor / shop</label>
+          <input id="intel-competitor" class="settings-input" placeholder="shop name (optional)"></div>
+      </div>
+      <div class="grid-2" style="gap:10px;margin-bottom:10px">
+        <div><label class="ob-label">Their price (£)</label>
+          <input id="intel-price" class="settings-input" type="number" step="0.01" placeholder="45.00"></div>
+        <div><label class="ob-label">Sales per day (est.)</label>
+          <input id="intel-sales" class="settings-input" type="number" step="0.5" placeholder="10"></div>
+      </div>
+      <div style="margin-bottom:10px"><label class="ob-label">Style / notes</label>
+        <input id="intel-style" class="settings-input" placeholder="e.g. vintage blueprint style, black frame mockups"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="submitIntel()">Log It</button>
+        <button class="btn" onclick="toggleIntelForm()">Cancel</button>
+      </div>
+    </div>
+    <div id="market-radar-list"><div class="loading">Loading radar</div></div>
+  </div>
+
+  <!-- A/B Tests -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(244,114,182,0.2),rgba(236,72,153,0.1))">🧪</div>
+      <div class="card-title">A/B Test Tracker</div>
+      <div class="card-action"><button class="btn btn-sm btn-primary" onclick="showABTestForm()">+ New Test</button></div>
+    </div>
+    <div id="ab-tests-list"><div class="loading">Loading A/B tests</div></div>
+    <div id="ab-test-form" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div class="grid-2" style="gap:10px;margin-bottom:10px">
+        <div>
+          <label class="ob-label">Test Name</label>
+          <input id="ab-name" class="settings-input" placeholder="e.g. Title A vs B">
+        </div>
+        <div>
+          <label class="ob-label">Metric</label>
+          <select id="ab-metric" class="settings-input">
+            <option value="clicks">Clicks</option>
+            <option value="conversions">Conversions</option>
+            <option value="revenue">Revenue</option>
+            <option value="favourites">Favourites</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2" style="gap:10px;margin-bottom:10px">
+        <div>
+          <label class="ob-label">Variant A (Current)</label>
+          <textarea id="ab-variant-a" class="settings-input" rows="3" placeholder="Current version"></textarea>
+        </div>
+        <div>
+          <label class="ob-label">Variant B (Test)</label>
+          <textarea id="ab-variant-b" class="settings-input" rows="3" placeholder="Test version"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <select id="ab-venture" class="settings-input" style="width:auto">
+          <option>Pitwall Classics</option><option>PulseBreak</option>
+        </select>
+        <button class="btn btn-primary" onclick="createABTest()">Create Test</button>
+        <button class="btn" onclick="document.getElementById('ab-test-form').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Printify Orders -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(96,165,250,0.2),rgba(59,130,246,0.1))">📦</div>
+      <div class="card-title">Printify Orders</div>
+      <div class="card-action"><button class="btn btn-sm" onclick="loadOrders()">↻ Refresh</button></div>
+    </div>
+    <div id="orders-list"><div class="loading">Loading orders</div></div>
+  </div>
+
+  <!-- Customer Avatars -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(16,185,129,0.2),rgba(5,150,105,0.1))">🧑</div>
+      <div class="card-title">Customer Avatars</div>
+      <div class="card-action">
+        <button class="btn btn-sm" onclick="loadAvatars('Pitwall Classics')">Pitwall</button>
+        <button class="btn btn-sm" onclick="loadAvatars()">All</button>
+      </div>
+    </div>
+    <div id="avatars-list"><div class="loading">Loading avatars</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════ PAGE: PULSEBREAK ══════════════════════════ -->
+<div class="page" id="page-pulsebreak">
+<div class="content-area">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,rgba(192,132,252,0.3),rgba(99,102,241,0.2));display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:1px solid rgba(192,132,252,0.3)">🎵</div>
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;background:linear-gradient(90deg,var(--purple),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">PulseBreak</h2>
+      <p style="font-size:0.7rem;color:var(--muted);margin-top:2px">DnB music production · Stock licensing · Social media content</p>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" style="border-color:rgba(192,132,252,0.4);color:var(--purple)" onclick="triggerAgentInPanel('Vibes AI','pb-agent-status')">▶ Vibes AI</button>
+      <button class="btn btn-sm" onclick="triggerAgentInPanel('Music Licensing','pb-agent-status')">▶ Licensing</button>
+      <button class="btn btn-sm" onclick="triggerAgentInPanel('Content Agent','pb-agent-status')">📱 Content</button>
+    </div>
+  </div>
+
+  <div id="pb-agent-status" style="display:none;font-size:0.72rem;padding:7px 12px;border-radius:6px;margin-bottom:12px;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.15);color:var(--cyan);font-family:'JetBrains Mono',monospace"></div>
+
+  <!-- Upload Zone + Review Queue -->
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card glow-purple">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(192,132,252,0.25),rgba(139,92,246,0.15))">⬆</div>
+        <div class="card-title">Track Upload</div>
+        <div class="card-subtitle">Drag &amp; drop or click to upload</div>
+      </div>
+      <label for="track-file-input" id="upload-zone" class="upload-zone" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" style="display:flex;flex-direction:column;align-items:center;cursor:pointer">
+        <div class="upload-icon">🎵</div>
+        <div class="upload-text">Drop your track here</div>
+        <div class="upload-sub">MP3, WAV, FLAC · Max 100MB</div>
+      </label>
+      <input type="file" id="track-file-input" accept=".mp3,.wav,.flac" style="display:none;position:absolute;left:-9999px" onchange="handleFileSelect(event)">
+      <div id="upload-progress" style="display:none;margin-top:12px">
+        <div style="display:flex;justify-content:space-between;font-size:0.72rem;margin-bottom:4px">
+          <span id="upload-filename" style="color:var(--text)"></span>
+          <span id="upload-pct" style="color:var(--cyan)">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill cyan" id="upload-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,179,0,0.2),rgba(255,100,0,0.1))">⏳</div>
+        <div class="card-title">Review Queue</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="loadReviewQueue()">↻</button></div>
+      </div>
+      <div id="review-queue"><div class="loading">Loading queue</div></div>
+    </div>
+  </div>
+
+  <!-- Track Library + Licensing Concepts -->
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(6,182,212,0.1))">🎧</div>
+        <div class="card-title">Track Library</div>
+        <div class="card-subtitle">Quality-scored releases</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="loadTrackLibrary()">↻</button></div>
+      </div>
+      <div id="track-library"><div class="loading">Loading tracks</div></div>
+    </div>
+
+    <div class="card glow-purple">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(192,132,252,0.2),rgba(139,92,246,0.1))">💿</div>
+        <div class="card-title">Track Concepts</div>
+        <div class="card-subtitle" id="licensing-revenue-estimate">Copy prompts → generate in TopMediai → upload for review</div>
+        <div class="card-action"><button class="btn btn-sm btn-primary" onclick="generateLicensingConcepts()">+ Generate</button></div>
+      </div>
+      <div id="licensing-concepts-list"><div class="loading">Loading</div></div>
+      <div style="margin-top:14px">
+        <h4 style="font-size:0.75rem;margin-bottom:6px">🧬 PulseBreak Sound DNA</h4>
+        <p style="font-size:0.62rem;color:var(--muted);margin-bottom:8px">Learned from your library — use these prompts to make new tracks that keep the PulseBreak sound</p>
+        <div id="sound-dna"><div style="color:var(--muted);font-size:0.7rem">Upload tracks to build your sound profile.</div></div>
+      </div>
+      <div style="margin-top:14px">
+        <h4 style="font-size:0.75rem;margin-bottom:6px">📬 Pitch tracker</h4>
+        <div id="pitch-tracker"><div style="color:var(--muted);font-size:0.7rem">No pitches sent yet — generate a pitch above and it lands here.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- YouTube Performance -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,51,51,0.25),rgba(200,0,0,0.1))">▶</div>
+      <div>
+        <div class="card-title">YouTube Performance</div>
+        <div class="card-subtitle">Engagement scores per genre</div>
+      </div>
+      <div class="card-action"><button class="btn btn-sm" onclick="triggerAgent('Content Agent')">↻ Refresh</button></div>
+    </div>
+    <div id="youtube-content"><div class="loading">Loading YouTube data</div></div>
+  </div>
+
+  <!-- Audio Visualiser -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(192,132,252,0.2),rgba(99,102,241,0.1))">🌊</div>
+      <div class="card-title">Visualiser</div>
+      <div class="card-subtitle" id="vis-status">Select a file above to visualise</div>
+      <div class="card-action"><button class="btn btn-sm" onclick="toggleVisDemo()" id="vis-demo-btn">▶ Demo</button></div>
+    </div>
+    <canvas id="vis-canvas" height="80"></canvas>
+  </div>
+
+  <!-- Content Posts -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(244,114,182,0.2),rgba(236,72,153,0.1))">📱</div>
+      <div class="card-title">Content Planner</div>
+      <div class="card-subtitle">AI-generated social media posts</div>
+      <div class="card-action"><button class="btn btn-sm btn-primary" onclick="generateContentPosts()">▶ Generate</button></div>
+    </div>
+    <div id="content-posts"><div class="loading">Loading content</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════ PAGE: AGENTS ══════════════════════════ -->
+<div class="page" id="page-agents">
+<div class="content-area">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;color:var(--text)">Agent Command Centre</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">14 autonomous agents · All working toward one goal: make money</p>
+    </div>
+    <button class="btn btn-primary" onclick="runAllAgents()">▶ Run All Agents</button>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div id="agent-grid-content"><div class="loading">Loading agents</div></div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(6,182,212,0.1))">📊</div>
+        <div class="card-title">Agent Economics</div>
+        <div class="card-subtitle">ROI per agent · Token budget</div>
+      </div>
+      <div id="agent-econ-content"><div class="loading">Loading economics</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(0,180,100,0.1))">⚡</div>
+        <div class="card-title">Performance Monitor</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="loadPerformance()">↻</button></div>
+      </div>
+      <div id="perf-content"><div class="loading">Loading performance</div></div>
+    </div>
+  </div>
+
+  <!-- AI Engineer Panel -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(96,165,250,0.2),rgba(59,130,246,0.1))">🔧</div>
+      <div class="card-title">AI Engineer</div>
+      <div class="card-subtitle">Self-healing system diagnostics</div>
+      <div class="card-action"><button class="btn btn-sm btn-primary" onclick="triggerAgent('AI Engineer')">▶ Run Scan</button></div>
+    </div>
+    <div id="ai-engineer-content"><div style="color:var(--muted);font-size:0.75rem;padding:8px 0">Trigger a scan to see recent diagnostics and fix suggestions.</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════ PAGE: OPPORTUNITIES ══════════════════════════ -->
+<div class="page" id="page-opportunities">
+<div class="content-area">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;color:var(--text)">Opportunity Leaderboard</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">AI-scored opportunities across all ventures</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="triggerAgent('Opportunity Scout')">▶ Scout</button>
+      <button class="btn btn-sm" onclick="triggerAgent('ROI Reaper')">🔪 ROI Reaper</button>
+      <button class="btn btn-sm" onclick="triggerAgent('Trend Watcher')">📡 Trends</button>
+      <button class="btn btn-sm btn-green" onclick="runMarketScout()" id="market-scout-btn">🔍 Market Scout</button>
+      <button class="btn btn-sm" onclick="runGigScout()" id="gig-scout-btn" style="background:linear-gradient(135deg,rgba(100,116,252,0.3),rgba(139,92,246,0.2));border-color:rgba(139,92,246,0.4);color:#c084fc">💼 Gig Scout</button>
+    </div>
+  </div>
+
+  <!-- Market Scout Panel -->
+  <div class="card" style="margin-bottom:16px;border-color:rgba(0,255,136,0.2)">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(0,200,100,0.1))">🔍</div>
+      <div>
+        <div class="card-title">Market Scout — Live Niche Intelligence</div>
+        <div class="card-subtitle">Real Etsy market data → Claude gap analysis → scored opportunities</div>
+      </div>
+      <div class="card-action">
+        <button class="btn btn-sm btn-green" onclick="runMarketScout()" id="market-scout-btn2">▶ Run Scan</button>
+      </div>
+    </div>
+    <div id="market-scout-status" style="padding:8px 0;font-size:0.72rem;color:var(--muted)">
+      Searches Etsy API for 25 keywords across your ventures — scores each niche by demand vs competition.
+      Runs automatically every 24h. Click "Run Scan" to scan now.
+    </div>
+    <div id="market-scout-results" style="display:none">
+      <div id="market-scout-niches" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- Gig Scout Panel -->
+  <div class="card" style="margin-bottom:16px;border-color:rgba(139,92,246,0.25)">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(139,92,246,0.25),rgba(100,116,252,0.15))">💼</div>
+      <div>
+        <div class="card-title">Gig Scout — Fiverr Market Intelligence</div>
+        <div class="card-subtitle" id="gig-scout-headline">Scanning 17 gig categories · Price × reviews = proven market value</div>
+      </div>
+      <div class="card-action">
+        <button class="btn btn-sm" onclick="runGigScout()" id="gig-scout-btn2" style="background:rgba(139,92,246,0.2);border-color:rgba(139,92,246,0.4);color:#c084fc">▶ Analyse Gigs</button>
+      </div>
+    </div>
+    <div id="gig-scout-status" style="padding:6px 0 10px;font-size:0.72rem;color:var(--muted)">
+      Uses Claude AI to score each gig against our capabilities — no scraping, no API keys needed. Runs every 48h.
+    </div>
+    <div id="gig-scout-results" style="display:none">
+      <!-- Summary bar -->
+      <div id="gig-scout-summary" style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap"></div>
+      <!-- Gig cards grid -->
+      <div id="gig-scout-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px"></div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card glow-cyan">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(6,182,212,0.1))">🏆</div>
+        <div class="card-title">Top Opportunities</div>
+        <div class="card-subtitle">Ranked by Kingdom Score</div>
+      </div>
+      <div id="leaderboard-content"><div class="loading">Loading</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,179,0,0.2),rgba(255,100,0,0.1))">💰</div>
+        <div class="card-title">Revenue Recon</div>
+        <div class="card-subtitle">Traffic light scoring</div>
+      </div>
+      <div id="recon-content"><div class="loading">Loading</div></div>
+    </div>
+  </div>
+
+  <!-- Revenue Forecaster -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(0,180,100,0.1))">📅</div>
+      <div class="card-title">Revenue Forecast</div>
+      <div class="card-action"><button class="btn btn-sm btn-green" onclick="triggerAgent('Revenue Forecaster')">▶ Run</button></div>
+    </div>
+    <div id="forecast-content"><div class="loading">Loading forecast</div></div>
+  </div>
+
+  <!-- Goals -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(6,182,212,0.1))">🎯</div>
+      <div class="card-title">Goals Tracker</div>
+      <div class="card-action"><button class="btn btn-sm" onclick="loadGoals()">↻</button></div>
+    </div>
+    <div id="goals-content"><div class="loading">Loading goals</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════ PAGE: LIVERY FORGE ══════════════════════════ -->
+<div class="page" id="page-livery">
+<div class="content-area">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;color:var(--text)">🏎 Livery Forge — Sim Racing Livery Studio</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">Custom racing liveries for iRacing · ACC · GT7 · Assetto Corsa · £35–£80 per commission</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="loadLiveryDemoGallery()" style="background:rgba(249,115,22,0.2);border-color:rgba(249,115,22,0.4);color:#f97316">🎨 Style Gallery</button>
+      <button class="btn btn-sm" onclick="loadGigDescription()" style="background:rgba(0,229,255,0.1);border-color:rgba(0,229,255,0.3);color:var(--cyan)">📋 Gig Copy</button>
+      <button class="btn btn-sm btn-green" onclick="showNewCommissionForm()">+ New Commission</button>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px" id="livery-stats">
+    <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.6rem;font-weight:800;color:#f97316" id="lv-total">0</div><div style="font-size:0.65rem;color:var(--muted)">Total Commissions</div></div>
+    <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.6rem;font-weight:800;color:var(--green)" id="lv-revenue">£0</div><div style="font-size:0.65rem;color:var(--muted)">Revenue Earned</div></div>
+    <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.6rem;font-weight:800;color:var(--amber)" id="lv-pipeline">£0</div><div style="font-size:0.65rem;color:var(--muted)">In Pipeline</div></div>
+    <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.6rem;font-weight:800;color:var(--cyan)" id="lv-pending">0</div><div style="font-size:0.65rem;color:var(--muted)">Awaiting Approval</div></div>
+  </div>
+
+  <!-- New Commission Form (hidden by default) -->
+  <div class="card" id="new-commission-card" style="margin-bottom:16px;display:none;border-color:rgba(249,115,22,0.3)">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(249,115,22,0.3),rgba(239,68,68,0.1))">🏎</div>
+      <div class="card-title">New Commission Brief</div>
+      <div class="card-action"><button class="btn btn-sm" onclick="document.getElementById('new-commission-card').style.display='none'">✕</button></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Client Name</label>
+        <input id="lv-client" class="input" placeholder="e.g. RacerX92" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Game / Sim</label>
+        <input id="lv-game" class="input" placeholder="iRacing / ACC / GT7 / AC" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Car Class</label>
+        <select id="lv-car" class="input" style="width:100%">
+          <option value="gt3">GT3 Coupe</option>
+          <option value="formula">Formula / Open Wheel</option>
+          <option value="rally">Rally Car</option>
+          <option value="touring">Touring / BTCC Saloon</option>
+          <option value="lmp">LMP Prototype</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Style Preset</label>
+        <select id="lv-style" class="input" style="width:100%">
+          <option value="clean">Clean</option>
+          <option value="aggressive">Aggressive</option>
+          <option value="retro">Retro</option>
+          <option value="neon">Neon</option>
+          <option value="stealth">Stealth</option>
+          <option value="gulf">Gulf (classic blue/orange)</option>
+          <option value="martini">Martini (white/tricolour)</option>
+          <option value="jps">JPS (black/gold)</option>
+          <option value="rothmans">Rothmans (blue/white)</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Racing Number</label>
+        <input id="lv-number" class="input" value="17" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Driver Name (optional)</label>
+        <input id="lv-driver" class="input" placeholder="e.g. K. HAMILTON" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Primary Colour (hex, optional)</label>
+        <input id="lv-primary" class="input" placeholder="#1e3a5f" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Secondary Colour (hex, optional)</label>
+        <input id="lv-secondary" class="input" placeholder="#e94560" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Sponsor Text (optional)</label>
+        <input id="lv-sponsor" class="input" placeholder="KINGDOM" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Price (£)</label>
+        <input id="lv-price" class="input" type="number" value="40" style="width:100%"/>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label style="font-size:0.72rem;color:var(--muted);display:block;margin-bottom:4px">Client Notes / Brief</label>
+      <textarea id="lv-notes" class="input" rows="3" placeholder="e.g. Want a retro Gulf look with my number 23 prominently displayed..." style="width:100%;resize:vertical"></textarea>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px">
+      <button class="btn btn-green" onclick="createCommission()">Create Commission</button>
+      <button class="btn" onclick="previewLiveryDraft()">👁 Quick Preview</button>
+    </div>
+  </div>
+
+  <!-- Preview panel -->
+  <div id="livery-preview-panel" style="display:none;margin-bottom:16px">
+    <div class="card" style="border-color:rgba(249,115,22,0.3)">
+      <div class="card-header">
+        <div class="card-title">Livery Preview</div>
+        <div class="card-action" id="livery-preview-actions"></div>
+      </div>
+      <div id="livery-preview-svg" style="margin-top:12px;text-align:center;background:#050505;border-radius:8px;padding:16px;overflow:hidden"></div>
+    </div>
+  </div>
+
+  <!-- Style Gallery -->
+  <div id="livery-gallery" style="display:none;margin-bottom:16px">
+    <div class="card" style="border-color:rgba(249,115,22,0.2)">
+      <div class="card-header">
+        <div class="card-title">Style Gallery — GT3 Demo</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="document.getElementById('livery-gallery').style.display='none'">✕</button></div>
+      </div>
+      <div id="gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- Gig Copy -->
+  <div id="gig-copy-panel" style="display:none;margin-bottom:16px">
+    <div class="card" style="border-color:rgba(0,229,255,0.2)">
+      <div class="card-header">
+        <div class="card-title">📋 Fiverr Gig Description (Claude-Generated)</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="document.getElementById('gig-copy-panel').style.display='none'">✕</button></div>
+      </div>
+      <div id="gig-copy-content" style="margin-top:12px"><div class="loading">Generating…</div></div>
+    </div>
+  </div>
+
+  <!-- Commissions List -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(249,115,22,0.2),rgba(239,68,68,0.1))">📋</div>
+      <div class="card-title">Commission Queue</div>
+      <div class="card-action"><button class="btn btn-sm" onclick="loadLiveryTab()">↻</button></div>
+    </div>
+    <div id="commission-list" style="margin-top:8px"><div class="loading">Loading commissions…</div></div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════ PAGE: INTELLIGENCE ══════════════════════════ -->
+<div class="page" id="page-intelligence">
+<div class="content-area">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;color:var(--text)">Intelligence Hub</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">What your agents learned, what's changing, and where to focus</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3 style="font-size:0.85rem;margin-bottom:4px">🧠 What the agents learned</h3>
+    <p style="font-size:0.68rem;color:var(--muted);margin-bottom:10px">Each card shows the change an agent is making and the evidence behind it</p>
+    <div id="learning-cards"><div class="loading">Loading</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3 style="font-size:0.85rem;margin-bottom:4px">🎚 Sonic fingerprint</h3>
+    <p style="font-size:0.68rem;color:var(--muted);margin-bottom:10px">What your winning tracks have in common — and the brief for the next batch</p>
+    <div id="sonic-fingerprint"><div class="loading">Loading</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3 style="font-size:0.85rem;margin-bottom:4px">⚖️ Portfolio advisor</h3>
+    <p style="font-size:0.68rem;color:var(--muted);margin-bottom:10px">Revenue per approval-tap across ventures (advisory only)</p>
+    <div id="portfolio-advice"><div class="loading">Loading</div></div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card glow-purple">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(192,132,252,0.2),rgba(139,92,246,0.1))">📚</div>
+        <div class="card-title">Learning Engine</div>
+        <div class="card-subtitle">Agent lessons · Weight signals</div>
+      </div>
+      <div id="lessons-content"><div class="loading">Loading lessons</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,51,102,0.2),rgba(200,0,50,0.1))">⚠</div>
+        <div class="card-title">Crisis Engine</div>
+        <div class="card-subtitle">Real-time risk monitoring</div>
+      </div>
+      <div id="crisis-content"><div class="loading">Loading crisis data</div></div>
+    </div>
+  </div>
+
+  <!-- Agent Council -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,179,0,0.2),rgba(255,100,0,0.1))">⚖</div>
+      <div class="card-title">Agent Council</div>
+      <div class="card-subtitle">AI voting on strategic proposals</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <label class="ob-label">Proposal</label>
+        <textarea id="council-proposal" class="settings-input" rows="3" placeholder="Describe your proposal..."></textarea>
+      </div>
+      <div>
+        <label class="ob-label">Context (optional)</label>
+        <textarea id="council-context" class="settings-input" rows="3" placeholder="Additional context..."></textarea>
+      </div>
+    </div>
+    <button class="btn btn-amber" onclick="conveneCouncil()">⚔ Convene Council</button>
+    <div id="council-result" style="margin-top:12px"></div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════ PAGE: COMMAND CENTRE ══════════════════════════ -->
+<div class="page" id="page-command">
+<div class="content-area">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;color:var(--text)">⚡ Command Centre</h2>
+      <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">Agent rooms · Treasury · AI Commander · Marketing Factory</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="cc-subtabs">
+      <button class="btn btn-sm cc-subtab active" data-cc="rooms" onclick="showCCSub('rooms')">🏛 Rooms</button>
+      <button class="btn btn-sm cc-subtab" data-cc="treasury" onclick="showCCSub('treasury')">💰 Treasury</button>
+      <button class="btn btn-sm cc-subtab" data-cc="commander" onclick="showCCSub('commander')">⚡ Commander</button>
+      <button class="btn btn-sm cc-subtab" data-cc="marketing" onclick="showCCSub('marketing')">📣 Marketing</button>
+      <button class="btn btn-sm cc-subtab" data-cc="content-drafts" onclick="showCCSub('content-drafts');loadContentDrafts()">✏ Content Drafts</button>
+    </div>
+  </div>
+
+  <!-- CONTENT DRAFTS -->
+  <div class="cc-section" id="cc-content-drafts" style="display:none">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="loadContentDrafts('draft')">Pending</button>
+      <button class="btn btn-sm" onclick="loadContentDrafts('approved')">Approved</button>
+      <button class="btn btn-sm" onclick="loadContentDrafts('published')">Published</button>
+      <button class="btn btn-sm" onclick="loadContentDrafts('')">All</button>
+    </div>
+    <div id="content-drafts-list"><div class="loading">Loading drafts…</div></div>
+  </div>
+
+  <!-- ROOMS -->
+  <div class="cc-section" id="cc-rooms">
+    <div id="rooms-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px"><div class="loading">Loading rooms…</div></div>
+  </div>
+
+  <!-- TREASURY -->
+  <div class="cc-section" id="cc-treasury" style="display:none">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="treasury-period-tabs">
+      <button class="btn btn-sm tp-btn" data-period="1d" onclick="loadTreasuryPeriod('1d')">1D</button>
+      <button class="btn btn-sm tp-btn" data-period="7d" onclick="loadTreasuryPeriod('7d')">7D</button>
+      <button class="btn btn-sm tp-btn active" data-period="1m" onclick="loadTreasuryPeriod('1m')">1M</button>
+      <button class="btn btn-sm tp-btn" data-period="3m" onclick="loadTreasuryPeriod('3m')">3M</button>
+      <button class="btn btn-sm tp-btn" data-period="6m" onclick="loadTreasuryPeriod('6m')">6M</button>
+      <button class="btn btn-sm tp-btn" data-period="1y" onclick="loadTreasuryPeriod('1y')">1YR</button>
+      <button class="btn btn-sm tp-btn" data-period="all" onclick="loadTreasuryPeriod('all')">ALL TIME</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.5rem;font-weight:800;color:var(--green)" id="tr-income">£0</div><div style="font-size:0.65rem;color:var(--muted)">Income</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.5rem;font-weight:800;color:var(--pink)" id="tr-expenses">£0</div><div style="font-size:0.65rem;color:var(--muted)">Expenses</div></div>
+      <div class="card" style="padding:12px;text-align:center"><div style="font-size:1.5rem;font-weight:800;color:var(--cyan)" id="tr-net">£0</div><div style="font-size:0.65rem;color:var(--muted)">Net Profit</div></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">By Venture</div></div>
+        <div id="tr-by-venture"><div class="loading">Loading…</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Cost Breakdown</div></div>
+        <div id="tr-cost-breakdown"><div class="loading">Loading…</div></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Subscriptions &amp; Fixed Costs</div></div>
+        <div id="tr-subscriptions"><div class="loading">Loading…</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">API Spend (Claude + OpenRouter)</div></div>
+        <div id="tr-api-costs"><div class="loading">Loading…</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-header"><div class="card-title">Cost by Agent</div></div>
+      <div id="tr-agent-costs"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- COMMANDER -->
+  <div class="cc-section" id="cc-commander" style="display:none">
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="card glow-pink">
+        <div class="card-header">
+          <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,51,102,0.25),rgba(150,0,40,0.1))">⚡</div>
+          <div class="card-title">Kingdom Health</div>
+          <div class="card-action" id="commander-health-badge"></div>
+        </div>
+        <div id="commander-status-content"><div class="loading">Loading status…</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(0,150,200,0.1))">📋</div>
+          <div class="card-title">Morning Briefing</div>
+          <div class="card-action"><button class="btn btn-sm" onclick="loadCommanderBriefing()">↻</button></div>
+        </div>
+        <div id="commander-briefing-content"><div class="loading">Loading briefing…</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,51,102,0.2),rgba(150,0,40,0.1))">📡</div>
+        <div class="card-title">Latest Commander Report</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="runCommanderCycle()">▶ Run Oversight Cycle</button></div>
+      </div>
+      <div id="commander-report-content"><div class="loading">Loading report…</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(255,51,102,0.3),rgba(150,0,40,0.1))">💬</div>
+        <div class="card-title">Talk to the Commander</div>
+      </div>
+      <div id="commander-chat-messages" style="max-height:320px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px"></div>
+      <div style="display:flex;gap:8px">
+        <textarea id="commander-chat-input" class="input" rows="2" placeholder="Ask the Commander..." style="flex:1;resize:vertical"></textarea>
+        <button class="btn" style="background:rgba(255,51,102,0.2);border-color:rgba(255,51,102,0.4);color:#ff3366" onclick="sendCommanderChat()">SEND</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MARKETING -->
+  <div class="cc-section" id="cc-marketing" style="display:none">
+    <div class="card" style="margin-bottom:16px;border-color:rgba(0,255,136,0.2)">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(0,180,100,0.1))">📣</div>
+        <div class="card-title">Generate Content</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <select id="mk-venture" class="input"><option>Pitwall Classics</option><option>PulseBreak</option></select>
+        <input id="mk-product" class="input" placeholder="Product/topic (optional)"/>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-green" onclick="generateMarketing('instagram')">📷 Instagram</button>
+        <button class="btn btn-sm btn-green" onclick="generateMarketing('tiktok')">🎬 TikTok</button>
+        <button class="btn btn-sm btn-green" onclick="generateMarketing('email')">✉ Email</button>
+        <button class="btn btn-sm" onclick="runMarketingFactory()">⚙ Run Full Factory</button>
+      </div>
+      <div id="mk-generate-result" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Content Library</div>
+        <div class="card-action"><button class="btn btn-sm" onclick="loadMarketingContent()">↻</button></div>
+      </div>
+      <div id="mk-content-list"><div class="loading">Loading content…</div></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════ PAGE: TOOLS ══════════════════════════ -->
+<div class="page" id="page-tools">
+<div class="content-area">
+  <div style="margin-bottom:20px">
+    <h2 style="font-size:1.2rem;font-weight:700;color:var(--text)">Tools &amp; Utilities</h2>
+    <p style="font-size:0.72rem;color:var(--muted);margin-top:2px">Scenario modeller, exports, backup</p>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <!-- Scenario Modeller -->
+    <div class="card glow-green">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(0,180,100,0.1))">🎲</div>
+        <div class="card-title">Scenario Modeller</div>
+        <div class="card-subtitle">Pure calculation — no AI tokens used</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <label style="font-size:0.72rem;color:var(--muted);width:130px">Weekly listings:</label>
+          <input id="sc-listings" type="number" value="5" min="1" max="50" class="settings-input" style="width:80px;margin-bottom:0">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <label style="font-size:0.72rem;color:var(--muted);width:130px">Avg price (£):</label>
+          <input id="sc-price" type="number" value="18.99" min="5" max="200" step="0.01" class="settings-input" style="width:80px;margin-bottom:0">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <label style="font-size:0.72rem;color:var(--muted);width:130px">Conversion rate (%):</label>
+          <input id="sc-conv" type="number" value="2.5" min="0.1" max="20" step="0.1" class="settings-input" style="width:80px;margin-bottom:0">
+        </div>
+      </div>
+      <button class="btn btn-green" onclick="runScenario()">▶ Calculate</button>
+      <div id="scenario-result" style="display:none;margin-top:14px;padding:14px;border-radius:10px;background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.15)"></div>
+    </div>
+
+    <!-- Export -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:linear-gradient(135deg,rgba(96,165,250,0.2),rgba(59,130,246,0.1))">📥</div>
+        <div class="card-title">Export &amp; Downloads</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <a href="/export/treasury.csv" download class="btn">💾 Treasury CSV — All revenue transactions</a>
+        <a href="/export/opportunities.csv" download class="btn">💾 Opportunities CSV — Full scored list</a>
+        <a href="/export/weekly-report.txt" download class="btn">📄 Weekly Report TXT — Kingdom summary</a>
+      </div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div class="card-title" style="margin-bottom:10px">Database Backup</div>
+        <button class="btn btn-primary" onclick="createBackup()">💾 Create Backup Now</button>
+        <div id="backup-result" style="margin-top:8px;font-size:0.72rem;color:var(--muted)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Launch Checklist -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,229,255,0.2),rgba(6,182,212,0.1))">🚀</div>
+      <div class="card-title">Launch Checklist</div>
+      <div class="card-action">
+        <button class="btn btn-sm" onclick="filterChecklist('all')">All</button>
+        <button class="btn btn-sm" onclick="filterChecklist('Pitwall Classics')">Pitwall</button>
+        <button class="btn btn-sm" onclick="filterChecklist('PulseBreak')">PulseBreak</button>
+      </div>
+    </div>
+    <div id="checklist-progress" style="margin-bottom:12px;font-size:0.82rem;color:var(--cyan)"></div>
+    <div id="checklist-items" style="max-height:320px;overflow-y:auto"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <input id="new-checklist-item" class="settings-input" placeholder="Add custom item..." style="flex:1;margin-bottom:0">
+      <select id="new-checklist-venture" class="settings-input" style="width:auto;margin-bottom:0">
+        <option>Pitwall Classics</option><option>PulseBreak</option><option>General</option>
+      </select>
+      <button class="btn btn-primary" onclick="addChecklistItem()">+ Add</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Chat Bubble + Drawer -->
+<button id="chat-bubble" onclick="toggleChat()" title="Chat with agents">💬</button>
+<div id="chat-drawer">
+  <div id="chat-drawer-header">
+    <select id="chat-agent-select">
+      <option value="vibes_ai">Vibes AI</option>
+      <option value="print_forge">Print Forge AI</option>
+      <option value="opportunity_scout">Opportunity Scout</option>
+      <option value="overseer">Overseer</option>
+      <option value="ai_engineer">AI Engineer</option>
+      <option value="seo_agent">SEO Agent</option>
+      <option value="content_agent">Content Agent</option>
+    </select>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div id="chat-messages">
+    <div class="chat-msg agent"><div class="msg-agent">OVERSEER</div><div>Kingdom OS online. Which agent would you like to consult?</div></div>
+  </div>
+  <div id="chat-input-row">
+    <textarea id="chat-input" rows="2" placeholder="Ask an agent..."></textarea>
+    <button id="chat-send" onclick="sendChatMessage()">SEND</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════ PAGE: ROADMAP ══════════════════════════ -->
+<div class="page" id="page-roadmap">
+<div class="content-area">
+
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,rgba(255,34,68,0.3),rgba(255,106,0,0.2));display:flex;align-items:center;justify-content:center;font-size:1.5rem;border:1px solid rgba(255,34,68,0.3)">🗺</div>
+    <div>
+      <h2 style="font-size:1.2rem;font-weight:700;background:linear-gradient(90deg,var(--cockpit-red),var(--amber));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Build Roadmap</h2>
+      <p style="font-size:0.7rem;color:var(--muted);margin-top:2px">What to build next · Gold standard checklist · Technical improvements</p>
+    </div>
+    <div style="margin-left:auto"><button class="btn btn-sm" onclick="loadGoldStandard()">↻ Re-check</button></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px">
+    <!-- Left: Roadmap -->
+    <div>
+
+      <!-- System Score -->
+      <div class="card glow-green" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(6,182,212,0.1))">⚡</div>
+          <div class="card-title">Kingdom System Score</div>
+          <div class="card-subtitle" style="margin-left:auto;font-family:var(--mono);font-size:0.75rem;color:var(--muted)" id="gs-last-check">—</div>
+        </div>
+        <div class="score-ring-wrap" id="gs-score-wrap">
+          <div class="score-ring">
+            <svg width="96" height="96" viewBox="0 0 96 96">
+              <circle class="track" cx="48" cy="48" r="42"></circle>
+              <circle class="fill" id="gs-ring-fill" cx="48" cy="48" r="42" stroke-dasharray="264" stroke-dashoffset="264"></circle>
+            </svg>
+            <div class="score-ring-label">
+              <div class="score-ring-num" id="gs-score-num">—</div>
+              <div class="score-ring-sub">/ 100</div>
+            </div>
+          </div>
+          <div class="score-facts" id="gs-score-facts">
+            <div class="score-fact">Loading system checks…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 1: Ship Now -->
+      <div class="roadmap-phase">
+        <div class="roadmap-phase-header">
+          <span class="phase-badge now">SHIP NOW</span>
+          <span class="phase-title">Immediate — High Impact, Low Effort</span>
+          <span class="phase-desc">These pay back in days, not months</span>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(255,34,68,0.2);color:var(--cockpit-red);border:1px solid rgba(255,34,68,0.25)">01</div>
+          <div class="build-body">
+            <div class="build-title">WebSocket live agent feed</div>
+            <div class="build-why">Agents running in the background with no visible progress is a trust killer. A single SSE endpoint pushing agent heartbeats + completions makes the platform feel alive and removes the need to manually refresh. Biggest UX win for the least server code.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Backend + Frontend</span>
+              <span class="build-tag impact">HIGH IMPACT</span>
+              <span class="build-tag effort">~4h effort</span>
+            </div>
+          </div>
+          <div class="build-meta"><div class="build-impact">£0 cost</div><div class="build-effort">FastAPI SSE</div></div>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(255,34,68,0.2);color:var(--cockpit-red);border:1px solid rgba(255,34,68,0.25)">02</div>
+          <div class="build-body">
+            <div class="build-title">Daily profit target meter on every screen</div>
+            <div class="build-why">The KPI strip is now live but we need a "today's goal" bar — a visible, auto-updating gauge showing £0 → £16.40 (daily target at £500/mo). Founders need to feel the number, not just see it. The target should pulse green when hit.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Frontend</span>
+              <span class="build-tag impact">MOTIVATION</span>
+              <span class="build-tag effort">~1h effort</span>
+            </div>
+          </div>
+          <div class="build-meta"><div class="build-impact">Psychology</div><div class="build-effort">Pure JS</div></div>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(255,34,68,0.2);color:var(--cockpit-red);border:1px solid rgba(255,34,68,0.25)">03</div>
+          <div class="build-body">
+            <div class="build-title">Etsy "days since last sale" alert</div>
+            <div class="build-why">If no sales in 7+ days, auto-surface a crisis card on Overview. Silent stores die. This forces an SEO or pricing action. One saved month = ~£400 revenue protected. Already have EtsyOrder data — just needs a time-since-last query.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Backend</span>
+              <span class="build-tag impact">REVENUE PROTECT</span>
+              <span class="build-tag effort">~2h effort</span>
+            </div>
+          </div>
+          <div class="build-meta"><div class="build-impact">Revenue</div><div class="build-effort">SQL query</div></div>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(255,34,68,0.2);color:var(--cockpit-red);border:1px solid rgba(255,34,68,0.25)">04</div>
+          <div class="build-body">
+            <div class="build-title">Mobile PWA push notifications</div>
+            <div class="build-why">The app is a PWA but sends no push alerts. A sale on Etsy, an agent completing, or a crisis signal should vibrate your phone within 60 seconds. Web Push API + a VAPID key in settings. No cost. This is what separates a tool from a platform.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Frontend + Backend</span>
+              <span class="build-tag impact">HIGH IMPACT</span>
+              <span class="build-tag effort">~6h effort</span>
+            </div>
+          </div>
+          <div class="build-meta"><div class="build-impact">Engagement</div><div class="build-effort">Web Push API</div></div>
+        </div>
+      </div>
+
+      <!-- Phase 2: Build Next -->
+      <div class="roadmap-phase">
+        <div class="roadmap-phase-header">
+          <span class="phase-badge next">BUILD NEXT</span>
+          <span class="phase-title">This Month — Revenue Multipliers</span>
+          <span class="phase-desc">Each one compounds the system</span>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(255,179,0,0.15);color:var(--amber);border:1px solid rgba(255,179,0,0.25)">05</div>
+          <div class="build-body">
+            <div class="build-title">Opportunity Kanban — drag-to-action board</div>
+            <div class="build-why">Right now opportunities are a flat list. A 3-column board (Scout → Testing → Proven) with drag-to-promote makes the pipeline visual. Proven opportunities auto-trigger Print Forge or Vibes AI. This is the revenue flywheel made visible.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Frontend</span>
+              <span class="build-tag impact">WORKFLOW</span>
+              <span class="build-tag effort">~8h effort</span>
+            </div>
+          </div>
+          <div class="build-meta"><div class="build-impact">Decision speed</div><div class="build-effort">Drag API</div></div>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(255,179,0,0.15);color:var(--amber);border:1px solid rgba(255,179,0,0.25)">06</div>
+          <div class="build-body">
+            <div class="build-title">Agent sparklines — 30-day mini ROI charts</div>
+            <div class="build-why">Every agent chip needs a 30-day ROI sparkline so you can see at a glance which agents are earning and which are coasting. Data already exists in AgentRun. Render with SVG path, 8 data points. Adds the "trading terminal" feel that makes this product unique.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Frontend + API</span>
+              <span class="build-tag impact">INSIGHT</span>
+              <span class="build-tag effort">~4h effort</span>
+            </div>
+          </div>
+          <div class="build-meta"><div class="build-impact">Agent clarity</div><div class="build-effort">SVG charts</div></div>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(255,179,0,0.15);color:var(--amber);border:1px solid rgba(255,179,0,0.25)">07</div>
+          <div class="build-body">
+            <div class="build-title">Etsy competitor price tracker (no scraping)</div>
+            <div class="build-why">Use Etsy's public REST API (not scraping — fully legal) to pull search results for top 10 keywords. Compare your listing prices vs market. Auto-surface when you're priced &gt;20% above median. Price Optimizer uses this as ground truth instead of guessing.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Backend Agent</span>
+              <span class="build-tag impact">PRICING</span>
+              <span class="build-tag risk">Etsy API TOS ✓</span>
+            </div>
+          </div>
+          <div class="build-meta"><div class="build-impact">Revenue lift</div><div class="build-effort">Etsy REST API</div></div>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(255,179,0,0.15);color:var(--amber);border:1px solid rgba(255,179,0,0.25)">08</div>
+          <div class="build-body">
+            <div class="build-title">Content draft → Publish pipeline with scheduling</div>
+            <div class="build-why">Content drafts exist but "publish" is a dead button. Wire it to Buffer's free API (or direct Instagram Graph API) to schedule posts. The founder approves in Kingdom OS, it goes live automatically at optimal time. Closes the full marketing loop.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Backend + Integration</span>
+              <span class="build-tag impact">AUTOMATION</span>
+              <span class="build-tag effort">~10h effort</span>
+            </div>
+          </div>
+          <div class="build-meta"><div class="build-impact">Saves 3h/wk</div><div class="build-effort">Buffer API</div></div>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(255,179,0,0.15);color:var(--amber);border:1px solid rgba(255,179,0,0.25)">09</div>
+          <div class="build-body">
+            <div class="build-title">Revenue forecast — 30/60/90-day projections</div>
+            <div class="build-why">With 3+ months of Etsy order data, Haiku can fit a simple growth curve and project forward. Show a confidence band (best/expected/worst). Makes board-level thinking accessible to a solo founder. Works with zero new data sources — pure DB analysis.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Backend + Chart</span>
+              <span class="build-tag impact">STRATEGY</span>
+              <span class="build-tag effort">~6h effort</span>
+            </div>
+          </div>
+          <div class="build-meta"><div class="build-impact">Planning</div><div class="build-effort">Haiku + math</div></div>
+        </div>
+      </div>
+
+      <!-- Phase 3: Later -->
+      <div class="roadmap-phase">
+        <div class="roadmap-phase-header">
+          <span class="phase-badge later">LATER</span>
+          <span class="phase-title">Vision — Kingdom at Scale</span>
+          <span class="phase-desc">When revenue &gt;£1k/mo, these unlock</span>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(0,229,255,0.1);color:var(--cyan);border:1px solid rgba(0,229,255,0.2)">10</div>
+          <div class="build-body">
+            <div class="build-title">Third venture slot — productised service or SaaS</div>
+            <div class="build-why">Kingdom OS itself has product-market fit. When you hit £500/mo recurring, launch a SaaS tier — other side-hustle founders pay £19/mo for their own Kingdom OS instance. The agents already support multi-venture. Railway allows multi-tenant with shared backend.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Product</span>
+              <span class="build-tag impact">10X REVENUE</span>
+            </div>
+          </div>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(0,229,255,0.1);color:var(--cyan);border:1px solid rgba(0,229,255,0.2)">11</div>
+          <div class="build-body">
+            <div class="build-title">APScheduler SQLAlchemy JobStore — persistent schedules</div>
+            <div class="build-why">Currently agent schedules live in memory and reset on redeploy. JobStore persists them to Postgres. Agents survive Railway restarts without missing a cycle. Critical once you have paying customers relying on the automation.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Backend</span>
+              <span class="build-tag impact">RELIABILITY</span>
+              <span class="build-tag effort">~4h effort</span>
+            </div>
+          </div>
+        </div>
+        <div class="build-item">
+          <div class="build-num" style="background:rgba(0,229,255,0.1);color:var(--cyan);border:1px solid rgba(0,229,255,0.2)">12</div>
+          <div class="build-body">
+            <div class="build-title">Alpine.js migration — eliminate 3,000 lines of vanilla JS</div>
+            <div class="build-why">The frontend is now ~4,000 lines of hand-rolled DOM manipulation. Alpine.js declarative bindings would halve that, eliminate the manual refresh anti-patterns, and make adding new features 3x faster. Migrate tab-by-tab — zero user impact.</div>
+            <div class="build-tags">
+              <span class="build-tag type">Frontend Refactor</span>
+              <span class="build-tag impact">VELOCITY</span>
+              <span class="build-tag effort">~20h effort</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Gold Standard Checklist -->
+    <div>
+      <div class="card" style="margin-bottom:16px;position:sticky;top:60px">
+        <div class="card-header">
+          <div class="card-icon" style="background:linear-gradient(135deg,rgba(0,255,136,0.2),rgba(6,182,212,0.1))">🏅</div>
+          <div>
+            <div class="card-title">Gold Standard Checklist</div>
+            <div class="card-subtitle">What separates good from great</div>
+          </div>
+        </div>
+        <div id="gs-checklist">
+          <div class="loading">Running checks…</div>
+        </div>
+
+        <!-- Numbers that should be on every screen -->
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--text);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Numbers On Every Screen</div>
+          <div style="font-size:0.68rem;color:var(--muted);line-height:1.8">
+            Every tab should answer these 5 questions at a glance:<br><br>
+            <span style="color:var(--amber);font-weight:600">£ Net P&L this month</span> — am I winning?<br>
+            <span style="color:var(--green);font-weight:600">% Target progress</span> — am I on track?<br>
+            <span style="color:var(--red);font-weight:600">£ API cost today</span> — am I profitable?<br>
+            <span style="color:var(--cyan);font-weight:600">N agents active</span> — is the engine running?<br>
+            <span style="color:var(--purple);font-weight:600">N actions in queue</span> — what needs me?<br><br>
+            These are now in the persistent KPI strip at the top of every page.
+          </div>
+        </div>
+
+        <!-- Theme notes -->
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--text);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Theme: Ops Centre Dark v2.1</div>
+          <div style="font-size:0.68rem;color:var(--muted);line-height:1.8">
+            <span style="color:var(--text)">✓ Aurora gradient background</span> — depth without noise<br>
+            <span style="color:var(--text)">✓ Neon grid underlay</span> — mission control feel<br>
+            <span style="color:var(--text)">✓ Subtle scanlines</span> — adds texture on dark screens<br>
+            <span style="color:var(--text)">✓ JetBrains Mono for numbers</span> — instant readability<br>
+            <span style="color:var(--text)">✓ Glassmorphism cards</span> — layered depth<br>
+            <span style="color:var(--text)">✓ Colour semantics</span> — green=profit, red=cost, amber=caution<br>
+            <span style="color:var(--text)">✓ Pulse animations</span> — only on live data points<br>
+            <span style="color:var(--muted)">○ Alpine.js migration</span> — removes JS debt<br>
+            <span style="color:var(--muted)">○ CSS custom properties for theming</span> — dark/light toggle<br>
+            <span style="color:var(--muted)">○ Framer Motion on React port</span> — if ever migrating
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script src="/static/app.js?v=26"></script>
+
+<!-- PWA Install Button (Android Chrome — beforeinstallprompt) -->
+<div id="pwa-install-btn" onclick="pwaInstall()" style="display:none;position:fixed;bottom:80px;right:20px;z-index:999;background:linear-gradient(135deg,#00ff88,#00ccff);color:#000;border:none;border-radius:12px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,255,136,0.4)">
+  📲 Add to Home Screen
+</div>
+
+
+</body>
+</html>

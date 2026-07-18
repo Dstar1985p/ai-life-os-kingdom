@@ -1,0 +1,41 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create zip archive
+        run: |
+          zip -r Kingdom-${{ github.ref_name }}.zip . \
+            --exclude "*.git*" --exclude "__pycache__/*" \
+            --exclude "*.pyc" --exclude "dist/*" --exclude "build/*" \
+            --exclude "*.egg-info/*" --exclude ".pytest_cache/*"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Kingdom ${{ github.ref_name }}
+          body: |
+            ## Kingdom — AI Life OS ${{ github.ref_name }}
+
+            ### Install / Update
+            **Windows desktop app:**
+            1. Download `Kingdom-${{ github.ref_name }}.zip`
+            2. Extract and run `build_windows.bat`
+            3. Launch `dist\Kingdom\Kingdom.exe`
+
+            **Or pull + rebuild** if you already have the app:
+            The app will detect this release automatically and show an update banner.
+          files: Kingdom-${{ github.ref_name }}.zip
+          draft: false
+          prerelease: false

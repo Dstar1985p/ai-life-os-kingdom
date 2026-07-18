@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdom Setup Wizard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #050014;
+  color: #c8d4e0;
+  font-family: 'Courier New', monospace;
+  min-height: 100vh;
+  font-size: 16px;
+  line-height: 1.6;
+}
+header {
+  text-align: center;
+  padding: 32px 20px 24px;
+  border-bottom: 1px solid #2a0060;
+  background: linear-gradient(180deg, #0d0035 0%, #050014 100%);
+  position: relative;
+}
+header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center top, rgba(0,220,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+header h1 {
+  font-size: 2.4rem;
+  color: #00dcff;
+  text-shadow: 0 0 30px rgba(0,220,255,0.8), 0 0 60px rgba(0,220,255,0.3);
+  letter-spacing: 6px;
+  margin-bottom: 10px;
+}
+header p {
+  color: #8888bb;
+  font-size: 1rem;
+  letter-spacing: 2px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  padding: 32px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.card {
+  background: #0d0035;
+  border: 1px solid #2a0060;
+  border-radius: 12px;
+  padding: 28px;
+  position: relative;
+  transition: border-color 0.3s;
+}
+.card:hover { border-color: #4a00aa; }
+.card.connected { border-color: #00ff88; }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.card-icon { font-size: 2rem; }
+.card-title {
+  font-size: 1.3rem;
+  color: #00dcff;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+.card-desc {
+  color: #8888bb;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #00ff88;
+  color: #000;
+  font-weight: bold;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+}
+
+.field-group { margin-bottom: 16px; }
+.field-group label {
+  display: block;
+  color: #8888bb;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+.field-group input {
+  width: 100%;
+  background: #05001e;
+  border: 1px solid #2a0060;
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #c8d4e0;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field-group input:focus { border-color: #00dcff; }
+.password-wrap { position: relative; }
+.password-wrap input { padding-right: 44px; }
+.toggle-pw {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #8888bb;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px;
+}
+.toggle-pw:hover { color: #00dcff; }
+
+.btn {
+  display: inline-block;
+  background: #00dcff;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.2s, box-shadow 0.2s;
+  width: 100%;
+  margin-top: 4px;
+}
+.btn:hover { background: #33e8ff; box-shadow: 0 0 20px rgba(0,220,255,0.4); }
+.btn:disabled { background: #2a0060; color: #8888bb; cursor: not-allowed; box-shadow: none; }
+.btn-secondary {
+  background: transparent;
+  border: 1px solid #2a0060;
+  color: #8888bb;
+  margin-top: 8px;
+}
+.btn-secondary:hover { border-color: #00dcff; color: #00dcff; background: transparent; box-shadow: none; }
+
+.msg {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  display: none;
+}
+.msg.success { background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #00ff88; }
+.msg.error { background: rgba(255,68,68,0.1); border: 1px solid #ff4444; color: #ff4444; }
+
+.help-toggle {
+  background: none;
+  border: none;
+  color: #00dcff;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  padding: 0;
+  margin-bottom: 16px;
+  letter-spacing: 1px;
+}
+.help-toggle:hover { text-decoration: underline; }
+.help-body {
+  display: none;
+  background: #05001e;
+  border: 1px solid #2a0060;
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: #8888bb;
+  line-height: 1.8;
+}
+.help-body ol { padding-left: 18px; }
+.help-body li { margin-bottom: 6px; }
+.help-body a { color: #00dcff; }
+
+/* Step wizard */
+.step-wizard { display: none; }
+.step-indicator {
+  color: #8888bb;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+}
+.step-content {
+  background: #05001e;
+  border: 1px solid #2a0060;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.step-num {
+  color: #00dcff;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+.step-title {
+  font-size: 1.15rem;
+  color: #fff;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+.step-detail {
+  color: #8888bb;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.step-nav {
+  display: flex;
+  gap: 10px;
+}
+.step-nav .btn { flex: 1; }
+.step-nav .btn:first-child { background: transparent; border: 1px solid #2a0060; color: #8888bb; }
+.step-nav .btn:first-child:hover { border-color: #00dcff; color: #00dcff; background: transparent; box-shadow: none; }
+
+.upload-area {
+  border: 2px dashed #2a0060;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  margin-bottom: 12px;
+}
+.upload-area:hover { border-color: #00dcff; }
+.upload-area p { color: #8888bb; font-size: 0.9rem; }
+.upload-area .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+#yt-file-input, #yt-code-section, #yt-connect-section { display: none; }
+
+.auth-link {
+  display: block;
+  background: rgba(0,220,255,0.1);
+  border: 1px solid #00dcff;
+  border-radius: 8px;
+  padding: 14px;
+  color: #00dcff;
+  text-decoration: none;
+  text-align: center;
+  font-weight: bold;
+  letter-spacing: 1px;
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+  transition: background 0.2s;
+}
+.auth-link:hover { background: rgba(0,220,255,0.2); }
+
+.code-input-section { margin-top: 16px; }
+.code-input-section p {
+  color: #8888bb;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  border-top: 1px solid #2a0060;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.footer a {
+  color: #8888bb;
+  text-decoration: none;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+.footer a:hover { color: #00dcff; }
+.footer-cta {
+  background: #2a0060;
+  border: 1px solid #4a00aa;
+  color: #8888bb;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+.footer-cta.ready {
+  background: #00ff88;
+  color: #000;
+  border-color: #00ff88;
+  box-shadow: 0 0 20px rgba(0,255,136,0.4);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(0,255,136,0.4); }
+  50% { box-shadow: 0 0 40px rgba(0,255,136,0.7); }
+}
+
+@media (max-width: 600px) {
+  header h1 { font-size: 1.6rem; }
+  .cards { padding: 16px; gap: 16px; }
+  .footer { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#x1F3F0; KINGDOM SETUP WIZARD</h1>
+  <p>Connect your accounts to activate the Kingdom's automation systems</p>
+</header>
+
+<div class="cards">
+
+  <!-- EMAIL CARD -->
+  <div class="card" id="email-card">
+    <div class="badge" id="email-badge" style="display:none">&#x2705; CONNECTED</div>
+    <div class="card-header">
+      <span class="card-icon">&#x1F4E7;</span>
+      <span class="card-title">EMAIL</span>
+    </div>
+    <p class="card-desc">Weekly digest &amp; notifications from your Kingdom</p>
+
+    <button class="help-toggle" onclick="toggleHelp('email-help', this)">&#x2139;&#xFE0F; How to get Yahoo App Password &#x25BC;</button>
+    <div class="help-body" id="email-help">
+      <ol>
+        <li>Go to <a href="https://login.yahoo.com" target="_blank">login.yahoo.com</a> and sign in</li>
+        <li>Go to Account Security settings (myaccount.yahoo.com/security)</li>
+        <li>Turn on 2-Step Verification if not already on, then generate an App Password for "Other App" and paste it below</li>
+      </ol>
+    </div>
+
+    <div class="field-group">
+      <label>SMTP HOST</label>
+      <input type="text" id="email-host" value="smtp.mail.yahoo.com">
+    </div>
+    <div class="field-group">
+      <label>PORT</label>
+      <input type="number" id="email-port" value="587">
+    </div>
+    <div class="field-group">
+      <label>EMAIL ADDRESS</label>
+      <input type="email" id="email-user" value="prydeprydey@yahoo.co.uk">
+    </div>
+    <div class="field-group">
+      <label>APP PASSWORD</label>
+      <div class="password-wrap">
+        <input type="password" id="email-pass" placeholder="Your Yahoo App Password">
+        <button class="toggle-pw" onclick="togglePw('email-pass', this)" title="Show/hide password">&#x1F441;</button>
+      </div>
+    </div>
+
+    <button class="btn" onclick="connectEmail()" id="email-btn">CONNECT EMAIL</button>
+    <button class="btn btn-secondary" onclick="testEmail()" id="email-test-btn" style="display:none">SEND TEST EMAIL</button>
+    <div class="msg" id="email-msg"></div>
+  </div>
+
+  <!-- YOUTUBE CARD -->
+  <div class="card" id="yt-card">
+    <div class="badge" id="yt-badge" style="display:none">&#x2705; CONNECTED</div>
+    <div class="card-header">
+      <span class="card-icon">&#x1F3AC;</span>
+      <span class="card-title">YOUTUBE</span>
+    </div>
+    <p class="card-desc">Auto-upload your PulseBreak videos to YouTube</p>
+
+    <div id="yt-step-wizard">
+      <div class="step-indicator" id="yt-step-indicator">STEP 1 OF 6</div>
+      <div class="step-content">
+        <div class="step-num" id="yt-step-num">STEP 1</div>
+        <div class="step-title" id="yt-step-title">Loading...</div>
+        <div class="step-detail" id="yt-step-detail"></div>
+
+        <!-- Step 6: file upload -->
+        <div id="yt-upload-section" style="display:none; margin-top:16px;">
+          <div class="upload-area" onclick="document.getElementById('yt-file-input').click()">
+            <div class="upload-icon">&#x1F4C1;</div>
+            <p>Click to upload your client_secrets.json</p>
+            <p id="yt-upload-name" style="color:#00dcff; margin-top:8px;"></p>
+          </div>
+          <input type="file" id="yt-file-input" accept=".json" onchange="uploadYTCredentials(this)">
+        </div>
+
+        <!-- Auth section after upload -->
+        <div id="yt-connect-section" style="margin-top:16px;">
+          <p style="color:#8888bb; font-size:0.9rem; margin-bottom:12px;">Click below to open Google's authorisation page in a new tab:</p>
+          <a class="auth-link" id="yt-auth-link" href="#" target="_blank" onclick="onYtAuthClick()">&#x1F517; AUTHORISE YOUTUBE</a>
+          <div class="code-input-section" id="yt-code-section">
+            <p>After you approve access, Google will show you a code. Paste it here:</p>
+            <div class="field-group" style="margin-bottom:8px;">
+              <input type="text" id="yt-code" placeholder="Paste the code from Google here">
+            </div>
+            <button class="btn" onclick="submitYTCode()">SUBMIT CODE</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-nav" id="yt-step-nav">
+        <button class="btn" onclick="ytPrevStep()" id="yt-prev-btn">&#x2190; BACK</button>
+        <button class="btn" onclick="ytNextStep()" id="yt-next-btn">NEXT STEP &#x2192;</button>
+      </div>
+    </div>
+
+    <div class="msg" id="yt-msg"></div>
+  </div>
+
+  <!-- ETSY CARD -->
+  <div class="card" id="etsy-card">
+    <div class="badge" id="etsy-badge" style="display:none">&#x2705; CONNECTED</div>
+    <div class="card-header">
+      <span class="card-icon">&#x1F6CD;&#xFE0F;</span>
+      <span class="card-title">ETSY</span>
+    </div>
+    <p class="card-desc">Draft listings &amp; sync orders from your Etsy shop</p>
+
+    <div id="etsy-step-wizard">
+      <div class="step-indicator" id="etsy-step-indicator">STEP 1 OF 4</div>
+      <div class="step-content">
+        <div class="step-num" id="etsy-step-num">STEP 1</div>
+        <div class="step-title" id="etsy-step-title">Loading...</div>
+        <div class="step-detail" id="etsy-step-detail"></div>
+
+        <!-- Credentials input on step 4 -->
+        <div id="etsy-creds-section" style="display:none; margin-top:16px;">
+          <div class="field-group" style="margin-bottom:8px;">
+            <label>YOUR ETSY API KEYSTRING</label>
+            <input type="text" id="etsy-client-id" placeholder="Paste your Keystring here">
+          </div>
+          <button class="btn" onclick="connectEtsy()">CONNECT ETSY</button>
+        </div>
+
+        <!-- Auth link after credentials saved -->
+        <div id="etsy-auth-section" style="display:none; margin-top:16px;">
+          <p style="color:#8888bb; font-size:0.9rem; margin-bottom:12px;">Click below to authorise with Etsy:</p>
+          <a class="auth-link" id="etsy-auth-link" href="#" target="_blank" onclick="onEtsyAuthClick()">&#x1F517; AUTHORISE ETSY</a>
+          <div class="code-input-section" id="etsy-code-section" style="display:none;">
+            <p>After you approve, paste the code from Etsy here:</p>
+            <div class="field-group" style="margin-bottom:8px;">
+              <input type="text" id="etsy-code" placeholder="Paste the code from Etsy here">
+            </div>
+            <button class="btn" onclick="submitEtsyCode()">SUBMIT CODE</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-nav" id="etsy-step-nav">
+        <button class="btn" onclick="etsyPrevStep()" id="etsy-prev-btn">&#x2190; BACK</button>
+        <button class="btn" onclick="etsyNextStep()" id="etsy-next-btn">NEXT STEP &#x2192;</button>
+      </div>
+    </div>
+
+    <div class="msg" id="etsy-msg"></div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <a href="/">&larr; Back to Kingdom Dashboard</a>
+  <a class="footer-cta" id="footer-cta" href="/">All done! Open Kingdom &rarr;</a>
+</div>
+
+<script>
+// ── Utility ───────────────────────────────────────────────────────────────
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'msg ' + type;
+  el.style.display = 'block';
+}
+
+function hideMsg(id) {
+  const el = document.getElementById(id);
+  el.style.display = 'none';
+}
+
+function toggleHelp(id, btn) {
+  const el = document.getElementById(id);
+  if (el.style.display === 'block') {
+    el.style.display = 'none';
+    btn.textContent = btn.textContent.replace('▲', '▼');
+  } else {
+    el.style.display = 'block';
+    btn.textContent = btn.textContent.replace('▼', '▲');
+  }
+}
+
+function togglePw(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁';
+  }
+}
+
+async function apiPost(url, body) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+// ── Status on load ────────────────────────────────────────────────────────
+
+async function checkStatus() {
+  try {
+    const r = await fetch('/setup/status');
+    const d = await r.json();
+
+    if (d.email && d.email.connected) markConnected('email');
+    if (d.youtube && d.youtube.connected) markConnected('yt');
+    if (d.etsy && d.etsy.connected) markConnected('etsy');
+    if (d.overall_complete) {
+      document.getElementById('footer-cta').classList.add('ready');
+    }
+  } catch (e) {
+    // Silently ignore
+  }
+}
+
+function markConnected(prefix) {
+  const badge = document.getElementById(prefix + '-badge');
+  if (badge) badge.style.display = 'block';
+  const card = document.getElementById(prefix + '-card');
+  if (card) card.classList.add('connected');
+
+  if (prefix === 'email') {
+    document.getElementById('email-btn').disabled = true;
+    document.getElementById('email-btn').textContent = '✅ CONNECTED';
+    document.getElementById('email-test-btn').style.display = 'block';
+  }
+}
+
+// ── Email ─────────────────────────────────────────────────────────────────
+
+async function connectEmail() {
+  hideMsg('email-msg');
+  const btn = document.getElementById('email-btn');
+  btn.disabled = true;
+  btn.textContent = 'CONNECTING...';
+
+  const body = {
+    smtp_host: document.getElementById('email-host').value,
+    smtp_port: parseInt(document.getElementById('email-port').value) || 587,
+    username: document.getElementById('email-user').value,
+    password: document.getElementById('email-pass').value,
+    from_name: 'Kingdom',
+  };
+
+  try {
+    const d = await apiPost('/setup/email', body);
+    if (d.success) {
+      showMsg('email-msg', d.message, 'success');
+      markConnected('email');
+      checkAllConnected();
+    } else {
+      showMsg('email-msg', d.message || 'Connection failed', 'error');
+      btn.disabled = false;
+      btn.textContent = 'CONNECT EMAIL';
+    }
+  } catch (e) {
+    showMsg('email-msg', 'Could not reach the server. Is the Kingdom running?', 'error');
+    btn.disabled = false;
+    btn.textContent = 'CONNECT EMAIL';
+  }
+}
+
+async function testEmail() {
+  const btn = document.getElementById('email-test-btn');
+  btn.disabled = true;
+  btn.textContent = 'SENDING...';
+  try {
+    const d = await apiPost('/setup/email/test', {});
+    if (d.success) {
+      showMsg('email-msg', d.message, 'success');
+    } else {
+      showMsg('email-msg', d.message || 'Test failed', 'error');
+    }
+  } catch (e) {
+    showMsg('email-msg', 'Could not send test email.', 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = 'SEND TEST EMAIL';
+}
+
+// ── YouTube step wizard ───────────────────────────────────────────────────
+
+let ytSteps = [];
+let ytCurrentStep = 0;
+let ytUploaded = false;
+let ytAuthUrl = '';
+
+async function initYTSteps() {
+  try {
+    const r = await fetch('/setup/youtube/instructions');
+    const d = await r.json();
+    ytSteps = d.steps || [];
+    renderYTStep();
+  } catch (e) {
+    document.getElementById('yt-step-title').textContent = 'Could not load instructions';
+  }
+}
+
+function renderYTStep() {
+  const total = ytSteps.length;
+  const s = ytSteps[ytCurrentStep];
+  if (!s) return;
+
+  document.getElementById('yt-step-indicator').textContent = `STEP ${ytCurrentStep + 1} OF ${total}`;
+  document.getElementById('yt-step-num').textContent = `STEP ${s.step}`;
+  document.getElementById('yt-step-title').textContent = s.title;
+  document.getElementById('yt-step-detail').textContent = s.detail;
+
+  document.getElementById('yt-prev-btn').disabled = ytCurrentStep === 0;
+
+  const isLast = ytCurrentStep === total - 1;
+  document.getElementById('yt-upload-section').style.display = isLast ? 'block' : 'none';
+  document.getElementById('yt-connect-section').style.display = (ytUploaded && isLast) ? 'block' : 'none';
+  document.getElementById('yt-step-nav').style.display = isLast ? 'none' : 'flex';
+  document.getElementById('yt-next-btn').textContent = isLast ? '' : 'NEXT STEP →';
+}
+
+function ytNextStep() {
+  if (ytCurrentStep < ytSteps.length - 1) {
+    ytCurrentStep++;
+    renderYTStep();
+  }
+}
+
+function ytPrevStep() {
+  if (ytCurrentStep > 0) {
+    ytCurrentStep--;
+    renderYTStep();
+  }
+}
+
+async function uploadYTCredentials(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('yt-upload-name').textContent = file.name;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const r = await fetch('/setup/youtube/credentials', { method: 'POST', body: formData });
+    const d = await r.json();
+    if (d.success) {
+      ytUploaded = true;
+      showMsg('yt-msg', d.message || 'Credentials uploaded!', 'success');
+      // Now get the auth URL
+      const ar = await fetch('/setup/youtube/auth-url');
+      const ad = await ar.json();
+      if (ad.auth_url) {
+        ytAuthUrl = ad.auth_url;
+        document.getElementById('yt-auth-link').href = ad.auth_url;
+      }
+      renderYTStep();
+    } else {
+      showMsg('yt-msg', d.message || 'Upload failed', 'error');
+    }
+  } catch (e) {
+    showMsg('yt-msg', 'Upload failed. Please try again.', 'error');
+  }
+}
+
+function onYtAuthClick() {
+  setTimeout(() => {
+    document.getElementById('yt-code-section').style.display = 'block';
+  }, 1000);
+}
+
+async function submitYTCode() {
+  const code = document.getElementById('yt-code').value.trim();
+  if (!code) { showMsg('yt-msg', 'Please paste the code from Google.', 'error'); return; }
+  try {
+    const d = await apiPost('/setup/youtube/token', { code });
+    if (d.success) {
+      showMsg('yt-msg', d.message || 'YouTube connected!', 'success');
+      markConnected('yt');
+      checkAllConnected();
+    } else {
+      showMsg('yt-msg', d.message || 'Failed to exchange code', 'error');
+    }
+  } catch (e) {
+    showMsg('yt-msg', 'Could not connect. Please try again.', 'error');
+  }
+}
+
+// ── Etsy step wizard ──────────────────────────────────────────────────────
+
+let etsySteps = [];
+let etsyCurrentStep = 0;
+let etsyCodeVerifier = '';
+
+async function initEtsySteps() {
+  try {
+    const r = await fetch('/setup/etsy/instructions');
+    const d = await r.json();
+    etsySteps = d.steps || [];
+    renderEtsyStep();
+  } catch (e) {
+    document.getElementById('etsy-step-title').textContent = 'Could not load instructions';
+  }
+}
+
+function renderEtsyStep() {
+  const total = etsySteps.length;
+  const s = etsySteps[etsyCurrentStep];
+  if (!s) return;
+
+  document.getElementById('etsy-step-indicator').textContent = `STEP ${etsyCurrentStep + 1} OF ${total}`;
+  document.getElementById('etsy-step-num').textContent = `STEP ${s.step}`;
+  document.getElementById('etsy-step-title').textContent = s.title;
+  document.getElementById('etsy-step-detail').textContent = s.detail;
+
+  const isLast = etsyCurrentStep === total - 1;
+  document.getElementById('etsy-creds-section').style.display = isLast ? 'block' : 'none';
+  document.getElementById('etsy-auth-section').style.display = 'none';
+  document.getElementById('etsy-step-nav').style.display = isLast ? 'none' : 'flex';
+  document.getElementById('etsy-prev-btn').disabled = etsyCurrentStep === 0;
+}
+
+function etsyNextStep() {
+  if (etsyCurrentStep < etsySteps.length - 1) {
+    etsyCurrentStep++;
+    renderEtsyStep();
+  }
+}
+
+function etsyPrevStep() {
+  if (etsyCurrentStep > 0) {
+    etsyCurrentStep--;
+    renderEtsyStep();
+  }
+}
+
+async function connectEtsy() {
+  const clientId = document.getElementById('etsy-client-id').value.trim();
+  if (!clientId) { showMsg('etsy-msg', 'Please enter your Etsy API Keystring.', 'error'); return; }
+  try {
+    const d = await apiPost('/setup/etsy/credentials', { client_id: clientId });
+    if (d.success) {
+      showMsg('etsy-msg', 'Credentials saved! Now authorise with Etsy.', 'success');
+      etsyCodeVerifier = d.code_verifier || '';
+      document.getElementById('etsy-creds-section').style.display = 'none';
+      document.getElementById('etsy-auth-section').style.display = 'block';
+      if (d.auth_url) {
+        document.getElementById('etsy-auth-link').href = d.auth_url;
+      }
+    } else {
+      showMsg('etsy-msg', d.message || 'Failed to save credentials', 'error');
+    }
+  } catch (e) {
+    showMsg('etsy-msg', 'Could not connect. Please try again.', 'error');
+  }
+}
+
+function onEtsyAuthClick() {
+  setTimeout(() => {
+    document.getElementById('etsy-code-section').style.display = 'block';
+  }, 1000);
+}
+
+async function submitEtsyCode() {
+  const code = document.getElementById('etsy-code').value.trim();
+  if (!code) { showMsg('etsy-msg', 'Please paste the code from Etsy.', 'error'); return; }
+  try {
+    const d = await apiPost('/setup/etsy/token', { code, code_verifier: etsyCodeVerifier });
+    if (d.success) {
+      showMsg('etsy-msg', d.message || 'Etsy connected!', 'success');
+      markConnected('etsy');
+      checkAllConnected();
+    } else {
+      showMsg('etsy-msg', d.message || 'Failed to exchange code', 'error');
+    }
+  } catch (e) {
+    showMsg('etsy-msg', 'Could not connect. Please try again.', 'error');
+  }
+}
+
+// ── All connected check ───────────────────────────────────────────────────
+
+function checkAllConnected() {
+  const emailOk = document.getElementById('email-card').classList.contains('connected');
+  const ytOk = document.getElementById('yt-card').classList.contains('connected');
+  const etsyOk = document.getElementById('etsy-card').classList.contains('connected');
+  if (emailOk && ytOk && etsyOk) {
+    document.getElementById('footer-cta').classList.add('ready');
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+
+checkStatus();
+initYTSteps();
+initEtsySteps();
+</script>
+</body>
+</html>

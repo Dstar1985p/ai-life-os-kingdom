@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0a0a0a" rx="80"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#00ff88" stroke-width="6" opacity="0.3"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#00ff88" stroke-width="4" opacity="0.5"/>
+  <!-- Crown -->
+  <path d="M146 295 L146 210 L192 250 L256 168 L320 250 L366 210 L366 295 Z" fill="#00ff88" opacity="0.9"/>
+  <rect x="138" y="295" width="236" height="26" rx="5" fill="#00ff88"/>
+  <!-- Gem dots -->
+  <circle cx="146" cy="210" r="14" fill="#00ccff"/>
+  <circle cx="256" cy="168" r="16" fill="#ff66ff"/>
+  <circle cx="366" cy="210" r="14" fill="#ffaa00"/>
+  <!-- Inner glow ring -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#00ff88" stroke-width="2" opacity="0.2"/>
+</svg>
