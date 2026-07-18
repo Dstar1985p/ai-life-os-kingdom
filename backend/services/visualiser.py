@@ -5,6 +5,7 @@ Uses moviepy + numpy. Requires ffmpeg. Falls back gracefully if unavailable.
 from __future__ import annotations
 
 import math
+import os
 
 FFMPEG_AVAILABLE = False
 try:
@@ -267,6 +268,16 @@ def generate_visualiser(
     elif fmt == "square":
         width, height = 1080, 1080
 
+    # Memory cap for small containers (Railway starter = 512MB): set
+    # KINGDOM_RENDER_MAX_HEIGHT=720 to render 720p and roughly halve peak RAM.
+    try:
+        max_h = int(os.environ.get("KINGDOM_RENDER_MAX_HEIGHT", "0"))
+        if max_h and min(width, height) > max_h:
+            scale = max_h / min(width, height)
+            width, height = int(width * scale) // 2 * 2, int(height * scale) // 2 * 2
+    except Exception:
+        pass
+
     audio_path, output_path = str(audio_path), str(output_path)
 
     audio_clip = AudioFileClip(audio_path)
@@ -274,6 +285,7 @@ def generate_visualiser(
     fps_audio = 44100
     audio_array = audio_clip.to_soundarray(fps=fps_audio)
     audio_mono = (audio_array.mean(axis=1) if audio_array.ndim > 1 else audio_array).astype(np.float32)
+    del audio_array  # stereo float64 copy of the whole track — ~170MB for 4 min
 
     # ── Geometry ──────────────────────────────────────────────────────────────
     cx, cy = width // 2, height // 2
@@ -628,13 +640,23 @@ def generate_visualiser(
         video_clip = video_clip.with_audio(audio_clip)
     else:                                       # moviepy 1.x
         video_clip = video_clip.set_audio(audio_clip)
-    video_clip.write_videofile(
-        output_path,
-        fps=fps,
-        codec="libx264",
-        audio_codec="aac",
-        logger=None,
-    )
-    audio_clip.close()
-    video_clip.close()
+    try:
+        video_clip.write_videofile(
+            output_path,
+            fps=fps,
+            codec="libx264",
+            audio_codec="aac",
+            threads=2,          # cap ffmpeg worker memory on small containers
+            logger=None,
+        )
+    finally:
+        # Always release the big buffers, even on a failed encode — a leaked
+        # render was enough to OOM-kill the whole service on Railway
+        try:
+            audio_clip.close()
+            video_clip.close()
+        except Exception:
+            pass
+        import gc
+        gc.collect()
     return output_path

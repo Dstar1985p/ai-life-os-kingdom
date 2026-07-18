@@ -9,6 +9,7 @@ row so it survives restarts in a queryable form.
 from __future__ import annotations
 
 import logging
+import os
 import queue
 import threading
 from datetime import datetime
@@ -133,15 +134,18 @@ def _process(job: dict) -> None:
         except Exception:
             pass
 
-        job["detail"] = "Rendering TikTok vertical cut"
-        try:
-            generate_visualiser(str(audio_file), str(video_path_tt),
-                                title=clean_title, artist="PulseBreak", fmt="tiktok")
-            if release:
-                release.video_tiktok_path = str(video_path_tt)
-                db.commit()
-        except Exception:
-            pass  # TikTok cut is a bonus, not a blocker
+        # TikTok cut doubles render time + peak memory — skippable on small
+        # containers with KINGDOM_RENDER_TIKTOK=0
+        if os.environ.get("KINGDOM_RENDER_TIKTOK", "1") != "0":
+            job["detail"] = "Rendering TikTok vertical cut"
+            try:
+                generate_visualiser(str(audio_file), str(video_path_tt),
+                                    title=clean_title, artist="PulseBreak", fmt="tiktok")
+                if release:
+                    release.video_tiktok_path = str(video_path_tt)
+                    db.commit()
+            except Exception:
+                pass  # TikTok cut is a bonus, not a blocker
 
         # ── Upload ────────────────────────────────────────────────────────────
         job["status"] = "uploading"
@@ -194,3 +198,5 @@ def _process(job: dict) -> None:
         job["finished_at"] = datetime.utcnow().isoformat()
     finally:
         db.close()
+        import gc
+        gc.collect()  # release render buffers before the next queued job
